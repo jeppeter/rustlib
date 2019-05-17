@@ -1,3 +1,17 @@
+use std::env;
+
 fn main() {
-    println!("Hello, world!");
+	let mut c :i32;
+	for arg in env::args() {
+		c = arg.trim().parse();
+		println!("[{}]=[{}]", arg, fabonaci(c));
+	}
+}
+
+
+fn fabonaci(i: i32) -> i32 {
+	if  i > 1 {
+		return fabonaci(i-1) + i;
+	}
+	return i;
 }
