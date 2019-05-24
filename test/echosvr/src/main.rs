@@ -47,7 +47,7 @@ fn main() {
 				});
 			},
 			Err(err) => {
-				println!("can not accept {} error [{}]", bindstr, err);
+				println!("can not accept error [{}]", err);
 			}
 		}
 	}
