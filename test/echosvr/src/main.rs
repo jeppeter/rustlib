@@ -1,9 +1,10 @@
 use std::net::{TcpListener,TcpStream};
 use std::thread;
-use std::io::{self,Write,Read};
+use std::process;
+use std::io::{Write,Read};
 use std::env;
 use std::vec::Vec;
-use std::fmt;
+//use std::fmt;
 
 fn handle_client(mut stream: TcpStream) {
 	loop {
@@ -25,18 +26,19 @@ fn handle_client(mut stream: TcpStream) {
 fn main() {
 	let argv :Vec<String> = env::args().collect();
 	let mut port:i32 = 3102;
-	let mut bindstr :String;
+	let bindstr :String;
 	if argv.len() > 1 && 
 		(argv[1] == "-h" ||
 			argv[1] == "--help") {
-			io::stderr().write(b"{} port\n")
+			println!("{} port", argv[0]);
+			process::exit(0);
 		}
 
 	if argv.len() > 1 {
-		port = argv[1].parse.unwrap_or(3102);
+		port = argv[1].parse().unwrap_or(3102);
 	}
 	bindstr = format!("127.0.0.1:{}", port);
-	let listener = TcpListener.bind(bindstr);
+	let listener = TcpListener::bind(bindstr).unwrap();
 	for stream in listener.incoming() {
 		match stream {
 			Ok(stream) => {
