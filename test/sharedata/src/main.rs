@@ -26,7 +26,11 @@ for _ in 0..N {
         // We unwrap() the return value to assert that we are not expecting
         // threads to ever fail while holding the lock.
         let mut data = data.lock().unwrap();
-        *data += 1;
+        let mut i :u32 = 0;
+        while i<3000000 {
+            *data += 1;
+            i += 1;
+        }
         println!("data {}", *data);
         thread::sleep_ms(500);
         /*if *data == N {
