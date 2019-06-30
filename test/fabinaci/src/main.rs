@@ -1,12 +1,20 @@
 use std::env;
 use std::vec::Vec;
 
+static mut CNT :i32 =0;	
+
 fn main() {
 	let mut c :i64;
+	let mut fabv :i64;
 	let mut v :Vec<i64> = Vec::new();
+	let mut cv :i32;
 	for arg in env::args() {
 		c = arg.parse().unwrap_or(0);
-		println!("[{}]=[{}]", arg, fabonaci(c,&mut v));
+		fabv = fabonaci(c,&mut v);
+		unsafe {
+			cv = CNT;
+		}
+		println!("[{}]=[{}] CNT[{}]", arg, fabv,cv);
 	}
 }
 
@@ -16,6 +24,9 @@ fn fabonaci<'a>(i: i64, c :&'a mut Vec<i64>) -> i64 {
 	let cc1 :i64;
 	let cc2 :i64;
 	msize = i as usize;
+	unsafe {
+		CNT += 1;
+	}
 	if  i > 2 {
 		if c.len() < (msize - 1) {
 			fabonaci(i-1,c);
