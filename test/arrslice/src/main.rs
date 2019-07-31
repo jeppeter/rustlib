@@ -6,7 +6,7 @@ fn analyze_slice(slice: &[i32]) {
     println!("the slice has {} elements", slice.len());
 }
 
-//#[accept(const_err)]
+#[allow(const_err)]
 fn main() {
     // Fixed-size array (type signature is superfluous)
     let xs: [i32; 5] = [1, 2, 3, 4, 5];
