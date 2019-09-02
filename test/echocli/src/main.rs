@@ -4,10 +4,11 @@ use std::env;
 use std::process;
 use std::vec::Vec;
 
+
 fn main() {
 	let argv :Vec<String> = env::args().collect();
 	let mut port:i32 = 3102;
-	let mut hoststr:String = "127.0.0.1";
+	let mut hoststr :String = String::from("127.0.0.1");
 	let  bindstr:String;
 
 	if argv.len() == 2 && 
@@ -17,7 +18,7 @@ fn main() {
 	}
 
 	if argv.len() > 1 {
-		hoststr = argv[1];	
+		hoststr = String::copy(argv[1]);
 	}
 	
 	if argv.len() > 2 {
@@ -28,10 +29,21 @@ fn main() {
 
 	match TcpStream::connect(bindstr) {
 		Ok(mut stream) => {
-			
+			stream.write(b"hello");
+			let mut data = [0 as u8 ;1000];
+			match stream.read(&mut data) {
+				Ok(_) => {
+					println!("read data");
+				}
+				Err(e) => {
+					println!("read error {}", e);
+				}
+			}
+		}
+		Err(e2) => {
+			println!("connect error {}",  e2);
 		}
 	}
-
 
 	return;    
 }
