@@ -1,7 +1,7 @@
 use std::net::{TcpStream};
 use std::io::{Write,Read};
 use std::env;
-use std::process;
+//use std::process;
 use std::vec::Vec;
 
 
@@ -14,11 +14,11 @@ fn main() {
 	if argv.len() == 2 && 
 		(argv[1] == "-h" || argv[1] == "--help") {
 		println!("{} host port", argv[0]);
-		process::exit(3);
+		return;
 	}
 
 	if argv.len() > 1 {
-		hoststr = String::copy(argv[1]);
+		hoststr = argv[1].clone();
 	}
 	
 	if argv.len() > 2 {

@@ -4,7 +4,8 @@ use std::process;
 use std::io::{Write,Read};
 use std::env;
 use std::vec::Vec;
-//use std::fmt;
+use std::fmt::Binary;
+
 
 fn handle_client(mut stream: TcpStream) {
 	loop {
@@ -15,6 +16,7 @@ fn handle_client(mut stream: TcpStream) {
 					break;
 				}
 				stream.write(&readbuf[0..n]).unwrap();
+				println!("read data from client");
 			},
 			Err(err) => {
 				panic!(err);
