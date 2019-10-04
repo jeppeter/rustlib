@@ -1,14 +1,15 @@
-use std::env;
+//use std::env;
 use std::fs::File;
 use std::io::{BufRead,BufReader};
 
 
 fn  read_file(path :String)   {
 	let fd ;
+	let mut _spath = path.clone();
 
 	match File::open(path) {
 		Ok(file) => fd  = file,
-		Err(err)  => {return;}
+		Err(err)  => {println!("get error {} {:?}",_spath, err);;return;}
 	}
 	let reader = BufReader::new(fd);
 	for (i,l) in reader.lines().enumerate() {
@@ -20,9 +21,12 @@ fn  read_file(path :String)   {
 
 fn main() {
     let argv = std::env::args();
-    //let mut i = 0;
+    let mut i = 0;
     for c in argv {
-    	read_file(c);
-    	//i  +=  1;
+    	if i > 0 {
+	    	println!("{}", c);
+	    	read_file(c);    		
+    	}
+    	i  +=  1;
     }
 }
