@@ -9,7 +9,7 @@ fn  read_file(path :String)   {
 
 	match File::open(path) {
 		Ok(file) => fd  = file,
-		Err(err)  => {println!("get error {} {:?}",_spath, err);;return;}
+		Err(err)  => {println!("get error {} {:?}",_spath, err);return;}
 	}
 	let reader = BufReader::new(fd);
 	for (i,l) in reader.lines().enumerate() {
