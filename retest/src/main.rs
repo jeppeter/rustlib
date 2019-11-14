@@ -1,21 +1,24 @@
 use regex::Regex;
 
-fn capture_regex(restr :&str, instr :&str) {
+fn capture_regex(restr :&str, instr :&str) -> bool {
 	let re = Regex::new(restr).unwrap();
 	let caps = re.captures(instr);
 	match caps {
-		Some(v) => {println!("capture {:?}", v);}
-		None => {println!("error {:?} {:?}", restr,instr);}
+		Some(v) => {println!("capture {:?}", v); return true;}
+		None => {println!("error {:?} {:?}", restr,instr); return false;}
 	}
-
 }
 
-fn usage(ec :i32,fmtstr :&str) {
-	let outstr = format!("retest [SUBCOMMANDS]`n[SUBCOMMANDS]`n");
+fn usage(ec :i32,_fmtstr :String) {
+	let mut outstr :String = String::from("");
+	if _fmtstr.len() > 0 {
+		outstr.push_str(&(_fmtstr[..]));
+	}
+	outstr.push_str(&(format!("retest [SUBCOMMANDS]\n[SUBCOMMANDS]\n")[..]));
 	if ec == 0 {
-		print!("{:?}",outstr);
+		print!("{}",outstr);
 	} else {
-		eprint!("{:?}",outstr);
+		eprint!("{}",outstr);
 	}
 
 	std::process::exit(ec);
@@ -23,9 +26,23 @@ fn usage(ec :i32,fmtstr :&str) {
 
 fn main() {
 	let argv :Vec<String> = std::env::args().collect();
+	let mut i;
 
-	println!("count {}", argv.len());
 	if argv.len() < 2 {
-		usage(3,"need at least 2 args");
+		usage(3,format!("need at least 2 args"));
 	}
+
+	if argv[1] == "capture" {
+		if argv.len() < 4 {
+			usage(3,format!("capture need 4 args"));
+		}
+		i = 3;
+		while i < argv.len() {
+			capture_regex(&(argv[2][..]),&(argv[i][..]));
+			i = i + 1;
+		}
+	} else {
+		usage(3,format!("not support {}", argv[1]));
+	}
+	return
 }
