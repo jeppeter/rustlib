@@ -1,16 +1,25 @@
 use regex::Regex;
 
 fn capture_regex(restr :&str, instr :&str) -> bool {
-	let re = Regex::new(restr).unwrap();
+	let re;
+	match Regex::new(restr) {
+		Err(e) => {println!("{} not compiled {:?}", restr,e);;return false;}
+		Ok(v) => {re = v;}
+	}
 	let caps = re.captures(instr);
 	match caps {
 		Some(v) => {println!("capture {:?}", v); return true;}
-		None => {println!("error {:?} {:?}", restr,instr); return false;}
+		None => {println!("error {} {:?}", restr,instr); return false;}
 	}
 }
 
 fn match_regex(restr :&str, instr :&str) -> bool {
-	let re = Regex::new(restr).unwrap();
+	let re ;
+	match Regex::new(restr) {
+		Err(e) => {println!("{} not compiled {:?}",restr,e ); return false;}
+		Ok(v) => {re = v;}
+	}
+
 	let bmatch = re.is_match(instr);
 	if bmatch {
 		println!("{} match {}", instr, restr);
