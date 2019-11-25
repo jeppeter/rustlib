@@ -14,12 +14,14 @@ fn main() -> Result<(), SetLoggerError> {
     let file_path = "foo.log";
 
     // Build a stderr logger.
-    let stderr = ConsoleAppender::builder().target(Target::Stderr).build();
+    let stderr = ConsoleAppender::builder()
+        .encoder(Box::new(PatternEncoder::new("[{f}:{L}] {m}\n")))
+        .target(Target::Stderr).build();
 
     // Logging to log file.
     let logfile = FileAppender::builder()
         // Pattern: https://docs.rs/log4rs/*/log4rs/encode/pattern/index.html
-        .encoder(Box::new(PatternEncoder::new("{l} - {m}\n")))
+        .encoder(Box::new(PatternEncoder::new("[{f}:{L}] {m}\n")))
         .build(file_path)
         .unwrap();
 
