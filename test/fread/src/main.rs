@@ -12,9 +12,8 @@ fn  read_file(path :&str) -> Result<String,std::io::Error>  {
 		Err(err)  => {println!("get error {} {:?}",path, err);return Err(err);}
 	}
 	let reader = BufReader::new(fd);
-	for (i,l) in reader.lines().enumerate() {
+	for (_,l) in reader.lines().enumerate() {
 		let l = l.unwrap();
-		println!("[{}]=[{}]", i , l);
 		cstr.push_str(&(format!("{}\n", l)[..]));
 	}
 	return Ok(cstr);
