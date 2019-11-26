@@ -1,57 +1,62 @@
-use std::env;
-use std::vec::Vec;
+#![feature(macro_rules)]
 
-static mut CNT :i32 =0;	
+macro_rules! recurrence {
+    ( a[n]: $sty:ty = $($inits:expr),+ , ... , $recur:expr ) => {
+        {
+            struct Recurrence {
+                mem: [u64, ..2],
+                pos: uint,
+            }
 
-fn main() {
-	let mut c :i64;
-	let mut fabv :i64;
-	let mut v :Vec<i64> = Vec::new();
-	let mut cv :i32;
-	for arg in env::args() {
-		c = arg.parse().unwrap_or(0);
-		fabv = fabonaci(c,&mut v);
-		unsafe {
-			cv = CNT;
-		}
-		println!("[{}]=[{}] CNT[{}]", arg, fabv,cv);
-	}
+            struct IndexOffset<'a> {
+                slice: &'a [u64, ..2],
+                offset: uint,
+            }
+
+            impl<'a> Index<uint, u64> for IndexOffset<'a> {
+                #[inline(always)]
+                fn index<'b>(&'b self, index: &uint) -> &'b u64 {
+                    let real_index = *index - self.offset + 2;
+                    &self.slice[real_index]
+                }
+            }
+
+            impl Iterator<u64> for Recurrence {
+                #[inline]
+                fn next(&mut self) -> Option<u64> {
+                    if self.pos < 2 {
+                        let next_val = self.mem[self.pos];
+                        self.pos += 1;
+                        Some(next_val)
+                    } else {
+                        let next_val = {
+                            let n = self.pos;
+                            let a = IndexOffset { slice: &self.mem, offset: n };
+                            (a[n-1] + a[n-2])
+                        };
+
+                        {
+                            use std::mem::swap;
+
+                            let mut swap_tmp = next_val;
+                            for i in range(0, 2).rev() {
+                                swap(&mut swap_tmp, &mut self.mem[i]);
+                            }
+                        }
+
+                        self.pos += 1;
+                        Some(next_val)
+                    }
+                }
+            }
+
+            Recurrence { mem: [0, 1], pos: 0 }
+        }
+    };
 }
 
+fn main() {
+    let fib = recurrence!([a[n]: u64 = 0, 1, ..., a[n-1] + a[n-2]]);
 
-fn fabonaci<'a>(i: i64, c :&'a mut Vec<i64>) -> i64 {
-	let msize :usize ;
-	let cc1 :i64;
-	let cc2 :i64;
-	msize = i as usize;
-	unsafe {
-		CNT += 1;
-	}
-	if  i > 2 {
-		if c.len() < (msize - 1) {
-			fabonaci(i-1,c);
-		}
-		if c.len() < (msize - 2) {
-			fabonaci(i-2,c);
-		}
-		if c.len() < msize {
-			cc1 = c[msize-3];
-			cc2 = c[msize-2];
-			c.push(cc1 + cc2);
-		}
-		return c[msize-1];
-	}  else if i == 2 {
-		if c.len() < 1 {
-			c.push(1);
-		}
-		if c.len() < 2 {
-			c.push(2);
-		}		
-		return c[1];
-	}
-	if c.len() < 1 {
-		c.push(1);	
-	}
-	
-	return 1;	
+    for e in fib.take(10) { println!("{}", e) }
 }
