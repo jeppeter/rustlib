@@ -19,42 +19,107 @@ fn  read_file(path :&str) -> Result<String,Error>  {
 	return Ok(cstr);
 }
 
+fn format_tabs(tabs :i32) -> String {
+	let mut retstr:String = String::from("");
+	for _ in 0..tabs {
+		retstr.push_str(&(format!("    ")[..]));
+	}
+	return retstr;
+}
 
 
+fn array_json(_key :&str, _instr :&str, tabs :i32) -> String {
+	let mut retstr :String = String::from("");
+	let vv :&Vec<Value>;
+	let d :Value;
+	//let mut cnt:usize;
+	match serde_json::from_str(_instr) {
+		Ok(v)  => {
+			d = v;
+			match d.as_array() {
+				Some(dv) => { vv = dv;},
+				None => {eprintln!("---------------\n{}+++++++++++++++++\nnot array",_instr); return retstr;}
+			}
+		}, 
+		Err(e) => {eprintln!("---------------\n{}+++++++++++++++++\nparse error [{:?}]",_instr,e); return retstr;}
+	}
 
-fn enumerate_json(_key :&str,_instr :&str,tabs :i32) {
+	retstr.push_str(&(format_tabs(tabs)[..]));
+	if _key.len() > 0 {
+		retstr.push_str(&(format!("\"{}\" : [",_key)[..]));
+	} else {
+		retstr.push_str("[");
+	}
+
+	for (i,v) in vv.iter().enumerate() {
+		if i > 0 {
+			retstr.push_str(",");
+		}
+		retstr.push_str("\n");
+		if v.is_object() {
+			retstr.push_str(&(enumerate_json("",&(v.to_string()[..]), tabs + 1)[..]));
+			continue;
+		}
+		if v.is_array() {
+			retstr.push_str(&(array_json("",&(v.to_string()[..]),tabs + 1)[..]));
+			continue;
+		}
+
+		retstr.push_str(&(format_tabs(tabs + 1)[..]));
+		retstr.push_str(&(format!("{}",v.to_string())[..]));
+	}
+
+	retstr.push_str("\n");
+	retstr.push_str(&(format_tabs(tabs)[..]));
+	retstr.push_str(&(format!("]")[..]));
+	return retstr;
+}
+
+fn enumerate_json(_key :&str,_instr :&str,tabs :i32) -> String {
 	let d :HashMap<String,Value>;
-	let mut curstr :String;
+	let mut retstr :String = String::from("");
 	let mut i:i32;
 	match serde_json::from_str(_instr) {
 		Ok(v) => {d = v;},
-		Err(e) => {eprintln!("---------------\n{}+++++++++++++++++\nparse error [{:?}]",_instr,e); return;}
+		Err(e) => {eprintln!("---------------\n{}+++++++++++++++++\nparse error [{:?}]",_instr,e); return retstr;}
 	}
+
+	retstr.push_str(&(format_tabs(tabs)[..]));
 	if _key.len() > 0 {
-		curstr = String::from("");
-		for _ in 0..tabs {
-			curstr.push_str("    ");
-		}
-
-		curstr = format!("\"{}\" : \\{",_key);
+		retstr.push_str(&(format!("\"{}\" : {{",_key)[..]));		
 	} else {
-		curstr = format!("{");
+		retstr.push_str(&(format!("{{")[..]));
 	}
-	println!("{}",curstr);
 
+
+	i = 0;
 	for (s,v) in d {
+		if i > 0 {
+			retstr.push_str(",");
+		}
+		retstr.push_str("\n");
 		if v.is_object() {
-			enumerate_json(s,v.to_string(),tabs + 1);
+			retstr.push_str(&(enumerate_json(&(s[..]),&(v.to_string()[..]),tabs + 1)[..]));
+			i += 1;
 			continue;
 		}
-		curstr = String::from("");
-		for _ in 0..tabs {
-			curstr.push_str("    ");
+
+		if v.is_array() {
+			retstr.push_str(&(array_json(&(s[..]),&(v.to_string()[..]),tabs+1)[..]));
+			i += 1;
+			continue;
 		}
-		curstr.push_str("\"{}\" : {}",s,v);
-		println!("{}", curstr);
-	}	
-	return;
+
+		retstr.push_str(&(format_tabs(tabs+1)[..]));
+		retstr.push_str(&(format!("\"{}\" : {}",s,v)[..]));
+		i += 1;
+	}
+	if i > 0 {
+		retstr.push_str("\n");
+	}
+	retstr.push_str(&(format_tabs(tabs)[..]));
+	retstr.push_str(&(format!("}}")[..]));
+	return retstr;
 }
 
 
@@ -92,7 +157,7 @@ fn main() {
 		while i < argv.len() {
 			match read_file(&(argv[i][..])) {
 				Ok(s) => {
-					enumerate_json(&(s[..]),0);
+					println!("{}",enumerate_json("",&(s[..]),0));
 				},
 				Err(e) => {
 					eprintln!("can not read {} [{:?}]", argv[i],e );
