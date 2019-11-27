@@ -1,4 +1,4 @@
-use serde_json::{Value};
+use serde_json::{Value,json};
 use std::fs::File;
 use std::io::{BufRead,BufReader,Error};
 use std::collections::HashMap;
@@ -122,6 +122,39 @@ fn enumerate_json(_key :&str,_instr :&str,tabs :i32) -> String {
 	return retstr;
 }
 
+fn add_json_value(_instr :&str, _key :&str, _val:&str) -> String {
+	let mut d :HashMap<String,Value>;
+	let c :Value;
+	let mut retstr :String = String::from("");
+	match serde_json::from_str(_instr) {
+		Ok(v) => {d = v;},
+		Err(e) => {eprintln!("---------------\n{}+++++++++++++++++\nparse error [{:?}]",_instr,e); return retstr;}
+	}
+
+	match serde_json::from_str(_val) {
+		Ok(v) => {c = v;},
+		Err(e) => {eprintln!("---------------\n{}+++++++++++++++++\nparse error [{:?}]",_instr,e); return retstr;}
+	}
+
+	d.insert(String::from(_key),c);
+	retstr = enumerate_json("",&(format!("{}",json!(d).to_string())[..]),0);
+	return retstr;
+}
+
+fn del_json_value(_instr :&str, _key :&str) -> String {
+	let mut d :HashMap<String,Value>;
+	let mut retstr :String = String::from("");
+	match serde_json::from_str(_instr) {
+		Ok(v) => {d = v;},
+		Err(e) => {eprintln!("---------------\n{}+++++++++++++++++\nparse error [{:?}]",_instr,e); return retstr;}
+	}
+	if d.contains_key(_key) {
+		d.remove(_key);
+	}
+	retstr = enumerate_json("",&(format!("{}",json!(d).to_string())[..]),0);
+	return retstr;
+}
+
 
 fn usage(ec :i32,_fmtstr :String) {
 	let mut outstr :String = String::from("");
@@ -131,6 +164,8 @@ fn usage(ec :i32,_fmtstr :String) {
 	}
 	outstr.push_str(&(format!("josntst [SUBCOMMANDS]\n[SUBCOMMANDS]\n")[..]));
 	outstr.push_str(&(format!("\tenumerate file...                   to enumerate file\n")[..]));
+	outstr.push_str(&(format!("\tadd file key value                  to add the key value\n")[..]));
+	outstr.push_str(&(format!("\tdel file keys...                    to delete key\n")[..]));
 	if ec == 0 {
 		print!("{}",outstr);
 	} else {
@@ -143,7 +178,9 @@ fn usage(ec :i32,_fmtstr :String) {
 
 fn main() {
 	let argv :Vec<String> = std::env::args().collect();
-	let mut i;
+	let mut i:usize;
+	let mut ss:String;
+	let mut retstr :String;
 
 	if argv.len() < 2 {
 		usage(3,format!("need at least 2 args"));
@@ -165,7 +202,41 @@ fn main() {
 			}
 			i += 1;
 		}
-	} else {
+	} else if argv[1] == "add" {
+		if argv.len() < 5 {
+			usage(3,format!("add need 5 args"));
+		}
+		match read_file(&(argv[2][..])) {
+			Ok(s) => {
+				ss = s;
+				println!("add [{}] [{}] into\n{}\n----------------\n{}",
+					argv[3],argv[4],ss, add_json_value(&(ss[..]),&(argv[3][..]),&(argv[4][..])));
+			},
+			Err(e) => {
+				eprintln!("can not read {} [{:?}]", argv[2],e );
+			}
+		}
+	} else if argv[1] == "del" {
+		if argv.len() < 4 {
+			usage(3,format!("del need 4 args"));
+		}
+
+		match read_file(&(argv[2][..])) {
+			Ok(s) => {
+				ss = s;
+				i = 3;
+				while i < argv.len() {
+					retstr = del_json_value(&(ss[..]), &(argv[i][..]));
+					println!("delete {}\n{}\n----------------\n{}\n++++++++++++++++++", argv[i], ss, retstr);
+					ss = retstr;
+					i +=1;
+				}
+			},
+			Err(e) => {
+				eprintln!("can not read {} [{:?}]", argv[2],e );
+			}
+		}
+	}else {
 		usage(3,format!("not support {}", argv[1]));
 	}
 	return
