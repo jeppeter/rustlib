@@ -1,22 +1,20 @@
-// valid
-use std::{thread,time};
-
-fn main() {
-  let v = vec![1,2,3];
-  let  mut thrs  = Vec::new();
-  for _ in 1..5 {
-	  let mut vcol = v.clone();
-	  let  t  =  thread::spawn(move  || {
-	     vcol.push(4);
-	     thread::sleep(time::Duration::from_millis(3000));
-	     println!("v {:?}", vcol);
-	  });
-	  thrs.push(t);
-  }
-  // Can no longer access `v` here.
-  println!("main {:?}", v);
-  for t in thrs.iter() {
-  	t.join();
-  }
-
+use std::sync::{Arc, Barrier};
+use std::thread;
+fn  main()  {
+	let mut handles = Vec::with_capacity(10);
+	let barrier = Arc::new(Barrier::new(10));
+	for i in 0..10 {
+	    let c = barrier.clone();
+	    handles.push(thread::spawn(move|| {
+	        // do some work
+	        println!("i [{}]", i);
+	        c.wait();
+	        println!("after i [{}]", i);
+	    }));
+	}
+	// Wait for other threads to finish.
+	for handle in handles {
+	    handle.join().unwrap();
+	}
+	println!("wait all over");
 }
