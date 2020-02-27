@@ -1,5 +1,6 @@
 use std::sync::{Arc, Barrier};
 use std::thread;
+use std::time;
 fn  main()  {
 	let mut handles = Vec::with_capacity(10);
 	let barrier = Arc::new(Barrier::new(10));
@@ -8,8 +9,10 @@ fn  main()  {
 	    handles.push(thread::spawn(move|| {
 	        // do some work
 	        println!("i [{}]", i);
-	        c.wait();
+	        thread::sleep(time::Duration::from_millis(100  * (i+1)));
+	        //c.wait();
 	        println!("after i [{}]", i);
+	        c.wait();
 	    }));
 	}
 	// Wait for other threads to finish.
