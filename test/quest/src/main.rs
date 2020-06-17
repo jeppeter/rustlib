@@ -9,9 +9,10 @@ fn read_username_from_file(fname :String) -> Result<String, io::Error>
 	Ok(s)
 }
 fn main() {
-	for arg in env::args()	 {
-		let c = arg;
-		let s = read_username_from_file(c);
-		println!("{} {:?}",c,s);
+	let args :Vec<String> = env::args().collect();
+	if args.len() > 1 {
+		let c = &args[1];
+		let s = read_username_from_file(c.to_string());		
+		println!("{:?}", s);
 	}
 }
