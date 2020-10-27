@@ -27,7 +27,7 @@ fn main() {
 	dispatch.insert("call_func_2",func);
 	println!("{:?}",dispatch["call_func_1"]);
 	s = dispatch["call_func_1"];
-	match s.downcast::<FuncString>() {
+	match s.downcast_ref::<FuncString>() {
 		Some(c) => {println!("down succ");},
 		_ => {eprintln!("not succ");}
 	}
