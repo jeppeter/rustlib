@@ -7,13 +7,15 @@ use std::net::{TcpStream,TcpListener,Shutdown};
 
 fn server_handler(port :String) -> i32 {
 	let bindstr :String;
+	let ebindstr :String;
 	let server :TcpListener;
 	bindstr = format!("0.0.0.0:{}", port);
+	ebindstr = bindstr.clone();
 
 	match TcpListener::bind(bindstr) {
 		Ok(t) => {server = t;},
 		Err(e) => {
-			eprintln!("bind [{}] error {:?}", bindstr,e);
+			eprintln!("bind [{}] error {:?}", ebindstr,e);
 			return -3;
 		}
 	}
@@ -25,7 +27,10 @@ fn server_handler(port :String) -> i32 {
 			Ok((cli,_sock)) => { 
 				client=cli;
 				//sockaddr = sock;
-				client.shutdown(Shutdown::Both);
+				match client.shutdown(Shutdown::Both) {
+					Ok(()) => {println!("shutdown {:?}", _sock);},
+					Err(e) => {eprintln!("shutdown error {:?}", e);}
+				}
 			},
 			Err(e) => {
 				eprintln!("get error {:?}",e);
@@ -37,6 +42,7 @@ fn server_handler(port :String) -> i32 {
 
 fn main() {
 	let args :Vec<String> = std::env::args().collect();
+	let port :String;
 	if args.len() < 3 {
 		eprintln!("{} command", args[0]);
 		eprintln!("server port");
@@ -46,7 +52,8 @@ fn main() {
 
 
 	if args[1] == "server" {
-		server_handler(args[2]);
+		port = args[2].clone();
+		server_handler(port);
 	} 
 	
 }
