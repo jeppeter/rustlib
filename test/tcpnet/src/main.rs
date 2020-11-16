@@ -3,7 +3,33 @@
 //use std::thread;
 //use std::net::{TcpStream,TcpListener,Shutdown,SocketAddr};
 use std::net::{TcpStream,TcpListener,Shutdown};
-//use std::io::{Read,Write};
+use std::io::{Read,Write};
+use std::thread;
+
+fn handle_client(mut stream: TcpStream) -> bool{
+    let mut data = [0 as u8; 50]; // using 50 byte buffer
+    loop {
+		match stream.read(&mut data) {
+		        Ok(size) => {
+		            // echo everything!
+		            match stream.write(&data[0..size]) {
+		            	Err(e) => {
+		            		eprintln!("write error {:?}",e);
+		            		stream.shutdown(Shutdown::Both).unwrap();
+		            		return false;
+		            	},
+		            	Ok(_) => {return true;}
+		            }
+		        },
+		        Err(_) => {
+		            println!("An error occurred, terminating");
+		            stream.shutdown(Shutdown::Both).unwrap();
+		            return false;
+		        }
+		    }    	
+    }
+}
+
 
 fn server_handler(port :String) -> i32 {
 	let bindstr :String;
@@ -27,10 +53,14 @@ fn server_handler(port :String) -> i32 {
 			Ok((cli,_sock)) => { 
 				client=cli;
 				//sockaddr = sock;
-				match client.shutdown(Shutdown::Both) {
+				thread::spawn(move || {
+					handle_client(client);
+				});
+				//handle_client(client);
+				/*match client.shutdown(Shutdown::Both) {
 					Ok(()) => {println!("shutdown {:?}", _sock);},
 					Err(e) => {eprintln!("shutdown error {:?}", e);}
-				}
+				}*/
 			},
 			Err(e) => {
 				eprintln!("get error {:?}",e);
@@ -40,9 +70,22 @@ fn server_handler(port :String) -> i32 {
 	//return 0;
 }
 
+fn client_handler(host,port :String) -> i32 {
+	let tcpcli :TcpStream;
+	let connstr :String;
+	connstr = format!("{}:{}",host,port);
+	match TcpStream::connect(connstr) {
+		Ok(mut stream) => {
+			
+		}
+	}
+}
+
 fn main() {
 	let args :Vec<String> = std::env::args().collect();
 	let port :String;
+	let host :String;
+	let ret :i32;
 	if args.len() < 3 {
 		eprintln!("{} command", args[0]);
 		eprintln!("server port");
@@ -53,7 +96,13 @@ fn main() {
 
 	if args[1] == "server" {
 		port = args[2].clone();
-		server_handler(port);
-	} 
-	
+		ret = server_handler(port);
+	}  else if args[1] == "client" {
+		host = args[2].clone();
+		port = args[3].clone();
+		ret = client_handler(host,port);
+	} else {
+		ret = -3;
+	}
+	std::process::exit(ret);	
 }
