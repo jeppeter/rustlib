@@ -11,7 +11,7 @@ fn main() {
     for line in reader.lines() {
     	match line {
     		Ok(l) => {println!("{}",l );},
-    		Err(_) => {}
+    		Err(e) => {eprintln!("error [{:?}]",e);}
     	}
     }
 }
