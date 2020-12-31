@@ -70,13 +70,33 @@ fn server_handler(port :String) -> i32 {
 	//return 0;
 }
 
-fn client_handler(host,port :String) -> i32 {
-	let tcpcli :TcpStream;
+fn client_handler(host :String,port :String) -> i32 {
 	let connstr :String;
+	let v :String;
 	connstr = format!("{}:{}",host,port);
+	v = connstr.clone();
 	match TcpStream::connect(connstr) {
 		Ok(mut stream) => {
-			
+			let mut lines :String = String::with_capacity(512);
+			match stream.write(b"hello"){
+				Ok(n) => {println!("n [{}]",n);},
+				Err(e) => {
+					eprintln!("write [{}] error[{}]", v,e);
+					return -5;
+				},
+			}
+			match stream.read_to_string(&mut lines) {
+				Ok(n) => {println!("n [{}]",n );},
+				Err(e) => {
+					eprintln!("read [{}] [{}]", v,e);
+					return -6;
+				},
+			}
+			return 0;
+		},
+		Err(e) => {
+			eprintln!("error [{}] [{}]", v, e);
+			return -3;
 		}
 	}
 }
