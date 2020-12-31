@@ -12,6 +12,7 @@ fn handle_client(mut stream: TcpStream) -> bool{
 		match stream.read(&mut data) {
 		        Ok(size) => {
 		            // echo everything!
+		            println!("server read [{:?}]",data);
 		            match stream.write(&data[0..size]) {
 		            	Err(e) => {
 		            		eprintln!("write error {:?}",e);
@@ -86,7 +87,7 @@ fn client_handler(host :String,port :String) -> i32 {
 				},
 			}
 			match stream.read_to_string(&mut lines) {
-				Ok(n) => {println!("n [{}]",n );},
+				Ok(_) => {println!("read  [{}]",lines );},
 				Err(e) => {
 					eprintln!("read [{}] [{}]", v,e);
 					return -6;
