@@ -23,7 +23,7 @@ impl Fly for Pig {
 	}
 }
 
-fn fly_static<T: Fly>(s :&T) -> bool {
+fn fly_static<T: Fly>(s :T) -> bool {
 	s.fly()
 }
 
@@ -31,11 +31,17 @@ fn fly_dyn(s :&dyn Fly) -> bool {
 	s.fly()
 }
 
+fn fly_static_ptr<T: Fly>(s :&T) -> bool {
+	s.fly()
+}
+
 fn main() {
-	let pig = Rc::new(Pig);
-	let duck = Rc::new(Duck);
-	fly_static::<Pig>(&(*pig));
-	fly_static::<Duck>(&(*duck));
+	let pig = Rc::new(Pig{});
+	let duck = Rc::new(Duck{});
+	fly_static::<Pig>((*pig).clone());
+	fly_static::<Duck>((*duck).clone());
+	fly_static_ptr::<Pig>(&(*pig));
+	fly_static_ptr::<Duck>(&(*duck));
 	fly_dyn(&(*pig));
 	fly_dyn(&(*duck));
 	return;
