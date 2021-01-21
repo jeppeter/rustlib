@@ -23,7 +23,7 @@ impl Fly for Pig {
 	}
 }
 
-fn fly_static<T: Fly>(s :T) -> bool {
+fn fly_static<T: Fly>(s :&T) -> bool {
 	s.fly()
 }
 
@@ -34,8 +34,8 @@ fn fly_dyn(s :&dyn Fly) -> bool {
 fn main() {
 	let pig = Rc::new(Pig);
 	let duck = Rc::new(Duck);
-	fly_static::<Pig>(*pig);
-	fly_static::<Duck>(*duck);
+	fly_static::<Pig>(&(*pig));
+	fly_static::<Duck>(&(*duck));
 	fly_dyn(&(*pig));
 	fly_dyn(&(*duck));
 	return;
