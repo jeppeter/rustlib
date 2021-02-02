@@ -17,6 +17,11 @@ fn modify(v :& mut Vec<i32>) {
 	return;
 }
 
+fn access_string(vs :&String) {
+	let mut s = DeString { s : String::from("c")};
+	s.s = String::from(vs);
+}
+
 fn main() {
     let mut v = vec![1,2,3];
     let args :Vec<String> = env::args().collect();
@@ -27,12 +32,12 @@ fn main() {
 
     if args.len() > 1 {
     	for j in 1..args.len() {
-		    let mut s = DeString { s : String::from("c")};
 	    	bs = args[j].as_bytes();
 	    	for i in 0..bs.len() {
 	    		println!("[{}][{}]=[{:x}]",j,i,bs[i]);
 	    	}    		
-	    	s.s = String::from(&(args[j]));
+	    	access_string(&(args[j]));
+	    	println!("end of [{:?}]",args[j]);
     	}
     }
     return;
