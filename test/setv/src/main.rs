@@ -1,4 +1,4 @@
-fn modify(ref mut v :& mut Vec<i32>) {
+fn modify(v :& mut Vec<i32>) {
 	println!("{:p}", v);
 	v.push(42);
 	return;
