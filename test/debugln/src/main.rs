@@ -6,7 +6,7 @@ macro_rules! debugln (
 	};
 	($x : expr $(, $more:expr)*) => (
 		let mut __s = String::from(format!("[{}:{}]",file!(),line!()));
-		__s += &(format!($x,$($more) ,*)[..]);
+		__s += &(format!($x,$($more),*)[..]);
 		println!("{}",__s);
 	);
 );
