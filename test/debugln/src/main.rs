@@ -1,11 +1,13 @@
 
 macro_rules! debugln (
 	() => {
-		println!("[{}:{}]",file!(),line!());
+		let __s = String::from(format!("[{}:{}]",file!(),line!()));
+		println!("{}",__s);
 	};
 	($x : expr $(, $more:expr)*) => (
-		print!("[{}:{}]",file!(),line!());
-		println!($x,$($more) ,*);
+		let mut __s = String::from(format!("[{}:{}]",file!(),line!()));
+		__s += &(format!($x,$($more) ,*)[..]);
+		println!("{}",__s);
 	);
 );
 
