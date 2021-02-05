@@ -3,7 +3,7 @@ use regex::Regex;
 fn capture_regex(restr :&str, instr :&str) -> bool {
 	let re;
 	match Regex::new(restr) {
-		Err(e) => {println!("{} not compiled {:?}", restr,e);;return false;}
+		Err(e) => {println!("{} not compiled {:?}", restr,e);return false;}
 		Ok(v) => {re = v;}
 	}
 	let caps = re.captures(instr);
