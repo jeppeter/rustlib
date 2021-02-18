@@ -16,7 +16,11 @@ fn main() {
 		let chld = thread::spawn(move || {
 			for i in 1..=3 {
 				let s = format!("thread[{}][{}]",j,i);
-				thread_tx.send(s);
+				let sres = thread_tx.send(s);
+				if sres.is_err() {
+					eprintln!("send error[{:?}]", sres);
+					break;
+				}
 				thread::sleep(Duration::from_millis(100));
 			}
 			println!("thread[{}]exit",j);
@@ -27,13 +31,12 @@ fn main() {
 	}
 
 	loop {
-		let mut idx = 0;
 
 		if chlds.len() == 0 {
 			break
 		}
 
-		let timeout = Duration::from_millis(500);
+		let timeout = Duration::from_millis(100);
 		let cs = rx.recv_timeout(timeout);
 		if cs.is_ok() {
 			println!("received [{}]",cs.unwrap());	
@@ -41,6 +44,7 @@ fn main() {
 			println!("received tiemout");
 			let mut removed = true;
 			while removed {
+				let mut idx;
 				removed = false;
 				idx = 0;
 				while idx < chldexits.len() {
