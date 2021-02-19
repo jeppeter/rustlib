@@ -1,6 +1,6 @@
 
-mod server;
-mod client;
+pub mod server;
+pub mod client;
 
 pub fn connect() -> bool {
 	server::connect();
