@@ -1,4 +1,6 @@
 use std::thread;
+use std::thread::JoinHandle;
+use std::time;
 use std::sync::{Mutex,Arc};
 
 #[derive(Clone,Debug)]
@@ -40,13 +42,28 @@ impl Writers {
 
 fn main() {
 
-	let  w :Arc<Writers> = Arc::new(Writers::new());
-	let cw = w.clone();
-	let thr = thread::spawn(move || {
-		{
-			let 
-		}
-		thread::sleep(1);
-		}
-	})
+	let  w :Arc<Mutex<Writers>> = Arc::new(Mutex::new(Writers::new()));
+	let mut thrvec :Vec<JoinHandle<_>> =  Vec::new();
+
+	for i in 1..10 {
+		let cw = w.clone();
+		let thr = thread::spawn(move || {
+			{
+				let mut cb = cw.lock().unwrap();
+				cb.push_names(String::from(format!("thread {}", i)), String::from(format!("publish {}",i)));
+				println!("thread {} {}",i,cb.description());
+			}
+			thread::sleep(time::Duration::from_millis(500));
+		});
+		thrvec.push(thr);
+	}
+
+	for v in thrvec {
+		v.join().unwrap();
+	}
+	{
+		let cb = w.lock().unwrap();
+		println!("descrip {}",  cb.description());
+	}
+	return;
 }
