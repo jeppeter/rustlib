@@ -1,0 +1,13 @@
+[package]
+name = "wevt"
+version = "0.1.0"
+authors = ["bt"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winapi = { version = "0.3.9", features = ["std", "handleapi", "namedpipeapi", "processenv", "synchapi", "winerror", "processthreadsapi", "winbase"] }
+
+[build-dependencies]
+winapi = { version = "0.3.9", features = ["std", "handleapi", "namedpipeapi", "processenv", "synchapi", "winerror", "processthreadsapi", "winbase"] }
