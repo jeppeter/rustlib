@@ -3,7 +3,7 @@ use std::env::args;
 use std::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
 use winapi::shared::ntdef::{HANDLE};
 use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
-use winapi::um::winnt::{SYNCHRONIZE};
+use winapi::um::winnt::{SYNCHRONIZE,EVENT_ALL_ACCESS};
 use winapi::um::winbase::{INFINITE};
 use std::{ptr,fmt};
 use std::error::{Error};
@@ -87,7 +87,8 @@ fn open_event(evtname :&str) ->Result<TokenHandle,EventError> {
 	let hdl :HANDLE;
 
 	unsafe {
-		hdl = OpenEventW(SYNCHRONIZE, FALSE, to_wide(evtname).as_ptr());	
+		//hdl = OpenEventW(SYNCHRONIZE, FALSE, to_wide(evtname).as_ptr());	
+		hdl = OpenEventW(EVENT_ALL_ACCESS, FALSE, to_wide(evtname).as_ptr());	
 		if hdl == INVALID_HANDLE_VALUE || hdl == NULL_HANDLE {
 			return Err(EventError::new(&(format!("create event [{}] error",evtname)[..])));
 		} 
@@ -111,7 +112,7 @@ fn create_event(evtname :&str) -> Result<TokenHandle,EventError> {
 
 fn wait_event(evt :&TokenHandle, _timeout :i32) -> bool {
 	let dret :DWORD;
-	let wtime :DWORD = 3000 as DWORD;
+	let wtime :DWORD = _timeout as DWORD;
 	unsafe {
 		dret = WaitForSingleObject(evt.as_raw_handle(),wtime);
 		println!("dret {:?}", dret);
@@ -143,7 +144,7 @@ fn main() {
 			evt = create_event(&(argv[2])).unwrap();
 			println!("create [{}] succ [{:?}]", argv[2],evt);
 			//set_event(&evt);
-			_bret = wait_event(&evt,300);
+			_bret = wait_event(&evt,INFINITE as i32);
 			println!("wait [{}] event",argv[2]);
 		} else if argv[1] == "setevent" {
 			evt = open_event(&(argv[2])).unwrap();
