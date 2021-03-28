@@ -1,16 +1,17 @@
-use winapi::um::synchapi::{CreateEventW,OpenEventW,WaitForSingleObject,SetEvent};
+use winapi::um::synchapi::{CreateEventW,OpenEventW,WaitForSingleObject,SetEvent,WaitForMultipleObjects};
 use std::env::args;
 use std::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
 use winapi::shared::ntdef::{HANDLE};
 use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
-use winapi::um::winnt::{SYNCHRONIZE,EVENT_ALL_ACCESS};
-use winapi::um::winbase::{INFINITE};
+use winapi::um::winnt::{EVENT_ALL_ACCESS};
+use winapi::um::winbase::{INFINITE,WAIT_OBJECT_0};
 use std::{ptr,fmt};
 use std::error::{Error};
 use winapi::shared::minwindef::{FALSE,DWORD,TRUE,BOOL};
 use winapi::um::errhandlingapi::{GetLastError};
 use std::ffi::{OsStr};
 use std::os::windows::ffi::{OsStrExt};
+use std::mem;
 //use lpwstr::ToWide;
 
 
@@ -116,7 +117,7 @@ fn wait_event(evt :&TokenHandle, _timeout :i32) -> bool {
 	unsafe {
 		dret = WaitForSingleObject(evt.as_raw_handle(),wtime);
 		println!("dret {:?}", dret);
-		if dret == 0 {
+		if dret == WAIT_OBJECT_0 {
 			return true;
 		}
 	}
@@ -134,10 +135,36 @@ fn set_event(evt :&TokenHandle) -> bool {
 	return true;
 }
 
+fn wait_events(evt :&Vec<TokenHandle>,_timeout :DWORD) -> Result<usize,EventError> {
+	let dret :DWORD;
+	let cnt :DWORD = evt.len() as DWORD;
+	let mut _hevt :Vec<HANDLE> = Vec::new();
+	let reti :usize;
+
+	for i in 0..evt.len() {
+		_hevt.push(evt[i].as_raw_handle());
+	}
+
+	unsafe {
+		let hdls :*const HANDLE = _hevt.as_slice().as_ptr() as *const HANDLE;
+		//let hdls :*const HANDLE = 0 as *const HANDLE;
+		dret = WaitForMultipleObjects(cnt,hdls,FALSE,_timeout);
+		if dret >= WAIT_OBJECT_0 && dret < (WAIT_OBJECT_0 + _hevt.len() as DWORD) {
+			reti = (dret - WAIT_OBJECT_0) as usize;
+			return Ok(reti);
+		}
+		return Err(EventError::new(&(format!("can not wait error [{:?}] last error[{:?}]",
+			dret,GetLastError())[..])));
+	}
+
+}
+
 
 fn main() {
 	let argv:Vec<String> = args().collect();
 	let evt :TokenHandle;
+	let reti :usize;
+	let mut vevt :Vec<TokenHandle> = Vec::new();
 	let _bret :bool;
 	if argv.len() > 1 {
 		if argv[1] == "wait" {
@@ -151,6 +178,22 @@ fn main() {
 			println!("open [{}] succ [{:?}]", argv[2],evt);
 			set_event(&evt);
 			println!("set event [{}]",argv[2]);
+		} else if argv[1] == "waits" {
+			for i in 2..argv.len() {
+				vevt.push(create_event(&(argv[i])).unwrap());
+			}
+			println!("will wait [{:?}]",vevt);
+			reti = wait_events(&vevt,INFINITE).unwrap();
+			println!("wait get [{:?}]",vevt[reti]);
+		} else if argv[1] == "vec" {
+			let mut nums :Vec<i32> =  Vec::new();
+			let narray :&[i32];
+			for i in 2..argv.len() {
+				nums.push(argv[i].parse::<i32>().unwrap());
+			}
+			narray = nums.as_slice();
+
+			println!("{:?} size [{}] ptr [{:?}]", narray,mem::size_of_val(narray),narray.as_ptr());
 		} else {
 			eprintln!("{} not support command",argv[1] );
 
