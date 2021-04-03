@@ -31,23 +31,26 @@ fn match_regex(restr :&str, instr :&str) -> bool {
 
 fn split_regex(restr :&str, instr :&str) -> bool {
 	let re;
-	let mut i :i32;
-	let sarr ;
+	let mut i :usize;
+	let sarr :Vec<&str>;
 	let mut fmtstr :String;
 	match Regex::new(restr) {
 		Err(e) => {eprintln!("{} not compile {:?}",restr,e ); return false;}
 		Ok(v) => {re = v;}
 	}
 
-	sarr = re.split(instr);
+	sarr = re.split(instr).into_iter().collect();
 	i = 0;
 	fmtstr = String::from("");
-	fmtstr.push_str(format!("split [{}] with [{}] [",instr,restr));
+	fmtstr.push_str(&(format!("split [{}] with [{}] [",instr,restr)[..]));
 	while i < sarr.len() {
-		if i > 0 {
-			fmtstr.push_str(format!(","));
+		if sarr[i].len() > 0 {
+			if i > 0 {
+				fmtstr.push_str(&(format!(",")[..]));
+			}
+			fmtstr.push_str(&(format!("{}", sarr[i])[..]));			
 		}
-		fmtstr.push_str(format!("{}", sarr[i]));
+		i = i + 1;
 	}
 	fmtstr.push_str("]");
 
