@@ -29,6 +29,32 @@ fn match_regex(restr :&str, instr :&str) -> bool {
 	return false;
 }
 
+fn split_regex(restr :&str, instr :&str) -> bool {
+	let re;
+	let mut i :i32;
+	let sarr ;
+	let mut fmtstr :String;
+	match Regex::new(restr) {
+		Err(e) => {eprintln!("{} not compile {:?}",restr,e ); return false;}
+		Ok(v) => {re = v;}
+	}
+
+	sarr = re.split(instr);
+	i = 0;
+	fmtstr = String::from("");
+	fmtstr.push_str(format!("split [{}] with [{}] [",instr,restr));
+	while i < sarr.len() {
+		if i > 0 {
+			fmtstr.push_str(format!(","));
+		}
+		fmtstr.push_str(format!("{}", sarr[i]));
+	}
+	fmtstr.push_str("]");
+
+	println!("{}",fmtstr);
+	return true;
+}
+
 fn usage(ec :i32,_fmtstr :String) {
 	let mut outstr :String = String::from("");
 	if _fmtstr.len() > 0 {
@@ -70,6 +96,15 @@ fn main() {
 		i = 3;
 		while i < argv.len() {
 			match_regex(&(argv[2][..]), &(argv[i][..]));
+			i = i + 1;
+		}
+	} else if argv[1] == "split" {
+		if argv.len() < 4 {
+			usage(3,format!("split need 4 args"));
+		}
+		i = 3;
+		while i < argv.len() {
+			split_regex(&(argv[2][..]),&(argv[i][..]));
 			i = i + 1;
 		}
 	}else {
