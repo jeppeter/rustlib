@@ -83,6 +83,95 @@ impl Clone for Nargs {
 	}
 }
 
+pub struct KeyAttr {
+	__splitchar :char,
+	__obj :HashMap<String,String>,
+}
+
+#[allow(dead_code)]
+impl KeyAttr {
+	fn new(_attr :&str) -> KeyAttr {
+		let mut kattr = KeyAttr {
+			__splitchar  : ';',
+			__obj : HashMap::new(),
+		};
+
+		if _attr.len() > 0 {
+			if _attr.starts_with("split=") && _attr.len() >= 7 {
+				let c = _attr.as_bytes()[6] as char;
+				if c == '.' {
+					kattr.__splitchar = '.';
+				} else if c == '\\' {
+					kattr.__splitchar = '\\';
+				} else if c == '/' {
+					kattr.__splitchar = '/';
+				} else if c == ':' {
+					kattr.__splitchar = ':';
+				} else if c == '@' {
+					kattr.__splitchar = '@';
+				} else if c == '+' {
+					kattr.__splitchar = '+';
+				} else {
+					panic!("not support char [{}]", c);
+				}
+			}
+			let mut i :usize;
+			let sarr :Vec<&str>;
+			let mut carr :Vec<&str>;
+			let re ;
+			let rec ;
+			re = Regex::new(&(format!("{}",kattr.__splitchar)[..])).unwrap();
+			rec = Regex::new("=").unwrap();
+			sarr = re.split(_attr).into_iter().collect();
+			i = 0;
+			while i < sarr.len() {
+				carr = rec.split(sarr[i]).into_iter().collect();
+				if carr.len()  > 1 {
+					if carr[0] != "split" {
+						kattr.__obj.insert(format!("{}",carr[0]),format!("{}",carr[1]));	
+					}					
+				}
+				i = i + 1;
+			}
+		}
+		return kattr;
+	}
+
+	fn get_keys(&self) -> Vec<String> {
+		
+	}
+
+	fn string(&self) -> String {
+		let mut retstr :String;
+		let mut v:Vec<_> = (&(self.__obj)).into_iter().collect();
+		let mut i:usize;
+		v.sort_by(|x,y|x.0.cmp(&y.0));
+
+		retstr = String::from("{");
+		i = 0 ;
+		while i < v.len() {
+			retstr.push_str(&(format!("{}={}", v[i].0,v[i].1)[..]));
+			i = i + 1;
+		}
+		retstr.push_str("}");
+		return retstr;
+	}
+
+	fn get_attr(&self,name :&str) -> String {
+		match self.__obj.get(name) {
+			Some(v) => { return v.to_string();},
+			None => {return String::from("");}
+		}
+	}
+}
+
+impl PartialEq for KeyAttr {
+	fn eq(&self,other :&Self) -> bool {
+		let mut retval :bool = false;
+		return retval;
+	}
+}
+
 
 pub enum KeyVal {
 	StrVal(Option<String>),
