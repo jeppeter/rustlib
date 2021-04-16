@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use regex::Regex;
 
 
 const KEYWORD_VALUE :&str = "value";
@@ -138,7 +139,11 @@ impl KeyAttr {
 	}
 
 	fn get_keys(&self) -> Vec<String> {
-		
+		let mut retvec :Vec<String> = Vec::new();
+		for (k,_) in &(self.__obj) {
+			retvec.push(String::from(k));
+		}
+		return retvec;
 	}
 
 	fn string(&self) -> String {
@@ -167,8 +172,37 @@ impl KeyAttr {
 
 impl PartialEq for KeyAttr {
 	fn eq(&self,other :&Self) -> bool {
-		let mut retval :bool = false;
+		let mut retval :bool = true;
+		let sks :Vec<String> = self.get_keys();
+		let oks :Vec<String> = other.get_keys();
+		let mut sv :String;
+		let mut ov :String;
+		for v in sks {
+			sv = self.get_attr(&v);
+			ov = other.get_attr(&v);
+			if sv != ov {
+				retval = false;
+			}
+		}
+		for v in oks {
+			sv = self.get_attr(&v);
+			ov = other.get_attr(&v);
+			if sv != ov {
+				retval = false;
+			}			
+		}
+
 		return retval;
+	}
+}
+
+impl Clone for KeyAttr {
+	fn clone(&self) -> KeyAttr {
+		let mut retattr :KeyAttr = KeyAttr{__splitchar : self.__splitchar, __obj : HashMap::new(),};
+		for (k,v) in &(self.__obj) {
+			retattr.__obj.insert(String::from(k),String::from(v));
+		}
+		return retattr;
 	}
 }
 
@@ -176,9 +210,10 @@ impl PartialEq for KeyAttr {
 pub enum KeyVal {
 	StrVal(Option<String>),
 	NArgVal(Option<Nargs>),
+	KeyAttrVal(Option<KeyAttr>),
 }
 
-impl Clone for KeyVal {
+/*impl Clone for KeyVal {
 	fn clone(&self) -> KeyVal {
 		match self {
 			KeyVal::StrVal(Some(v)) => {
@@ -203,7 +238,7 @@ impl Clone for KeyVal {
 		}
 	}
 }
-
+*/
 
 pub struct KeyData {
 	data :HashMap<String,KeyVal>,
@@ -290,9 +325,6 @@ impl KeyData {
 
 	pub fn get_nargs(&self, key :&str) -> Option<Nargs> {
 		let ks :String = String::from(key);
-		if !self.data.contains_key(&ks) {
-			return None;
-		}
 
 		match self.data.get(&ks) {
 			Some(v) => {
@@ -314,6 +346,45 @@ impl KeyData {
 				return None;
 			}
 		}		
+	}
+
+	pub fn set_keyattr(&mut self,key :&str,val :&KeyAttr)  -> bool {
+		let mut retval :bool = true;
+		let ks :String = String::from(key);
+
+
+		if self.data.contains_key(&ks) {
+			retval = false;
+			self.data.remove(&ks);
+		}
+		self.data.insert(ks,KeyVal::KeyAttrVal(Some(val.clone())));
+		
+		return retval;
+	}
+
+	pub fn get_keyattr(&mut self,key :&str) -> Option<KeyAttr> {
+		let ks :String = String::from(key);
+
+		match self.data.get(&ks) {
+			Some(v) => {
+				match v {
+					KeyVal::KeyAttrVal(kv2) => {
+						match kv2 {
+							Some(kv3) => {
+								return Some(kv3.clone());
+							},
+							_ => {
+								return None;
+							}
+						}						
+					},
+					_ => {return None;},
+				}
+			},
+			_ =>  {
+				return None;
+			}
+		}
 	}
 
 
