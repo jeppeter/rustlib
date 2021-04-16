@@ -41,6 +41,35 @@ pub enum Nargs {
 	Argnum(i32),
 }
 
+impl PartialEq for Nargs {
+	fn eq (&self, other :&Self) -> bool {
+		let mut retval :bool = false;
+		match self {
+			Nargs::Argtype(s) => {
+				match other {
+					Nargs::Argtype(os) => {
+						if s == os {
+							retval = true;
+						}
+					},
+					_ => {},
+				}
+			},
+			Nargs::Argnum(i) => {
+				match other {
+					Nargs::Argnum(oi) => {
+						if i == oi {
+							retval = true;
+						}
+					},
+					_ => {},
+				}
+			}
+		}
+		return retval;
+	}
+}
+
 impl Clone for Nargs {
 	fn clone(&self) -> Nargs {
 		match self {
