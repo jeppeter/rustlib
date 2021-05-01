@@ -20,10 +20,12 @@ impl fmt::Display for CError {
 	}
 }
 
+
+
 impl Error for CError {}
 
 fn call_1() -> Result<i32,Box<dyn Error>> {
-	Err(Box::new(CError::new(&(format!("call_1 error")[..]))))
+	Err(Box::new(CError::new(&(format!("[{}:{}]call_1 error",file!(),line!())[..]))))
 }
 
 fn call_2() -> Result<i32,Box<dyn Error>> {
