@@ -24,8 +24,20 @@ impl fmt::Display for CError {
 
 impl Error for CError {}
 
+macro_rules! NewError {
+	($type:ty,$($a:expr),*) => {
+		{
+		let mut c :String= format!("[{}:{}]",file!(),line!());
+		c.push_str(&(format!($($a)*)[..]));
+		Err(Box::new(<$type>::new(c.as_str())))
+	  }
+	};
+}
+
 fn call_1() -> Result<i32,Box<dyn Error>> {
-	Err(Box::new(CError::new(&(format!("[{}:{}]call_1 error",file!(),line!())[..]))))
+	//Err(Box::new(CError::new(&(format!("[{}:{}]call_1 error",file!(),line!())[..]))))
+	//
+	NewError!(CError,"call_1 error")
 }
 
 fn call_2() -> Result<i32,Box<dyn Error>> {
