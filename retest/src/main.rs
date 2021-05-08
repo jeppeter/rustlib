@@ -8,7 +8,16 @@ fn capture_regex(restr :&str, instr :&str) -> bool {
 	}
 	let caps = re.captures(instr);
 	match caps {
-		Some(v) => {println!("capture {:?}", v); return true;}
+		Some(v) => {
+			let mut i :usize;
+			i = 0;
+			println!("[{}] capture [{}]",restr,instr);
+			while i < v.len() {
+				println!("    [{}]=[{}]",i,v.get(i).map_or("", |m| m.as_str()));
+				i += 1;
+			}
+			return true;
+		},
 		None => {println!("error {} {:?}", restr,instr); return false;}
 	}
 }
