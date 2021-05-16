@@ -155,6 +155,41 @@ fn del_json_value(_instr :&str, _key :&str) -> String {
 	return retstr;
 }
 
+fn parse_json_value(_instr :&str) {
+	let mut retstr :String;
+	retstr = format!("[{}]",_instr);
+	match serde_json::from_str(_instr) {
+		Err(e) => {
+			eprintln!("{} not valid string [{:?}]", _instr,e);
+			return;
+		},
+		Ok(v) => {
+			match v {
+				Value::Null => {
+					retstr.push_str(&(format!("null")[..]));
+				},
+				Value::Bool(bval) => {
+					retstr.push_str(&(format!("bool({:?})",bval)[..]));
+				},
+				Value::Number(nval) => {
+					retstr.push_str(&(format!("number({})",nval)[..]));
+				},
+				Value::String(sval) => {
+					retstr.push_str(&(format!("string({})",sval)[..]));
+				},
+				Value::Array(aval) => {
+					retstr.push_str(&(format!("array({:?})",aval)[..]));
+				},
+				Value::Object(oval) => {
+					retstr.push_str(&(format!("object({:?})",oval)[..]));
+				},
+			}
+		}
+	}
+	println!("{}", retstr);
+	return;
+}	
+
 
 fn usage(ec :i32,_fmtstr :String) {
 	let mut outstr :String = String::from("");
@@ -166,6 +201,7 @@ fn usage(ec :i32,_fmtstr :String) {
 	outstr.push_str(&(format!("\tenumerate file...                   to enumerate file\n")[..]));
 	outstr.push_str(&(format!("\tadd file key value                  to add the key value\n")[..]));
 	outstr.push_str(&(format!("\tdel file keys...                    to delete key\n")[..]));
+	outstr.push_str(&(format!("\tparse str...\n")[..]));
 	if ec == 0 {
 		print!("{}",outstr);
 	} else {
@@ -235,6 +271,16 @@ fn main() {
 			Err(e) => {
 				eprintln!("can not read {} [{:?}]", argv[2],e );
 			}
+		}
+	} else if argv[1] == "parse" {
+		if argv.len() < 3 {
+			usage(3,format!("parse need 3 args"));
+		}
+
+		i = 2;
+		while i < argv.len() {
+			parse_json_value(&(argv[i][..]));
+			i += 1;
 		}
 	}else {
 		usage(3,format!("not support {}", argv[1]));
