@@ -1,8 +1,9 @@
 #[allow(unused_imports)]
-use std::fs::{metadata,read_dir,remove_dir,remove_file};
+use std::fs::{metadata,read_dir,remove_dir,remove_file,remove_dir_all};
 use std::io::{stdout,Write};
 use std::path::{Path};
 use std::error::Error;
+use std::fmt;
 
 #[allow(unused_macros)]
 macro_rules! error_class {
@@ -27,6 +28,8 @@ macro_rules! error_class {
 	impl Error for $type {}
 	};
 }
+
+error_class!{DirError}
 
 #[allow(unused_macros)]
 macro_rules! new_error {
@@ -62,10 +65,12 @@ fn new_line_string(curf :&str,totalnum :usize,lastlen :usize,notenum :usize,forc
 	let c :String;
 	if (totalnum % notenum) == 0 || force {
 		let mut i :usize =0;
+		print!("{}",(13u8 as char));
 		while i < lastlen {
-			print!("{}",(8u8 as char));
+			print!(" ");
 			i += 1;
 		}
+		print!("{}",(13u8 as char));
 		c = format!("[{}] {}",totalnum,curf);
 		retlast = c.len();
 		print!("{}",c);
@@ -81,26 +86,32 @@ fn rmdir_succ(_dname :&str, totalnum :usize, lastlen :usize, notenum :usize,_ver
 	let mut retlast :usize = lastlen;
 	if md.is_dir() {
 		let path = Path::new(_dname);
-		for f in read_dir(path)? {
-			let fd = f.unwrap();
-			match fd.path().to_str() {
-				Some(d) => {
-					if d != "." && d != ".." && d != _dname {
-						//debug_output!("name [{}]", d);
-						md = metadata(d)?;
-						let c = rmdir_succ(d,rettotal,retlast,notenum,_verbose)?;
-						rettotal = c.0;
-						retlast = c.1;
-						if md.is_dir() {
-							remove_dir(d)?;
-							rettotal += 1;
+		for f in read_dir(path)? {			
+			match f {
+				Ok(fd) => {
+					match fd.path().to_str() {
+						Some(d) => {
+							if d != "." && d != ".." && d != _dname {
+								//debug_output!("name [{}]", d);
+								md = metadata(d)?;
+								let c = rmdir_succ(d,rettotal,retlast,notenum,_verbose)?;
+								rettotal = c.0;
+								retlast = c.1;
+								if md.is_dir() {
+									remove_dir_all(d)?;
+									rettotal += 1;
+									retlast = new_line_string(d,rettotal,retlast,notenum,false);
+								}						
+							}
+						},
+						None => {
 
-							retlast = new_line_string(d,rettotal,retlast,notenum,false);
-						}						
+						}
 					}
-				},
-				None => {
 
+				},
+				Err(e) => {
+					new_error!{DirError,"[{}] error[{:?}]", _dname,e}
 				}
 			}
 
