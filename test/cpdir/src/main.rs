@@ -73,7 +73,7 @@ fn new_cpdir_string(csrcf :&str, cdstf :&str,totalnum :usize,lastlen :usize,note
 			i += 1;
 		}
 		print!("{}",(13u8 as char));
-		c = format!("[{}] {}",totalnum,curf);
+		c = format!("[{}] [{}] => [{}]",totalnum,csrcf,cdstf);
 		retlast = c.len();
 		print!("{}",c);
 		stdout().flush().unwrap();
@@ -84,23 +84,40 @@ fn new_cpdir_string(csrcf :&str, cdstf :&str,totalnum :usize,lastlen :usize,note
 
 fn cpdir_succ(_sname :&str,_dname :&str, totalnum :usize, lastlen :usize, notenum :usize,_verbose :i32) -> Result<(usize,usize),Box<dyn Error>> {
 	let mut smd = metadata(_sname)?;
-	let mut dmd :Metadata;
 	let  mut rettotal:usize = totalnum;
 	let mut retlast :usize = lastlen;
 	if smd.is_dir() {
 		let spath = Path::new(_sname);
-		for f in read_dir(spath)? {			
+		if !Path::new(_dname).exists() {
+			create_dir_all(_dname)?;
+			rettotal += 1;
+			retlast = new_cpdir_string(_sname,_dname,rettotal,retlast,notenum,false);
+		}
+
+		for f in read_dir(spath)? {
 			match f {
 				Ok(fd) => {
 					match fd.path().to_str() {
 						Some(d) => {
+							let curd :String;
+							let curs :String;
 							if d != "." && d != ".." && d != _sname {
-								//debug_output!("name [{}]", d);
-								smd = metadata(d)?;
+								curs = format!("{}",d);
+								curd = curs.replacen(_sname,_dname,1);
+								//debug_output!("curs [{}] curd[{}]", curs,curd);
+								smd = metadata(&(curs[..]))?;
+								if  smd.is_dir() && !Path::new(&(curd[..])).exists() {
+									create_dir_all(&(curd[..]))?;
+									rettotal += 1;
+									retlast = new_cpdir_string(&(curs[..]),&(curd[..]),rettotal,retlast,notenum,false);
+								}
+								let c = cpdir_succ(&(curs[..]),&(curd[..]), rettotal,retlast,notenum,_verbose)?;
+								rettotal = c.0;
+								retlast = c.1;
 							}
 						},
 						None => {
-
+							new_error!{CpdirError,"can not get [{:?}]",fd.path()}
 						}
 					}
 
@@ -122,10 +139,10 @@ fn cpdir_succ(_sname :&str,_dname :&str, totalnum :usize, lastlen :usize, notenu
 
 fn main() {
 	let mut i :usize = 0;
-	let mut totalnum :usize = 0;
-	let mut lastlen :usize = 0;
-	let  srcd :String;
-	let dstd :String;
+	let totalnum :usize = 0;
+	let lastlen :usize = 0;
+	let mut srcd :String = String::from("");
+	let mut dstd :String = String::from("");
     for a in std::env::args() {
     	println!("[{}]=[{}]",i,a);
     	if i == 1 {
@@ -142,8 +159,8 @@ fn main() {
     }
 
     match cpdir_succ(&(srcd[..]),&(dstd[..]),totalnum,lastlen,100,0) {
-    	Some(cpv) => {
-    		lastlen = new_cpdir_string(&(srcd[..]),&(dstd[..]),cpv.0,cpv.1,0,true);
+    	Ok(cpv) => {
+    		new_cpdir_string(&(srcd[..]),&(dstd[..]),cpv.0,cpv.1,100,true);
     	},
     	Err(e) => {
     		error_output!("cp [{}]=>[{}] error[{:?}]", srcd,dstd,e);
