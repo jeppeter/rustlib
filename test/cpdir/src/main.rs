@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
-use std::fs::{metadata,read_dir,create_dir_all,copy,Metadata};
+use std::fs::{metadata,read_dir,create_dir_all,copy,Metadata,canonicalize};
 use std::io::{stdout,Write};
-use std::path::{Path};
+use std::path::{Path,PathBuf};
 use std::error::Error;
 use std::fmt;
 
@@ -83,7 +83,7 @@ fn new_cpdir_string(csrcf :&str, cdstf :&str,totalnum :usize,lastlen :usize,note
 }
 
 fn cpdir_succ(_sname :&str,_dname :&str, totalnum :usize, lastlen :usize, notenum :usize,_verbose :i32) -> Result<(usize,usize),Box<dyn Error>> {
-	let mut smd = metadata(_sname)?;
+	let smd = metadata(_sname)?;
 	let  mut rettotal:usize = totalnum;
 	let mut retlast :usize = lastlen;
 	if smd.is_dir() {
@@ -105,12 +105,6 @@ fn cpdir_succ(_sname :&str,_dname :&str, totalnum :usize, lastlen :usize, notenu
 								curs = format!("{}",d);
 								curd = curs.replacen(_sname,_dname,1);
 								//debug_output!("curs [{}] curd[{}]", curs,curd);
-								smd = metadata(&(curs[..]))?;
-								if  smd.is_dir() && !Path::new(&(curd[..])).exists() {
-									create_dir_all(&(curd[..]))?;
-									rettotal += 1;
-									retlast = new_cpdir_string(&(curs[..]),&(curd[..]),rettotal,retlast,notenum,false);
-								}
 								let c = cpdir_succ(&(curs[..]),&(curd[..]), rettotal,retlast,notenum,_verbose)?;
 								rettotal = c.0;
 								retlast = c.1;
@@ -136,6 +130,38 @@ fn cpdir_succ(_sname :&str,_dname :&str, totalnum :usize, lastlen :usize, notenu
 	Ok((rettotal,retlast))
 }
 
+fn get_canonlize(s :&str) -> Result<String,Box<dyn Error>> {
+	let path :PathBuf ;
+	let retc :String;
+
+	match canonicalize(s) {
+		Ok(c) => {
+			path = c;
+		},
+		Err(_e) => {
+			create_dir_all(s)?;
+			match canonicalize(s) {
+				Ok(b) => {
+					path = b;
+				},
+				Err(e2) => {
+					error_output!("error [{:?}]",e2);
+					return Err(Box::new(e2));					
+				}
+			}
+		}
+	}
+	match path.to_str() {
+		Some(p) => {
+			retc = format!("{}",p);
+		},
+		None => {
+			new_error!(CpdirError,"can not get abspath [{}]", s)
+		}
+	}
+	Ok(retc)
+}
+
 
 fn main() {
 	let mut i :usize = 0;
@@ -143,6 +169,8 @@ fn main() {
 	let lastlen :usize = 0;
 	let mut srcd :String = String::from("");
 	let mut dstd :String = String::from("");
+	let abssrc :String;
+	let absdst :String;
     for a in std::env::args() {
     	println!("[{}]=[{}]",i,a);
     	if i == 1 {
@@ -158,7 +186,29 @@ fn main() {
     	return;
     }
 
-    match cpdir_succ(&(srcd[..]),&(dstd[..]),totalnum,lastlen,100,0) {
+    match get_canonlize(&(srcd[..])) {
+    	Ok(srcp) => {
+    		abssrc = srcp;
+    	},
+    	Err(e) => {
+    		error_output!("get [{}] error[{:?}]",srcd,e);
+    		return;
+    	}
+    }
+
+    match get_canonlize(&(dstd[..])) {
+    	Ok(dstp) => {
+    		absdst = dstp;
+    	},
+    	Err(e) => {
+    		error_output!("get [{}] error[{:?}]",dstd,e);
+    		return;
+    	}
+    }
+    
+
+
+    match cpdir_succ(&(abssrc[..]),&(absdst[..]),totalnum,lastlen,100,0) {
     	Ok(cpv) => {
     		new_cpdir_string(&(srcd[..]),&(dstd[..]),cpv.0,cpv.1,100,true);
     	},
