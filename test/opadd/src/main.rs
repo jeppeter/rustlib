@@ -23,10 +23,27 @@ impl ops::Add for Point {
 	}
 }
 
+impl ops::Sub for Point {
+	type Output = Point;
+	fn sub(self, rsh :Point) -> Point {
+		Point {
+			x: self.x - rsh.x,
+			y: self.y - rsh.y,
+		}
+	}
+}
+
+impl Copy for Point {}
+impl Clone for Point {
+	fn clone(&self) -> Point {
+		*self
+	}
+}
 
 fn main() {
 	let xpoint :Point = Point{x:10,y:10};
 	let ypoint :Point = Point{x:20,y:30};
-	println!("{:?}",xpoint + ypoint );
+	println!("{:?} + {:?} = {:?}",xpoint,  ypoint,xpoint + ypoint );
+	println!("{:?} - {:?} = {:?}",ypoint, xpoint,ypoint - xpoint );
 
 }
