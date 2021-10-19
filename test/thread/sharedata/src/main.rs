@@ -43,7 +43,7 @@ impl Writers {
 fn main() {
 
 	let  w :Arc<Mutex<Writers>> = Arc::new(Mutex::new(Writers::new()));
-	let mut thrvec :Vec<JoinHandle<_>> =  Vec::new();
+	let mut thrvec :Vec<Box<JoinHandle<_>>> =  Vec::new();
 
 	for i in 1..10 {
 		let cw = w.clone();
@@ -53,9 +53,9 @@ fn main() {
 				cb.push_names(String::from(format!("thread {}", i)), String::from(format!("publish {}",i)));
 				println!("thread {} {}",i,cb.description());
 			}
-			thread::sleep(time::Duration::from_millis(500));
+			thread::sleep(time::Duration::from_millis(1000));
 		});
-		thrvec.push(thr);
+		thrvec.push(Box::new(thr));
 	}
 
 	for v in thrvec {
