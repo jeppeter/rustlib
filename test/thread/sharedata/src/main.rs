@@ -50,7 +50,7 @@ impl Sharedata {
 	}
 	pub fn try_join(&mut self) -> bool {
 			if self.exit == 1 {
-				match self.thr {
+				match self.thr.take() {
 					Some(v2) => {
 						self.thr = None;
 						v2.join().unwrap();
@@ -64,7 +64,7 @@ impl Sharedata {
 
 	pub fn join(&mut self) -> bool {
 		if self.exit == 1 {
-			match self.thr {
+			match self.thr.take() {
 				Some(v2) => {
 					self.thr = None;
 					v2.join().unwrap();
@@ -75,7 +75,7 @@ impl Sharedata {
 				}
 			}
 		} else {
-			match self.thr {
+			match self.thr.take() {
 				Some(v2) => {
 					self.thr = None;
 					v2.join().unwrap();
