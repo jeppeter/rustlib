@@ -39,9 +39,15 @@ impl Writers {
 	}
 }
 
+
+
 pub struct Sharedata {
 	pub exit : u8,
 	pub thr : Option<JoinHandle<()>>,
+}
+
+pub struct ShareBasedata {
+	pub sdata :Arc<Mutex<Sharedata>>,
 }
 
 impl Sharedata {
@@ -89,16 +95,24 @@ impl Sharedata {
 	}
 }
 
+impl ShareBasedata {
+	fn new() -> ShareBasedata {
+		ShareBasedata{
+			sdata : Arc::new(Mutex::new(Sharedata::new())),
+		}
+	}
+}
+
 
 fn main() {
 
 	let  w :Arc<Mutex<Writers>> = Arc::new(Mutex::new(Writers::new()));
 	//let mut thrvec :Vec<Arc<JoinHandle<_>>> =  Vec::new();
-	let mut shdata :Vec<Arc<Mutex<Sharedata>>> = Vec::new();
+	let mut shdata :Vec<Arc<ShareBasedata>> = Vec::new();
 
 	for i in 0..10 {
 		let cw = w.clone();
-		let sw = Arc::new(Mutex::new(Sharedata::new()));
+		let sw = Arc::new(ShareBasedata::new());
 		let sd = sw.clone();
 
 		let thr = thread::spawn(move || {
@@ -109,12 +123,12 @@ fn main() {
 			}
 			thread::sleep(time::Duration::from_millis(1000));
 			{
-				let mut cb = sd.lock().unwrap();
+				let mut cb = sd.sdata.lock().unwrap();
 				cb.exit = 1;
 			}
 		});
 		{
-			let mut cb = sw.lock().unwrap();
+			let mut cb = sw.sdata.lock().unwrap();
 			cb.thr = Some(thr);
 		}
 		shdata.push(sw);
@@ -123,7 +137,7 @@ fn main() {
 	for i in 0..shdata.len() {
 		let v = shdata[i].clone();
 		{
-			let mut cb = v.lock().unwrap();
+			let mut cb = v.sdata.lock().unwrap();
 			if cb.exit == 1 {
 				println!("[{}] exited", i);
 				cb.try_join();
@@ -137,7 +151,7 @@ fn main() {
 	for i in 0..shdata.len() {
 		let v = shdata[i].clone();
 		{
-			let mut cb = v.lock().unwrap();
+			let mut cb = v.sdata.lock().unwrap();
 			cb.join();
 		}
 	}
