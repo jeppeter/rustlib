@@ -14,4 +14,15 @@ fn main() {
     	Ok(_) => {},
     	Err(_) => {}
     }
+
+    match writer.flush() {
+        Err(_e) => {
+            eprintln!("can not flush");
+        },
+        _ => {}
+    }
+
+    loop {
+
+    }
 }
