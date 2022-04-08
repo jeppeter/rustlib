@@ -6,7 +6,7 @@ use std::cell::RefCell;
 struct Node {
 	next :Option<Rc<RefCell<Node>>>,
 	head :Option<Weak<RefCell<Node>>>,
-	c :Option<Rc<CallName>>
+	c :Option<Rc<RefCell<CallName>>>
 }
 
 impl  Drop for Node {
@@ -29,7 +29,7 @@ impl Drop for CallName {
 }
 
 fn main()  {
-	let a = Rc::new(CallName{name:"cc".to_string()});
+	let a = Rc::new(RefCell::new(CallName{name:"cc".to_string()}));
 	let b = a.clone();
 	let first = Rc::new(RefCell::new(Node {next : None,head : None, c:None}));
 	let second = Rc::new(RefCell::new(Node {next :None,head : None, c:None}));
@@ -41,5 +41,9 @@ fn main()  {
 	third.borrow_mut().head = Some(Rc::downgrade(&first));
 	third.borrow_mut().c = Some(b.clone());
 	println!("a {:?} b {:?}",a,b);
+	a.borrow_mut().name = "bb".to_string();
 	println!("a {:?} b {:?}",a,b);
+	println!("a cnt [{}] b cnt [{}]",Rc::strong_count(&a),Rc::strong_count(&b));
+	first.borrow_mut().c = None;
+	println!("a cnt [{}] b cnt [{}]",Rc::strong_count(&a),Rc::strong_count(&b));
 }
