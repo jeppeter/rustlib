@@ -35,4 +35,19 @@ pub fn print_func_name(_args :TokenStream, input :TokenStream) -> TokenStream {
 	input
 }
 
+#[proc_macro_attribute]
+pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
+	{
+		let c = LINK_NAMES.clone();
+		let cb = c.lock().unwrap();
+		let mut i:i32;
+		i = 0;
+		for s in cb.iter() {
+			println!("[{}]{}",i, s);
+			i += 1;
+		}
+	}
+	input	
+}
+
 
