@@ -29,11 +29,11 @@ lazy_static !{
 
 #[print_all_links]
 fn main() {
-	call_list_all!("hello_world","get_a_reply");
+	let cc = "get_a_reply";
+	call_list_all!("hello_world",cc);
 	call_list_all!("hello_world");
 	call_list_all!(cc);
 	call_list_all!();
-	call_functions("hello_world", &FUNC_CALL);
 }
 
 

@@ -13,7 +13,7 @@ use std::cmp::Ordering;
 
 lazy_static! {
 	static ref LINK_NAMES :Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
-	static ref SET_NAME : String = String::from("");
+	static ref SET_NAME : String = String::from("FUNC_CALL");
 }
 
 //fn get_static_names() -> Rc<RefCell<Vec<String>>> {
@@ -72,10 +72,32 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn call_list_all(input :TokenStream) -> TokenStream {
+pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 	let mut codes :String = "".to_string();
-	println!("{:?}",input);
-
+	let mut i :i32 = 0;
+	let input = proc_macro2::TokenStream::from(input1.clone());
+	//println!("{:?}",input1.clone());
+	for v in input {		
+		//println!("[{}]=[{:?}]",i,v);
+		match v {
+			proc_macro2::TokenTree::Literal(t) => {
+				//println!("[{}]Literal [{}]",i,t.to_string());
+				codes += &(format!("call_functions({},&{});\n", t.to_string(),*SET_NAME)[..]);
+			},
+			proc_macro2::TokenTree::Ident(t) => {
+				println!("[{}]Ident [{}]",i,t.to_string());
+				codes += &(format!("call_functions({},&{});\n",t.to_string(),*SET_NAME)[..]);
+			},
+			proc_macro2::TokenTree::Punct(_t) => {
+				codes = codes;
+			},
+			_ => {
+				println!("[{}]v [{:?}]",i,v);
+			}
+		}
+		i += 1;
+	}
+	println!("codes\n{}",codes );
 	codes.parse().unwrap()
 }
 
