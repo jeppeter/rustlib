@@ -11,9 +11,9 @@ use std::cmp::Ordering;
 //use std::rc::Rc;
 
 
-
 lazy_static! {
 	static ref LINK_NAMES :Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
+	static ref SET_NAME : String = String::from("");
 }
 
 //fn get_static_names() -> Rc<RefCell<Vec<String>>> {
@@ -49,14 +49,34 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 		let fname = format!("{}",src.path().to_str().unwrap());
 		let c = LINK_NAMES.clone();
 		let cb = c.lock().unwrap();
-		for (k,v )in cb.iter() {
+		let mut codes :String = String::from("");
+		let mut outs :String;
+		codes += "lazy_static ! {\n";
+		codes += " static ref FUNC_CALL :Vec<FuncName> = {\n";
+		codes += "        let mut vret :Vec<FuncName> = Vec::new();\n";
+
+		for (_k,v )in cb.iter() {
 			if fname.cmp(v) == Ordering::Equal {
-				println!("will call [{}]", k);
-			}
-			
+				codes += &(format!("        vret.push(FuncName::new(String::from(\"{}\"),{}));\n",_k,_k)[..]);
+			}			
 		}
+		codes += "        vret\n";
+		codes += "   };\n";
+		codes += "}";
+		outs = codes;
+		outs += "\n";
+		outs += &(input.to_string()[..]);
+		println!("outs\n{}",outs);
+		return outs.parse().unwrap();
 	}
-	input	
 }
+
+#[proc_macro]
+pub fn call_list_all(input :TokenStream) -> TokenStream {
+	println!("{:?}",input);
+
+	"".parse().unwrap()
+}
+
 
 
