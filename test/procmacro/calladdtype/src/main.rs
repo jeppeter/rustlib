@@ -1,6 +1,8 @@
 extern crate addtype;
 extern crate funccall;
 
+mod bob;
+
 use addtype::{print_func_name,print_all_links,call_list_all};
 use funccall::{FuncName,call_functions};
 use lazy_static::lazy_static;
@@ -36,6 +38,8 @@ fn main() {
 	call_list_all!("hello_world");
 	call_list_all!(bcc);
 	call_list_all!();
+	bob::bob_func();
+	return;
 }
 
 

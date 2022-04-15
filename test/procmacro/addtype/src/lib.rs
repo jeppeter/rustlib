@@ -51,6 +51,9 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 		let cb = c.lock().unwrap();
 		let mut codes :String = String::from("");
 		let mut outs :String;
+		let mut funcname :String;
+		funcname = "FUNC_CALL_";
+
 		codes += "lazy_static ! {\n";
 		codes += " static ref FUNC_CALL :Vec<FuncName> = {\n";
 		codes += "        let mut vret :Vec<FuncName> = Vec::new();\n";
