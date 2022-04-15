@@ -5,12 +5,15 @@ use proc_macro2::Span;
 use syn;
 use std::sync::{Mutex,Arc};
 use lazy_static::lazy_static;
+use std::collections::HashMap;
+use std::cmp::Ordering;
 //use std::cell::RefCell;
 //use std::rc::Rc;
 
 
+
 lazy_static! {
-	static ref LINK_NAMES :Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+	static ref LINK_NAMES :Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
 }
 
 //fn get_static_names() -> Rc<RefCell<Vec<String>>> {
@@ -19,21 +22,21 @@ lazy_static! {
 pub fn print_func_name(_args :TokenStream, input :TokenStream) -> TokenStream {
 	let sp = Span::call_site();
 	let src = sp.source_file();
+	let fname = format!("{}",src.path().to_str().unwrap());
 	match syn::parse(input.clone()) {
 		Ok(v1) => {
 			let v :syn::ItemFn = v1;
 			{
-				let c = LINK_NAMES.clone();
-				let mut cb = c.lock().unwrap();
-				cb.push(v.sig.ident.to_string());
-			}
-			
+				let mut cb = LINK_NAMES.lock().unwrap();
+				let cs = format!("{}",fname);
+				cb.insert(v.sig.ident.to_string(),cs);
+			}			
 		},
 		Err(e) => {
 			eprintln!("error {}", e);
 		}
 	}
-	println!("call print_func_name [{}]",src.path().to_str().unwrap());
+	println!("call print_func_name [{}]",fname);
 
 	input
 }
@@ -41,13 +44,16 @@ pub fn print_func_name(_args :TokenStream, input :TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 	{
+		let sp = Span::call_site();
+		let src = sp.source_file();
+		let fname = format!("{}",src.path().to_str().unwrap());
 		let c = LINK_NAMES.clone();
 		let cb = c.lock().unwrap();
-		let mut i:i32;
-		i = 0;
-		for s in cb.iter() {
-			println!("[{}]{}",i, s);
-			i += 1;
+		for (k,v )in cb.iter() {
+			if fname.cmp(v) == Ordering::Equal {
+				println!("will call [{}]", k);
+			}
+			
 		}
 	}
 	input	
