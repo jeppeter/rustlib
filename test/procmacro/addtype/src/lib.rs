@@ -73,9 +73,10 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn call_list_all(input :TokenStream) -> TokenStream {
+	let mut codes :String = "".to_string();
 	println!("{:?}",input);
 
-	"".parse().unwrap()
+	codes.parse().unwrap()
 }
 
 
