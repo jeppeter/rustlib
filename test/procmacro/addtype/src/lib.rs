@@ -7,6 +7,7 @@ use std::sync::{Mutex,Arc};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::cmp::Ordering;
+use srand::{Rand,RngSource};
 //use std::cell::RefCell;
 //use std::rc::Rc;
 
@@ -52,10 +53,13 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 		let mut codes :String = String::from("");
 		let mut outs :String;
 		let mut funcname :String;
-		funcname = "FUNC_CALL_";
+		let mut r: Rand<_> = Rand::new(RngSource::new(1));
+		funcname = "FUNC_CALL_".to_string();
+		funcname += &(format!("{}",r.int64())[..]);
+		SET_NAME = String::from(funcname);
 
 		codes += "lazy_static ! {\n";
-		codes += " static ref FUNC_CALL :Vec<FuncName> = {\n";
+		codes += &(format!(" static ref {} :Vec<FuncName> = {{\n", *SET_NAME)[..]);
 		codes += "        let mut vret :Vec<FuncName> = Vec::new();\n";
 
 		for (_k,v )in cb.iter() {
