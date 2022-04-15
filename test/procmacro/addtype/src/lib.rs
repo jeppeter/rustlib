@@ -76,6 +76,7 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 	let mut codes :String = "".to_string();
 	let mut i :i32 = 0;
 	let input = proc_macro2::TokenStream::from(input1.clone());
+	let mut lastc :String = "".to_string();
 	//println!("{:?}",input1.clone());
 	for v in input {		
 		//println!("[{}]=[{:?}]",i,v);
@@ -86,10 +87,26 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 			},
 			proc_macro2::TokenTree::Ident(t) => {
 				println!("[{}]Ident [{}]",i,t.to_string());
-				codes += &(format!("call_functions({},&{});\n",t.to_string(),*SET_NAME)[..]);
+				if lastc == "&" {
+					codes += &(format!("call_functions(&{},&{});\n",t.to_string(),*SET_NAME)[..]);
+				} else {
+					codes += &(format!("call_functions({},&{});\n",t.to_string(),*SET_NAME)[..]);	
+				}
+				
 			},
-			proc_macro2::TokenTree::Punct(_t) => {
+			proc_macro2::TokenTree::Punct(t) => {
+				println!("[{}]Punct [{}]",i,t.to_string());
 				codes = codes;
+				lastc = t.to_string();
+			},
+			proc_macro2::TokenTree::Group(t) => {
+				println!("[{}]Group [{}]",i,t.to_string());
+				if lastc == "&" {
+					codes += &(format!("call_functions(&{},&{});\n",t.to_string(),*SET_NAME)[..]);
+				} else {
+					codes += &(format!("call_functions({},&{});\n",t.to_string(),*SET_NAME)[..]);	
+				}
+				
 			},
 			_ => {
 				println!("[{}]v [{:?}]",i,v);

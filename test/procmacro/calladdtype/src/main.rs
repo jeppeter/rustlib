@@ -29,10 +29,12 @@ lazy_static !{
 
 #[print_all_links]
 fn main() {
-	let cc = "get_a_reply";
-	call_list_all!("hello_world",cc);
+	let cc = String::from("hello_world");
+	let scc = &(String::from("get_a_reply")[..]);
+	let bcc = "hello_world";
+	call_list_all!("hello_world",&(cc[..]),&(String::from("get_a_repl")[..]));
 	call_list_all!("hello_world");
-	call_list_all!(cc);
+	call_list_all!(bcc);
 	call_list_all!();
 }
 
