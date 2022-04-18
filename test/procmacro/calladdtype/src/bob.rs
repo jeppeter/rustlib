@@ -17,8 +17,10 @@ fn get_a_reply_2() {
 }
 
 
+#[print_all_links]
 pub fn bob_func() {
 	let bcc = "hello_world_2";
+	let cc = String::from("get_a_reply_2");
 	call_list_all!("hello_world_2",&(cc[..]),&(String::from("get_a_reply_2")[..]));
 	call_list_all!("hello_world");
 	call_list_all!(bcc);

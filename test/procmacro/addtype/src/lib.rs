@@ -7,15 +7,34 @@ use std::sync::{Mutex,Arc};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::cmp::Ordering;
-use srand::{Rand,RngSource};
+
+use rand::Rng;
+use bytes::{BytesMut,BufMut};
+
 //use std::cell::RefCell;
 //use std::rc::Rc;
 
 
 lazy_static! {
 	static ref LINK_NAMES :Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
-	static ref SET_NAME : String = String::from("FUNC_CALL");
+	static ref SET_NAME : Arc<Mutex<String>> = Arc::new(Mutex::new(String::from("FUNC_CALL")));
 }
+
+const RAND_NAME_STRING :[u8; 62]= *b"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+fn get_random_bytes(num :u32, basevec :&[u8]) -> String {
+	let mut retm = BytesMut::with_capacity(num as usize);
+	let mut rng = rand::thread_rng();
+	let mut curi :usize;
+
+	for _i in 0..num {
+		curi = rng.gen_range(0..basevec.len());
+		retm.put_u8(basevec[curi]);
+	}
+	let a = retm.freeze();
+	String::from_utf8_lossy(&a).to_string()
+}
+
 
 //fn get_static_names() -> Rc<RefCell<Vec<String>>> {
 
@@ -52,14 +71,17 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 		let cb = c.lock().unwrap();
 		let mut codes :String = String::from("");
 		let mut outs :String;
-		let mut funcname :String;
-		let mut r: Rand<_> = Rand::new(RngSource::new(1));
-		funcname = "FUNC_CALL_".to_string();
-		funcname += &(format!("{}",r.int64())[..]);
-		SET_NAME = String::from(funcname);
 
 		codes += "lazy_static ! {\n";
-		codes += &(format!(" static ref {} :Vec<FuncName> = {{\n", *SET_NAME)[..]);
+		{
+			let mut scb = SET_NAME.lock().unwrap();
+			let mut funcname :String;
+			funcname = "FUNC_CALL_".to_string();
+			funcname += &(format!("{}",get_random_bytes(15,&RAND_NAME_STRING))[..]);
+			*scb = funcname;
+			codes += &(format!(" static ref {} :Vec<FuncName> = {{\n", *scb)[..]);
+		}
+		
 		codes += "        let mut vret :Vec<FuncName> = Vec::new();\n";
 
 		for (_k,v )in cb.iter() {
@@ -85,41 +107,43 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 	let input = proc_macro2::TokenStream::from(input1.clone());
 	let mut lastc :String = "".to_string();
 	//println!("{:?}",input1.clone());
-	for v in input {		
-		//println!("[{}]=[{:?}]",i,v);
-		match v {
-			proc_macro2::TokenTree::Literal(t) => {
-				//println!("[{}]Literal [{}]",i,t.to_string());
-				codes += &(format!("call_functions({},&{});\n", t.to_string(),*SET_NAME)[..]);
-			},
-			proc_macro2::TokenTree::Ident(t) => {
-				println!("[{}]Ident [{}]",i,t.to_string());
-				if lastc == "&" {
-					codes += &(format!("call_functions(&{},&{});\n",t.to_string(),*SET_NAME)[..]);
-				} else {
-					codes += &(format!("call_functions({},&{});\n",t.to_string(),*SET_NAME)[..]);	
+	{
+		let sc = SET_NAME.clone();
+		let scb = sc.lock().unwrap();
+		for v in input {		
+			//println!("[{}]=[{:?}]",i,v);
+			match v {
+				proc_macro2::TokenTree::Literal(t) => {
+					//println!("[{}]Literal [{}]",i,t.to_string());
+					codes += &(format!("call_functions({},&{});\n", t.to_string(),*scb)[..]);
+				},
+				proc_macro2::TokenTree::Ident(t) => {
+					println!("[{}]Ident [{}]",i,t.to_string());
+					if lastc == "&" {
+						codes += &(format!("call_functions(&{},&{});\n",t.to_string(),*scb)[..]);
+					} else {
+						codes += &(format!("call_functions({},&{});\n",t.to_string(),*scb)[..]);	
+					}
+					
+				},
+				proc_macro2::TokenTree::Punct(t) => {
+					println!("[{}]Punct [{}]",i,t.to_string());
+					codes = codes;
+					lastc = t.to_string();
+				},
+				proc_macro2::TokenTree::Group(t) => {
+					println!("[{}]Group [{}]",i,t.to_string());
+					if lastc == "&" {
+						codes += &(format!("call_functions(&{},&{});\n",t.to_string(),scb)[..]);
+					} else {
+						codes += &(format!("call_functions({},&{});\n",t.to_string(),scb)[..]);	
+					}
+					
 				}
-				
-			},
-			proc_macro2::TokenTree::Punct(t) => {
-				println!("[{}]Punct [{}]",i,t.to_string());
-				codes = codes;
-				lastc = t.to_string();
-			},
-			proc_macro2::TokenTree::Group(t) => {
-				println!("[{}]Group [{}]",i,t.to_string());
-				if lastc == "&" {
-					codes += &(format!("call_functions(&{},&{});\n",t.to_string(),*SET_NAME)[..]);
-				} else {
-					codes += &(format!("call_functions({},&{});\n",t.to_string(),*SET_NAME)[..]);	
-				}
-				
-			},
-			_ => {
-				println!("[{}]v [{:?}]",i,v);
 			}
+			i += 1;
 		}
-		i += 1;
+
 	}
 	println!("codes\n{}",codes );
 	codes.parse().unwrap()
