@@ -12,7 +12,7 @@ proc-macro = true
 [dependencies]
 syn = { version = "^1", features = ["full", "parsing"] }
 funccall = {path = "../funccall"}
-lazy_static = "1.4.0"
+lazy_static = "^1.4.0"
 proc-macro2 = { version = "1.0.32", default-features = false }
 rand = "^0.8.5"
 bytes = "^0.5.3"

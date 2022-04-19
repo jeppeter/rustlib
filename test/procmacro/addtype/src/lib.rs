@@ -1,4 +1,3 @@
-extern crate proc_macro2;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -39,10 +38,10 @@ fn get_environ_var(envname :&str) -> String {
 
 const RAND_NAME_STRING :[u8; 62]= *b"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-const DEFAULT_CALL_MSG_FMT :&str = "{d(%Y-%m-%d %H:%M:%S)}[{l}][{f}:{L}] {m}\n";
+const DEFAULT_MSG_FMT :&str = "{d(%Y-%m-%d %H:%M:%S)}[{l}][{f}:{L}] {m}\n";
 
 fn proc_log_init(prefix :&str) -> i32 {
-		let mut msgfmt :String = String::from(DEFAULT_CALL_MSG_FMT);
+		let mut msgfmt :String = String::from(DEFAULT_MSG_FMT);
 		let mut getv :String;
 		let mut retv :i32 = 0;
 		let mut level :LevelFilter  = log::LevelFilter::Error;
@@ -83,7 +82,7 @@ fn proc_log_init(prefix :&str) -> i32 {
 	        );
 	    rbuiler =  Root::builder().appender("stderr");
 
-	    key = format!("{}_LOG_FILE",prefix);
+	    key = format!("{}_LOGFILE",prefix);
 
 	    wfile = get_environ_var(&key);
 	    if wfile.len() > 0 {
