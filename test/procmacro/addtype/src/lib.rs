@@ -41,18 +41,17 @@ const RAND_NAME_STRING :[u8; 62]= *b"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG
 
 const DEFAULT_CALL_MSG_FMT :&str = "{d(%Y-%m-%d %H:%M:%S)}[{l}][{f}:{L}] {m}\n";
 
-lazy_static! {
-	static ref LINK_NAMES :Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
-	static ref SET_NAME : Arc<Mutex<String>> = Arc::new(Mutex::new(String::from("FUNC_CALL")));
-	static ref CALL_LEVEL : i32 = {
+fn proc_log_init(prefix :&str) -> i32 {
 		let mut msgfmt :String = String::from(DEFAULT_CALL_MSG_FMT);
 		let mut getv :String;
 		let mut retv :i32 = 0;
 		let mut level :LevelFilter  = log::LevelFilter::Error;
 		let mut rbuiler :RootBuilder;
 		let mut cbuild :ConfigBuilder;
+		let mut key :String;
 		let wfile :String ;
-		getv = get_environ_var("CALL_MSGFMT");
+		key = format!("{}_MSGFMT", prefix);
+		getv = get_environ_var(&key);
 		if getv.len() > 0 {
 			msgfmt = format!("{}",getv);
 		}
@@ -60,7 +59,8 @@ lazy_static! {
         .encoder(Box::new(PatternEncoder::new(&msgfmt)))
         .target(Target::Stderr).build();
 
-        getv = get_environ_var("CALL_LEVEL");
+        key = format!("{}_LEVEL", prefix);
+        getv = get_environ_var(&key);
         if getv.len() > 0 {
         	retv = getv.parse::<i32>().unwrap();
         }
@@ -75,9 +75,6 @@ lazy_static! {
         	level = log::LevelFilter::Warn;
         }
 
-
-
-
 	    cbuild = Config::builder()
 	        .appender(
 	            Appender::builder()
@@ -86,7 +83,9 @@ lazy_static! {
 	        );
 	    rbuiler =  Root::builder().appender("stderr");
 
-	    wfile = get_environ_var("CALL_LOG_FILE");
+	    key = format!("{}_LOG_FILE",prefix);
+
+	    wfile = get_environ_var(&key);
 	    if wfile.len() > 0 {
 	    	let logfile = FileAppender::builder().encoder(Box::new(PatternEncoder::new(&msgfmt))).build(&wfile).unwrap();
 
@@ -98,7 +97,14 @@ lazy_static! {
 
 	    let _handle = log4rs::init_config(config).unwrap();
 
-		retv
+		retv	
+}
+
+lazy_static! {
+	static ref LINK_NAMES :Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
+	static ref SET_NAME : Arc<Mutex<String>> = Arc::new(Mutex::new(String::from("FUNC_CALL")));
+	static ref CALL_LEVEL : i32 = {
+		proc_log_init("CALL")
 	};
 }
 
