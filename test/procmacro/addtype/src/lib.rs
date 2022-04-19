@@ -157,6 +157,7 @@ pub fn print_func_name(_args :TokenStream, input :TokenStream) -> TokenStream {
 			{
 				let mut cb = LINK_NAMES.lock().unwrap();
 				let cs = format!("{}",fname);
+				call_trace!("insert [{}]=[{}]",v.sig.ident.to_string(),cs);
 				cb.insert(v.sig.ident.to_string(),cs);
 			}			
 		},
@@ -202,7 +203,7 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 		outs = codes;
 		outs += "\n";
 		outs += &(input.to_string()[..]);
-		call_trace!("outs\n{}",outs);
+		call_info!("outs\n{}",outs);
 		return outs.parse().unwrap();
 	}
 }
@@ -213,7 +214,7 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 	let mut i :i32 = 0;
 	let input = proc_macro2::TokenStream::from(input1.clone());
 	let mut lastc :String = "".to_string();
-	call_trace!("{:?}",input1.clone());
+	call_info!("{:?}",input1.clone());
 	{
 		let sc = SET_NAME.clone();
 		let scb = sc.lock().unwrap();
