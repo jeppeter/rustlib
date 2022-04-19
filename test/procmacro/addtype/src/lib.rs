@@ -11,16 +11,124 @@ use std::cmp::Ordering;
 use rand::Rng;
 use bytes::{BytesMut,BufMut};
 
+use std::env;
+
+
+use log::{error, info, trace};
+use log::{LevelFilter};
+use log4rs::append::console::{ConsoleAppender, Target};
+use log4rs::append::file::FileAppender;
+use log4rs::config::{Appender, Config, Root,RootBuilder,ConfigBuilder};
+use log4rs::encode::pattern::PatternEncoder;
+use log4rs::filter::threshold::ThresholdFilter;
+
 //use std::cell::RefCell;
 //use std::rc::Rc;
 
 
-lazy_static! {
-	static ref LINK_NAMES :Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
-	static ref SET_NAME : Arc<Mutex<String>> = Arc::new(Mutex::new(String::from("FUNC_CALL")));
+fn get_environ_var(envname :&str) -> String {
+	match env::var(envname) {
+		Ok(v) => {
+			format!("{}",v)
+		},
+		Err(_e) => {
+			String::from("")
+		}
+	}
 }
 
 const RAND_NAME_STRING :[u8; 62]= *b"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+const DEFAULT_CALL_MSG_FMT :&str = "{d(%Y-%m-%d %H:%M:%S)}[{l}][{f}:{L}] {m}\n";
+
+lazy_static! {
+	static ref LINK_NAMES :Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
+	static ref SET_NAME : Arc<Mutex<String>> = Arc::new(Mutex::new(String::from("FUNC_CALL")));
+	static ref CALL_LEVEL : i32 = {
+		let mut msgfmt :String = String::from(DEFAULT_CALL_MSG_FMT);
+		let mut getv :String;
+		let mut retv :i32 = 0;
+		let mut level :LevelFilter  = log::LevelFilter::Error;
+		let mut rbuiler :RootBuilder;
+		let mut cbuild :ConfigBuilder;
+		let wfile :String ;
+		getv = get_environ_var("CALL_MSGFMT");
+		if getv.len() > 0 {
+			msgfmt = format!("{}",getv);
+		}
+		let stderr =ConsoleAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(&msgfmt)))
+        .target(Target::Stderr).build();
+
+        getv = get_environ_var("CALL_LEVEL");
+        if getv.len() > 0 {
+        	retv = getv.parse::<i32>().unwrap();
+        }
+
+        if retv >= 40 {
+        	level = log::LevelFilter::Trace;
+        } else if retv >= 30 {
+        	level = log::LevelFilter::Debug;
+        } else if retv >= 20 {
+        	level = log::LevelFilter::Info;
+        } else if retv >= 10 {
+        	level = log::LevelFilter::Warn;
+        }
+
+
+
+
+	    cbuild = Config::builder()
+	        .appender(
+	            Appender::builder()
+	                .filter(Box::new(ThresholdFilter::new(level)))
+	                .build("stderr", Box::new(stderr)),
+	        );
+	    rbuiler =  Root::builder().appender("stderr");
+
+	    wfile = get_environ_var("CALL_LOG_FILE");
+	    if wfile.len() > 0 {
+	    	let logfile = FileAppender::builder().encoder(Box::new(PatternEncoder::new(&msgfmt))).build(&wfile).unwrap();
+
+	        cbuild = cbuild.appender(Appender::builder().build("logfile", Box::new(logfile)));
+	        rbuiler = rbuiler.appender("logfile");
+	    }
+
+	    let config = cbuild.build(rbuiler.build(level)).unwrap();
+
+	    let _handle = log4rs::init_config(config).unwrap();
+
+		retv
+	};
+}
+
+macro_rules! call_error {
+	($($arg:tt)+) => {
+		if *CALL_LEVEL >= 0 {
+			error!($($arg)+);
+		}
+	}
+}
+
+macro_rules! call_info {
+	($($arg:tt)+) => {
+		if *CALL_LEVEL >= 20 {
+			info!($($arg)+);
+		}
+	}
+}
+
+
+
+macro_rules! call_trace {
+	($($arg:tt)+) => {
+		if *CALL_LEVEL >= 40 {
+			trace!($($arg)+);
+		}
+	}
+}
+
+
 
 fn get_random_bytes(num :u32, basevec :&[u8]) -> String {
 	let mut retm = BytesMut::with_capacity(num as usize);
@@ -53,11 +161,10 @@ pub fn print_func_name(_args :TokenStream, input :TokenStream) -> TokenStream {
 			}			
 		},
 		Err(e) => {
-			eprintln!("error {}", e);
+			call_error!("error {}", e);
 		}
 	}
-	println!("call print_func_name [{}]",fname);
-
+	call_info!("call print_func_name [{}]",fname);
 	input
 }
 
@@ -95,7 +202,7 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 		outs = codes;
 		outs += "\n";
 		outs += &(input.to_string()[..]);
-		println!("outs\n{}",outs);
+		call_trace!("outs\n{}",outs);
 		return outs.parse().unwrap();
 	}
 }
@@ -106,19 +213,19 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 	let mut i :i32 = 0;
 	let input = proc_macro2::TokenStream::from(input1.clone());
 	let mut lastc :String = "".to_string();
-	//println!("{:?}",input1.clone());
+	call_trace!("{:?}",input1.clone());
 	{
 		let sc = SET_NAME.clone();
 		let scb = sc.lock().unwrap();
 		for v in input {		
-			//println!("[{}]=[{:?}]",i,v);
+			call_trace!("[{}]=[{:?}]",i,v);
 			match v {
 				proc_macro2::TokenTree::Literal(t) => {
-					//println!("[{}]Literal [{}]",i,t.to_string());
+					call_trace!("[{}]Literal [{}]",i,t.to_string());
 					codes += &(format!("call_functions({},&{});\n", t.to_string(),*scb)[..]);
 				},
 				proc_macro2::TokenTree::Ident(t) => {
-					println!("[{}]Ident [{}]",i,t.to_string());
+					call_trace!("[{}]Ident [{}]",i,t.to_string());
 					if lastc == "&" {
 						codes += &(format!("call_functions(&{},&{});\n",t.to_string(),*scb)[..]);
 					} else {
@@ -127,12 +234,12 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 					
 				},
 				proc_macro2::TokenTree::Punct(t) => {
-					println!("[{}]Punct [{}]",i,t.to_string());
+					call_trace!("[{}]Punct [{}]",i,t.to_string());
 					codes = codes;
 					lastc = t.to_string();
 				},
 				proc_macro2::TokenTree::Group(t) => {
-					println!("[{}]Group [{}]",i,t.to_string());
+					call_trace!("[{}]Group [{}]",i,t.to_string());
 					if lastc == "&" {
 						codes += &(format!("call_functions(&{},&{});\n",t.to_string(),scb)[..]);
 					} else {
@@ -145,7 +252,7 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 		}
 
 	}
-	println!("codes\n{}",codes );
+	call_info!("codes\n{}",codes );
 	codes.parse().unwrap()
 }
 
