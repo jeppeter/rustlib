@@ -61,7 +61,15 @@ fn proc_log_init(prefix :&str) -> i32 {
         key = format!("{}_LEVEL", prefix);
         getv = get_environ_var(&key);
         if getv.len() > 0 {
-        	retv = getv.parse::<i32>().unwrap();
+        	match getv.parse::<i32>() {
+        		Ok(v) => {
+        			retv = v;
+        		},
+        		Err(e) => {
+        			retv = 0;
+        			eprintln!("can not parse [{}] error[{}]", getv,e);
+        		}
+        	}
         }
 
         if retv >= 40 {
