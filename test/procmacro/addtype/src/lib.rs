@@ -122,7 +122,7 @@ pub (crate)  fn type_call_debug_out(level :i32, outs :String) {
 			error!("{}",outs);
 		} else if level < 40 {
 			info!("{}",outs);
-		}  {
+		}  else {
 			trace!("{}",outs);
 		}
 	}
