@@ -38,7 +38,7 @@ fn get_environ_var(envname :&str) -> String {
 
 const RAND_NAME_STRING :[u8; 62]= *b"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-const DEFAULT_MSG_FMT :&str = "{d(%Y-%m-%d %H:%M:%S)}[{l}][{f}:{L}] {m}\n";
+const DEFAULT_MSG_FMT :&str = "{d(%Y-%m-%d %H:%M:%S)}[{l}]{m}\n";
 
 fn proc_log_init(prefix :&str) -> i32 {
 		let mut msgfmt :String = String::from(DEFAULT_MSG_FMT);
@@ -64,13 +64,14 @@ fn proc_log_init(prefix :&str) -> i32 {
         	match getv.parse::<i32>() {
         		Ok(v) => {
         			retv = v;
+        			println!("retv [{}]",retv);
         		},
         		Err(e) => {
         			retv = 0;
         			eprintln!("can not parse [{}] error[{}]", getv,e);
         		}
         	}
-        }
+        }        
 
         if retv >= 40 {
         	level = log::LevelFilter::Trace;
@@ -115,19 +116,32 @@ lazy_static! {
 	};
 }
 
+pub (crate)  fn type_call_debug_out(level :i32, outs :String) {
+	if *CALL_LEVEL >= level {
+		if level <= 0 {
+			error!("{}",outs);
+		} else if level < 40 {
+			info!("{}",outs);
+		}  {
+			trace!("{}",outs);
+		}
+	}
+	return;
+}
+
 macro_rules! call_error {
 	($($arg:tt)+) => {
-		if *CALL_LEVEL >= 0 {
-			error!($($arg)+);
-		}
+		let mut c :String= format!("[{}:{}] ",file!(),line!());
+		c.push_str(&(format!($($arg)+)[..]));
+		type_call_debug_out(0, c);
 	}
 }
 
 macro_rules! call_info {
 	($($arg:tt)+) => {
-		if *CALL_LEVEL >= 20 {
-			info!($($arg)+);
-		}
+		let mut c :String= format!("[{}:{}] ",file!(),line!());
+		c.push_str(&(format!($($arg)+)[..]));
+		type_call_debug_out(20, c);
 	}
 }
 
@@ -135,9 +149,9 @@ macro_rules! call_info {
 
 macro_rules! call_trace {
 	($($arg:tt)+) => {
-		if *CALL_LEVEL >= 40 {
-			trace!($($arg)+);
-		}
+		let mut c :String= format!("[{}:{}] ",file!(),line!());
+		c.push_str(&(format!($($arg)+)[..]));
+		type_call_debug_out(40, c);
 	}
 }
 
