@@ -90,6 +90,11 @@ fn compile_regex(expr :&str) -> Regex {
 	retv
 }
 
+#[derive(Clone)]
+pub struct ExtArgsOptions {
+	values :HashMap<String,Value>,
+}
+
 
 fn newkey() -> ExtKeyParse {
 	let  key :ExtKeyParse;
@@ -107,8 +112,16 @@ fn newkey() -> ExtKeyParse {
 
 }
 
+fn newoptions() -> ExtArgsOptions {
+	ExtArgsOptions {
+		values : HashMap::new(),
+	}
+}
+
 fn main() {
 	let kev = newkey();
 	let _c :ExtKeyParse = kev.clone();
+	let nopt = newoptions();
+	let _d = nopt.clone();
 
 }
