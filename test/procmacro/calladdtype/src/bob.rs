@@ -7,13 +7,15 @@ use lazy_static::lazy_static;
 
 
 #[print_func_name]
-fn hello_world_2() {
+fn hello_world_2() -> String {
 	println!("hello world_2");
+	String::from("hello_world_2")
 }
 
 #[print_func_name]
-fn get_a_reply_2() {
+fn get_a_reply_2() -> String {
 	println!("reply ok_2");
+	String::from("get_a_reply_2")
 }
 
 

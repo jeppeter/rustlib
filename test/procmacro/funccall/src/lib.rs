@@ -1,6 +1,6 @@
 
 
-type FnVoid = fn();
+type FnVoid = fn() -> String;
 
 #[derive(Clone)]
 pub struct FuncName {

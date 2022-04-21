@@ -8,13 +8,15 @@ use funccall::{FuncName,call_functions};
 use lazy_static::lazy_static;
 
 #[print_func_name]
-fn hello_world() {
+fn hello_world() -> String {
 	println!("hello world");
+	String::from("hello_world")
 }
 
 #[print_func_name]
-fn get_a_reply() {
+fn get_a_reply() -> String {
 	println!("reply ok");
+	String::from("reply ok")
 }
 
 /*
