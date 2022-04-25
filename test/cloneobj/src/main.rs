@@ -109,7 +109,28 @@ fn newkey() -> ExtKeyParse {
 		__attrexpr : compile_regex("!([^<>\\$!#|]+)!"),
 	};
 	key
+}
 
+impl ExtArgsOptions {
+	// add code here
+	pub fn string(&self) -> String {
+		let mut rets :String = "".to_string();
+		let mut idx :i32 = 0;
+
+		for (k,v) in self.values.clone() {
+			if idx > 0 {
+				rets.push_str(",");
+			}
+			rets.push_str(&(format!("[{}]=[{:?}]", k,v)));
+		}
+
+
+		rets
+	}
+
+	pub fn insert(&mut self, k :&str, v :Value) {
+		self.values.insert(format!("{}",k), v.clone());
+	}
 }
 
 fn newoptions() -> ExtArgsOptions {
@@ -121,7 +142,12 @@ fn newoptions() -> ExtArgsOptions {
 fn main() {
 	let kev = newkey();
 	let _c :ExtKeyParse = kev.clone();
-	let nopt = newoptions();
+	let mut nopt = newoptions();
 	let _d = nopt.clone();
+
+	nopt.insert("he",Value::Null);
+	nopt.insert("bb",Value::Null);
+
+	println!("nopt\n{}\n_d\n{}",nopt.string(), _d.string());
 
 }

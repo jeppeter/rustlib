@@ -69,4 +69,13 @@ fn main() {
     let Pair(integer, decimal) = pair;
 
     println!("pair contains {:?} and {:?}", integer, decimal);
+    let cs :String = "22.55.32".to_string();
+    let carr  = cs.split(".");
+    println!("{:?}", carr.count());
+
+    let cs2 :String = "22".to_string();
+    let carr2  = cs2.split(".");
+    println!("{:?}", carr2.clone().count());
+    println!("0 {}", carr2.clone().nth(0).unwrap());
+    
 }
