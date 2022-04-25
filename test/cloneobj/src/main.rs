@@ -1,6 +1,9 @@
 use serde_json::Value;
 use std::collections::HashMap;
 use regex::Regex;
+use std::rc::Rc;
+use std::cell::RefCell;
+
 
 #[derive(Clone)]
 pub struct TypeClass {
@@ -58,8 +61,7 @@ pub struct KeyData {
 	data :HashMap<String,KeyVal>,
 }
 
-#[derive(Clone)]
-pub struct ExtKeyParse {
+pub struct InnerExtKeyParse {
 	keydata : KeyData,
 	__helpexpr :Regex,
 	__cmdexpr : Regex,
@@ -69,6 +71,8 @@ pub struct ExtKeyParse {
 	__mustflagexpr : Regex,
 	__attrexpr : Regex,
 }
+
+type ExtKeyParse = Rc<InnerExtKeyParse>;
 
 impl KeyData {
 	pub fn new() -> KeyData {
@@ -90,15 +94,16 @@ fn compile_regex(expr :&str) -> Regex {
 	retv
 }
 
-#[derive(Clone)]
-pub struct ExtArgsOptions {
+pub struct InnerExtArgsOptions {
 	values :HashMap<String,Value>,
 }
 
+type ExtArgsOptions = Rc<RefCell<InnerExtArgsOptions>>;
+
 
 fn newkey() -> ExtKeyParse {
-	let  key :ExtKeyParse;
-	key = ExtKeyParse {
+	let  key :InnerExtKeyParse;
+	key = InnerExtKeyParse {
 		keydata : KeyData::new(),
 		__helpexpr : compile_regex("##([^#]+)##$"),
 		__cmdexpr : compile_regex("^([^#<>\\+\\$!]+)"),
@@ -108,10 +113,10 @@ fn newkey() -> ExtKeyParse {
 		__mustflagexpr : compile_regex("^\\$([a-zA-Z]+[a-zA-Z0-9|\\?\\-]*)"),
 		__attrexpr : compile_regex("!([^<>\\$!#|]+)!"),
 	};
-	key
+	Rc::new(key)
 }
 
-impl ExtArgsOptions {
+impl InnerExtArgsOptions {
 	// add code here
 	pub fn string(&self) -> String {
 		let mut rets :String = "".to_string();
@@ -134,9 +139,10 @@ impl ExtArgsOptions {
 }
 
 fn newoptions() -> ExtArgsOptions {
-	ExtArgsOptions {
+	let k :InnerExtArgsOptions = InnerExtArgsOptions {
 		values : HashMap::new(),
-	}
+	};
+	Rc::new(RefCell::new(k))
 }
 
 fn main() {
@@ -145,9 +151,9 @@ fn main() {
 	let mut nopt = newoptions();
 	let _d = nopt.clone();
 
-	nopt.insert("he",Value::Null);
-	nopt.insert("bb",Value::Null);
+	nopt.borrow_mut().insert("he",Value::Null);
+	nopt.borrow_mut().insert("bb",Value::Null);
 
-	println!("nopt\n{}\n_d\n{}",nopt.string(), _d.string());
+	println!("nopt\n{}\n_d\n{}",nopt.borrow().string(), _d.borrow().string());
 
 }

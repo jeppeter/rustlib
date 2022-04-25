@@ -70,12 +70,14 @@ fn main() {
 
     println!("pair contains {:?} and {:?}", integer, decimal);
     let cs :String = "22.55.32".to_string();
-    let carr  = cs.split(".");
-    println!("{:?}", carr.count());
+    let carr :Vec<&str>  = cs.split(".").collect();
+    let b :String = carr[1..(carr.len())].join(".");
+    println!("{:?}", carr);
+    println!("{:?}", b);
 
     let cs2 :String = "22".to_string();
-    let carr2  = cs2.split(".");
-    println!("{:?}", carr2.clone().count());
-    println!("0 {}", carr2.clone().nth(0).unwrap());
+    let carr2 :Vec<&str> = cs2.split(".").collect();
+    println!("{:?}", carr2.len());
+    println!("0 {}", carr2[0]);
     
 }
