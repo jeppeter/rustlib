@@ -7,13 +7,13 @@ use std::cell::RefCell;
 
 #[allow(dead_code)]
 #[derive(Clone,Debug)]
-pub struct TypeClass {
+struct TypeClass {
 	typeval : String,
 }
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub enum Nargs {	
+enum Nargs {	
 	Argtype(String),
 	Argnum(i32),
 }
@@ -66,7 +66,7 @@ struct KeyData {
 	data :HashMap<String,KeyVal>,
 }
 
-pub struct InnerExtKeyParse {
+struct InnerExtKeyParse {
 	keydata : KeyData,
 	__helpexpr :Regex,
 	__cmdexpr : Regex,
@@ -77,7 +77,7 @@ pub struct InnerExtKeyParse {
 	__attrexpr : Regex,
 }
 
-pub type RcExtKeyParse = Rc<RefCell<InnerExtKeyParse>>;
+type RcExtKeyParse = Rc<RefCell<InnerExtKeyParse>>;
 
 #[derive(Clone)]
 pub struct ExtKeyParse {
