@@ -50,7 +50,7 @@ impl Clone for KeyAttr {
 
 #[allow(dead_code)]
 #[derive(Clone,Debug)]
-pub enum KeyVal {
+enum KeyVal {
 	StrVal(Option<String>),
 	BoolVal(Option<bool>),
 	JsonVal(Option<Value>),
@@ -62,7 +62,7 @@ pub enum KeyVal {
 
 #[allow(dead_code)]
 #[derive(Clone)]
-pub struct KeyData {
+struct KeyData {
 	data :HashMap<String,KeyVal>,
 }
 
@@ -77,7 +77,12 @@ pub struct InnerExtKeyParse {
 	__attrexpr : Regex,
 }
 
-pub type ExtKeyParse = Rc<RefCell<InnerExtKeyParse>>;
+pub type RcExtKeyParse = Rc<RefCell<InnerExtKeyParse>>;
+
+#[derive(Clone)]
+pub struct ExtKeyParse {
+	c : RcExtKeyParse,
+}
 
 impl KeyData {
 	pub fn new() -> KeyData {
@@ -124,29 +129,37 @@ fn compile_regex(expr :&str) -> Regex {
 	retv
 }
 
-pub struct InnerExtArgsOptions {
+struct InnerExtArgsOptions {
 	values :HashMap<String,Value>,
 }
 
-type ExtArgsOptions = Rc<RefCell<InnerExtArgsOptions>>;
+type RcExtArgsOptions = Rc<RefCell<InnerExtArgsOptions>>;
 
-
-pub fn newkey() -> ExtKeyParse {
-	let  key :InnerExtKeyParse;
-	key = InnerExtKeyParse {
-		keydata : KeyData::new(),
-		__helpexpr : compile_regex("##([^#]+)##$"),
-		__cmdexpr : compile_regex("^([^#<>\\+\\$!]+)"),
-		__prefixexpr : compile_regex("\\+([a-zA-Z]+[a-zA-Z0-9]*)"),
-		__funcexpr : compile_regex("<([^<>\\$| \t!\\+]+)>"),
-		__flagexpr : compile_regex("^([a-zA-Z]+[a-zA-Z0-9|\\?\\-]*)"),
-		__mustflagexpr : compile_regex("^\\$([a-zA-Z]+[a-zA-Z0-9|\\?\\-]*)"),
-		__attrexpr : compile_regex("!([^<>\\$!#|]+)!"),
-	};
-	Rc::new(RefCell::new(key))
+#[derive(Clone)]
+pub struct ExtArgsOptions {
+	c :RcExtArgsOptions,
 }
 
+
+
+
+
 impl InnerExtKeyParse {
+	pub fn new() -> InnerExtKeyParse {
+		let key = InnerExtKeyParse {
+			keydata : KeyData::new(),
+			__helpexpr : compile_regex("##([^#]+)##$"),
+			__cmdexpr : compile_regex("^([^#<>\\+\\$!]+)"),
+			__prefixexpr : compile_regex("\\+([a-zA-Z]+[a-zA-Z0-9]*)"),
+			__funcexpr : compile_regex("<([^<>\\$| \t!\\+]+)>"),
+			__flagexpr : compile_regex("^([a-zA-Z]+[a-zA-Z0-9|\\?\\-]*)"),
+			__mustflagexpr : compile_regex("^\\$([a-zA-Z]+[a-zA-Z0-9|\\?\\-]*)"),
+			__attrexpr : compile_regex("!([^<>\\$!#|]+)!"),
+		};
+		key
+	}
+
+
 	pub fn set_string(&mut self,k :&str, v :&str) -> bool {
 		return self.keydata.set_string(k,v);
 	}
@@ -178,9 +191,41 @@ impl InnerExtArgsOptions {
 	}
 }
 
-pub fn newoptions() -> ExtArgsOptions {
-	let k :InnerExtArgsOptions = InnerExtArgsOptions {
-		values : HashMap::new(),
-	};
-	Rc::new(RefCell::new(k))
+
+
+impl ExtKeyParse {
+	pub fn new() -> ExtKeyParse {
+		let k = InnerExtKeyParse::new();
+		ExtKeyParse	{
+			c :Rc::new(RefCell::new(k))
+		}		
+	}
+
+	pub fn set_string(&self, k:&str,v :&str) {
+		self.c.borrow_mut().set_string(k,v);
+	}
+
+	pub fn string(&self) -> String {
+		return self.c.borrow().string();
+	}
 }
+
+impl ExtArgsOptions {
+	pub fn new() -> ExtArgsOptions {
+		let k :InnerExtArgsOptions = InnerExtArgsOptions {
+			values : HashMap::new(),
+		};
+		ExtArgsOptions {
+			c :	Rc::new(RefCell::new(k)),
+		}		
+	}
+
+	pub fn string(&self) -> String {
+		return self.c.borrow().string();
+	}
+
+	pub fn insert(&self, k :&str, v :Value) {
+		self.c.borrow_mut().insert(k,v);
+	}
+}
+
