@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 //use std::sync::Mutex;
+use std::rc::Rc;
 use std::cell::RefCell;
 
 
@@ -66,6 +67,25 @@ impl VFn {
 	}
 }
 
+pub struct CommonVFn {
+	innerrc :Rc<RefCell<VFn>>,
+}
+
+impl CommonVFn {
+	pub fn new() -> CommonVFn {
+		CommonVFn {
+			innerrc : Rc::new(RefCell::new( VFn::new())),
+		}
+	}
+	pub fn insertmaps(&self) {
+		self.innerrc.borrow_mut().insertmaps();
+	}
+
+	pub fn call_fn(&self) {
+		self.innerrc.borrow_mut().call_fn();
+	}
+}
+
 
 fn main() {
 	let fnptr : fn(i32,i32) -> i32 = add;
@@ -84,7 +104,7 @@ fn main() {
 	}
 
 	{
-		let mut c = VFn::new();
+		let c = CommonVFn::new();
 		c.insertmaps();
 		c.call_fn();
 	}
