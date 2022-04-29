@@ -3,6 +3,9 @@ use std::sync::Arc;
 //use std::sync::Mutex;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::error::Error;
+use serde_json::Value;
+
 
 
 
@@ -17,8 +20,25 @@ fn add_2(i :i32, j :i32) -> i32 {
 }
 
 #[derive(Clone)]
+pub struct ExtKeyparse {}
+
+#[derive(Clone)]
+pub struct ParserCompat {}
+
+#[derive(Clone)]
+pub struct NameSpaceEx {}
+
+pub enum FuncEnum {
+	StringFunc(Box<dyn Fn(String) -> i32>),
+	LoadFunc(Box<dyn Fn(String,ExtKeyparse,ParserCompat) -> Result<(),Box<dyn Error>>>),
+	ActionFunc(Box<dyn Fn(NameSpaceEx,i32,ExtKeyparse,Vec<String>) -> Result<i32,Box<dyn Error>>>),
+	LoadJsonFunc(Box<dyn Fn(NameSpaceEx) -> Result<(),Box<dyn Error>>>),
+	JsonFunc(Box<dyn Fn(NameSpaceEx,ExtKeyparse,Value) -> Result<(),Box<dyn Error>>>),
+}
+
+#[derive(Clone)]
 pub struct VFn {
-	innermap : HashMap<String,Arc<dyn Fn(String) -> i32>>,
+	innermap : HashMap<String,Arc<FuncEnum>>,
 }
 
 
@@ -42,24 +62,41 @@ impl VFn {
 	pub fn insertmaps(&mut self) {
 		let b = Arc::new(RefCell::new(self.clone()));
 		let c = b.clone();
-		self.innermap.insert(format!("hello"), Arc::new(move |x| {  c.borrow_mut().hello(x) } ));
+		self.innermap.insert(format!("hello"), Arc::new(FuncEnum::StringFunc(Box::new(move |x| {  c.borrow_mut().hello(x) } ))));
 		let e = b.clone();
-		self.innermap.insert(format!("world"),Arc::new(move |x| {  e.borrow_mut().world(x) }));
+		self.innermap.insert(format!("world"),Arc::new(FuncEnum::StringFunc(Box::new(move |x| {  e.borrow_mut().world(x) }))));
 	}
 
 	pub fn call_fn(&mut self) {
 		match self.innermap.get_mut("hello") {
-			Some(f) => {
-				let c = f(format!("call"));
-				println!("retval [{}]",c);
+			Some(f1) => {
+				let f2 = Arc::get_mut(f1).unwrap();
+				match f2 {
+					FuncEnum::StringFunc(f) => {
+						let c = f(format!("call"));
+						println!("retval [{}]",c);
+					},
+					_ => {
+						println!("hello no func");
+					},
+				}
 			},
 			None => {println!("None");}
 		}
 
+
 		match self.innermap.get_mut("world") {
-			Some(f) => {
-				let c = f(format!("call"));
-				println!("world retval [{}]",c);
+			Some(f1) => {
+				let f2 = Arc::get_mut(f1).unwrap();
+				match f2 {
+					FuncEnum::StringFunc(f) => {
+						let c = f(format!("call"));
+						println!("retval [{}]",c);
+					},
+					_ => {
+						println!("world no func");
+					},
+				}
 			},
 			None => {println!("None");}
 		}
