@@ -28,12 +28,13 @@ pub struct ParserCompat {}
 #[derive(Clone)]
 pub struct NameSpaceEx {}
 
+#[derive(Clone)]
 pub enum FuncEnum {
-	StringFunc(Box<dyn Fn(String) -> i32>),
-	LoadFunc(Box<dyn Fn(String,ExtKeyparse,ParserCompat) -> Result<(),Box<dyn Error>>>),
-	ActionFunc(Box<dyn Fn(NameSpaceEx,i32,ExtKeyparse,Vec<String>) -> Result<i32,Box<dyn Error>>>),
-	LoadJsonFunc(Box<dyn Fn(NameSpaceEx) -> Result<(),Box<dyn Error>>>),
-	JsonFunc(Box<dyn Fn(NameSpaceEx,ExtKeyparse,Value) -> Result<(),Box<dyn Error>>>),
+	StringFunc(Rc<dyn Fn(String) -> i32>),
+	LoadFunc(Rc<dyn Fn(String,ExtKeyparse,ParserCompat) -> Result<(),Box<dyn Error>>>),
+	ActionFunc(Rc<dyn Fn(NameSpaceEx,i32,ExtKeyparse,Vec<String>) -> Result<i32,Box<dyn Error>>>),
+	LoadJsonFunc(Rc<dyn Fn(NameSpaceEx) -> Result<(),Box<dyn Error>>>),
+	JsonFunc(Rc<dyn Fn(NameSpaceEx,ExtKeyparse,Value) -> Result<(),Box<dyn Error>>>),
 }
 
 #[derive(Clone)]
@@ -59,48 +60,76 @@ impl VFn {
 		c.len() as i32
 	}
 
+	pub fn string_action(&mut self,_ns :NameSpaceEx, _k :i32,_keycls :ExtKeyparse, _args :Vec<String>) -> Result<i32,Box<dyn Error>> {
+		println!("string_action {}",_k);
+		Ok(0)
+	}
+
 	pub fn insertmaps(&mut self) {
 		let b = Arc::new(RefCell::new(self.clone()));
 		let c = b.clone();
-		self.innermap.insert(format!("hello"), Arc::new(FuncEnum::StringFunc(Box::new(move |x| {  c.borrow_mut().hello(x) } ))));
+		self.innermap.insert(format!("hello"), Arc::new(FuncEnum::StringFunc(Rc::new(move |x| {  c.borrow_mut().hello(x) } ))));
 		let e = b.clone();
-		self.innermap.insert(format!("world"),Arc::new(FuncEnum::StringFunc(Box::new(move |x| {  e.borrow_mut().world(x) }))));
+		self.innermap.insert(format!("world"),Arc::new(FuncEnum::StringFunc(Rc::new(move |x| {  e.borrow_mut().world(x) }))));
+		let s1 = b.clone();
+		self.innermap.insert(format!("stract"),Arc::new(FuncEnum::ActionFunc(Rc::new(move |n,i,k,s| { s1.borrow_mut().string_action(n,i,k,s) }))));
+	}
+
+	fn get_fn(&mut self, k :&str) -> Option<FuncEnum> {
+		let mut retv :Option<FuncEnum> = None;
+		match self.innermap.get_mut(k)  {
+			Some(f1) => {
+				let f2 = Arc::get_mut(f1).unwrap();
+				retv = Some(f2.clone());
+			},
+			None => {}
+		}
+		retv
+	}
+
+	fn call_str_fn(&mut self, k :&str,v :&str) -> i32 {
+		let mut retv : i32 = 0;
+		let f1 = self.get_fn(k);
+		if f1.is_some() {
+			let f2 = f1.unwrap();
+			match f2 {
+				FuncEnum::StringFunc(f) => {
+					let c = f(format!("{}",v));
+					println!("retval [{}]",c);
+					retv = c;
+				},
+				_ => {
+					println!("no function {}",k);
+				}
+			}
+		}
+		retv
+	}
+
+	fn call_act_fn(&mut self, k :&str,ns :NameSpaceEx,kv :i32,ks :ExtKeyparse, args :Vec<String>) -> Result<i32,Box<dyn Error>> {
+		let mut retv :Result<i32,Box<dyn Error>> = Ok(0);
+		let f1 = self.get_fn(k);
+		if f1.is_some() {
+			let f2 = f1.unwrap();
+			match f2 {
+				FuncEnum::ActionFunc(f) => {
+					retv = f(ns.clone(),kv,ks.clone(),args.clone());
+				},
+				_ => {
+					println!("no result {}", k);
+					retv = Ok(32);
+				}
+			}
+		}
+
+		retv
 	}
 
 	pub fn call_fn(&mut self) {
-		match self.innermap.get_mut("hello") {
-			Some(f1) => {
-				let f2 = Arc::get_mut(f1).unwrap();
-				match f2 {
-					FuncEnum::StringFunc(f) => {
-						let c = f(format!("call"));
-						println!("retval [{}]",c);
-					},
-					_ => {
-						println!("hello no func");
-					},
-				}
-			},
-			None => {println!("None");}
-		}
-
-
-		match self.innermap.get_mut("world") {
-			Some(f1) => {
-				let f2 = Arc::get_mut(f1).unwrap();
-				match f2 {
-					FuncEnum::StringFunc(f) => {
-						let c = f(format!("call"));
-						println!("retval [{}]",c);
-					},
-					_ => {
-						println!("world no func");
-					},
-				}
-			},
-			None => {println!("None");}
-		}
-
+		self.call_str_fn("hello","cxx");
+		self.call_str_fn("world","vs2w");
+		let args :Vec<String> = Vec::new();
+		_ =self.call_act_fn("stract",NameSpaceEx{},20,ExtKeyparse{},args);
 	}
 }
 
