@@ -39,14 +39,16 @@ pub enum FuncEnum {
 
 #[derive(Clone)]
 pub struct VFn {
-	innermap : HashMap<String,Arc<FuncEnum>>,
+	//innermap : HashMap<String,Rc<FuncEnum>>,
+	innermap : Rc<RefCell<HashMap<String,Rc<RefCell<FuncEnum>>>>>,
 }
 
 
 impl VFn {
 	pub fn new() -> VFn {
 		VFn{
-			innermap : HashMap::new(),
+			//innermap : HashMap::new(),
+			innermap : Rc::new(RefCell::new(HashMap::new())),
 		}
 	}
 
@@ -62,27 +64,45 @@ impl VFn {
 
 	pub fn string_action(&mut self,_ns :NameSpaceEx, _k :i32,_keycls :ExtKeyparse, _args :Vec<String>) -> Result<i32,Box<dyn Error>> {
 		println!("string_action {}",_k);
+		//for (k,_) in self.innermap.iter() {
+		for (k,_) in self.innermap.borrow().iter() {
+			println!("string_action {}", k);
+		}
 		Ok(0)
 	}
 
 	pub fn insertmaps(&mut self) {
 		let b = Arc::new(RefCell::new(self.clone()));
 		let c = b.clone();
-		self.innermap.insert(format!("hello"), Arc::new(FuncEnum::StringFunc(Rc::new(move |x| {  c.borrow_mut().hello(x) } ))));
+		//self.innermap.insert(format!("hello"), Rc::new(FuncEnum::StringFunc(Rc::new(move |x| {  c.borrow_mut().hello(x) } ))));
+		self.innermap.borrow_mut().insert(format!("hello"), Rc::new(RefCell::new(FuncEnum::StringFunc(Rc::new(move |x| {  c.borrow_mut().hello(x) } )))));
 		let e = b.clone();
-		self.innermap.insert(format!("world"),Arc::new(FuncEnum::StringFunc(Rc::new(move |x| {  e.borrow_mut().world(x) }))));
+		//self.innermap.insert(format!("world"),Rc::new(FuncEnum::StringFunc(Rc::new(move |x| {  e.borrow_mut().world(x) }))));
+		self.innermap.borrow_mut().insert(format!("world"),Rc::new(RefCell::new(FuncEnum::StringFunc(Rc::new(move |x| {  e.borrow_mut().world(x) })))));
+		//let s1 = Arc::new(RefCell::new(self.clone()));
 		let s1 = b.clone();
-		self.innermap.insert(format!("stract"),Arc::new(FuncEnum::ActionFunc(Rc::new(move |n,i,k,s| { s1.borrow_mut().string_action(n,i,k,s) }))));
+		//self.innermap.insert(format!("stract"),Rc::new(FuncEnum::ActionFunc(Rc::new(move |n,i,k,s| { s1.borrow_mut().string_action(n,i,k,s) }))));
+		self.innermap.borrow_mut().insert(format!("stract"),Rc::new(RefCell::new(FuncEnum::ActionFunc(Rc::new(move |n,i,k,s| { s1.borrow_mut().string_action(n,i,k,s) })))));
+		let s2 =  Arc::new(RefCell::new(self.clone()));
+		let s3 = s2.clone();
+		//self.innermap.insert(format!("stract2"),Rc::new(FuncEnum::ActionFunc(Rc::new(move |n,i,k,s| { s3.borrow_mut().string_action(n,i,k,s) }))));
+		self.innermap.borrow_mut().insert(format!("stract2"),Rc::new(RefCell::new(FuncEnum::ActionFunc(Rc::new(move |n,i,k,s| { s3.borrow_mut().string_action(n,i,k,s) })))));
+	}
+
+	fn c_fn(&self,c :&FuncEnum) -> Option<FuncEnum> {
+		return Some(c.clone());
 	}
 
 	fn get_fn(&mut self, k :&str) -> Option<FuncEnum> {
 		let mut retv :Option<FuncEnum> = None;
-		match self.innermap.get_mut(k)  {
+		match self.innermap.borrow_mut().get(k)  {
 			Some(f1) => {
-				let f2 = Arc::get_mut(f1).unwrap();
+				let  f2 :&FuncEnum = &f1.borrow();
 				retv = Some(f2.clone());
 			},
-			None => {}
+			None => {
+				println!("no {} function", k);
+			}
 		}
 		retv
 	}
@@ -129,7 +149,10 @@ impl VFn {
 		self.call_str_fn("hello","cxx");
 		self.call_str_fn("world","vs2w");
 		let args :Vec<String> = Vec::new();
-		_ =self.call_act_fn("stract",NameSpaceEx{},20,ExtKeyparse{},args);
+		let ns = NameSpaceEx{};
+		let ek = ExtKeyparse{};
+		_ =self.call_act_fn("stract",ns.clone(),20,ek.clone(),args.clone());
+		_ =self.call_act_fn("stract2",ns.clone(),22,ek.clone(),args.clone());
 	}
 }
 
