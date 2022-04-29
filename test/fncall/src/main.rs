@@ -20,7 +20,7 @@ fn add_2(i :i32, j :i32) -> i32 {
 }
 
 #[derive(Clone)]
-pub struct ExtKeyparse {}
+pub struct ExtKeyParse {}
 
 #[derive(Clone)]
 pub struct ParserCompat {}
@@ -31,10 +31,10 @@ pub struct NameSpaceEx {}
 #[derive(Clone)]
 pub enum FuncEnum {
 	StringFunc(Rc<dyn Fn(String) -> i32>),
-	LoadFunc(Rc<dyn Fn(String,ExtKeyparse,ParserCompat) -> Result<(),Box<dyn Error>>>),
-	ActionFunc(Rc<dyn Fn(NameSpaceEx,i32,ExtKeyparse,Vec<String>) -> Result<i32,Box<dyn Error>>>),
+	LoadFunc(Rc<dyn Fn(String,ExtKeyParse,ParserCompat) -> Result<(),Box<dyn Error>>>),
+	ActionFunc(Rc<dyn Fn(NameSpaceEx,i32,ExtKeyParse,Vec<String>) -> Result<i32,Box<dyn Error>>>),
 	LoadJsonFunc(Rc<dyn Fn(NameSpaceEx) -> Result<(),Box<dyn Error>>>),
-	JsonFunc(Rc<dyn Fn(NameSpaceEx,ExtKeyparse,Value) -> Result<(),Box<dyn Error>>>),
+	JsonFunc(Rc<dyn Fn(NameSpaceEx,ExtKeyParse,Value) -> Result<(),Box<dyn Error>>>),
 }
 
 #[derive(Clone)]
@@ -62,7 +62,7 @@ impl VFn {
 		c.len() as i32
 	}
 
-	pub fn string_action(&mut self,_ns :NameSpaceEx, _k :i32,_keycls :ExtKeyparse, _args :Vec<String>) -> Result<i32,Box<dyn Error>> {
+	pub fn string_action(&mut self,_ns :NameSpaceEx, _k :i32,_keycls :ExtKeyParse, _args :Vec<String>) -> Result<i32,Box<dyn Error>> {
 		println!("string_action {}",_k);
 		//for (k,_) in self.innermap.iter() {
 		for (k,_) in self.innermap.borrow().iter() {
@@ -89,9 +89,6 @@ impl VFn {
 		self.innermap.borrow_mut().insert(format!("stract2"),Rc::new(RefCell::new(FuncEnum::ActionFunc(Rc::new(move |n,i,k,s| { s3.borrow_mut().string_action(n,i,k,s) })))));
 	}
 
-	fn c_fn(&self,c :&FuncEnum) -> Option<FuncEnum> {
-		return Some(c.clone());
-	}
 
 	fn get_fn(&mut self, k :&str) -> Option<FuncEnum> {
 		let mut retv :Option<FuncEnum> = None;
@@ -126,7 +123,7 @@ impl VFn {
 		retv
 	}
 
-	fn call_act_fn(&mut self, k :&str,ns :NameSpaceEx,kv :i32,ks :ExtKeyparse, args :Vec<String>) -> Result<i32,Box<dyn Error>> {
+	fn call_act_fn(&mut self, k :&str,ns :NameSpaceEx,kv :i32,ks :ExtKeyParse, args :Vec<String>) -> Result<i32,Box<dyn Error>> {
 		let mut retv :Result<i32,Box<dyn Error>> = Ok(0);
 		let f1 = self.get_fn(k);
 		if f1.is_some() {
@@ -150,7 +147,7 @@ impl VFn {
 		self.call_str_fn("world","vs2w");
 		let args :Vec<String> = Vec::new();
 		let ns = NameSpaceEx{};
-		let ek = ExtKeyparse{};
+		let ek = ExtKeyParse{};
 		_ =self.call_act_fn("stract",ns.clone(),20,ek.clone(),args.clone());
 		_ =self.call_act_fn("stract2",ns.clone(),22,ek.clone(),args.clone());
 	}
