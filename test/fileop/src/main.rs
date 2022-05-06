@@ -4,6 +4,7 @@ use std::env;
 use std::vec::Vec;
 use std::process;
 use std::io;
+use std::io::prelude::*;
 
 
 fn usage(ec :i32, fmtstr :&str) {
@@ -16,6 +17,8 @@ fn usage(ec :i32, fmtstr :&str) {
 	outputs.push_str(&(format!("    --help|-h              to display this help information\n")[..]));
 	outputs.push_str(&(format!("[COMMANDS]\n")[..]));
 	outputs.push_str(&(format!("    exist  [files]....     to check for files...\n")[..]));
+	outputs.push_str(&(format!("    listdir [dirs]....     to list dir files...\n")));
+	outputs.push_str(&(format!("    readfile [files]...    to read files...\n")));
 
 	if ec != 0 {
 		eprintln!("{}", outputs);
@@ -63,6 +66,13 @@ fn list_dir(dname :&str) -> Result<Vec<String>,io::Error> {
 	Ok(retv)
 }
 
+fn read_file(fname :&str) -> Result<String,io::Error> {
+	let mut f = fs::File::open(fname)?;
+	let mut content = String::new();
+	f.read_to_string(&mut content)?;
+	Ok(content)
+}
+
 fn main() {
 	let argv :Vec<String> = env::args().collect();
 
@@ -82,6 +92,20 @@ fn main() {
 					},
 					Err(e) => {
 						eprintln!("can not list [{}] [{}]",argv[idx],e);
+						process::exit(4);
+					}
+				}
+				idx += 1;
+			}
+		} else if argv[1] == "readfile" {
+			let mut idx : usize = 2;
+			while idx < argv.len() {
+				match read_file(&(argv[idx])) {
+					Ok(vs) => {
+						println!("[{}]read [{}]\n{}",idx,argv[idx],vs);
+					},
+					Err(e) => {
+						eprintln!("[{}]read [{}] error[{:?}]",idx,argv[idx],e);
 						process::exit(4);
 					}
 				}
