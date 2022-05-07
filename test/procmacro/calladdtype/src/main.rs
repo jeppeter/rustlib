@@ -111,12 +111,36 @@ pub struct CCFunc {
 	cval :Vec<String>,
 }
 
+impl ArgSet for CCFunc {
+	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+		Ok(())
+	}
+}
+
 #[derive(ArgSet)]
 pub struct BBFunc {
 	csub :CCFunc,
 	xstr :String,
 	bval : bool,
 }
+
+impl ArgSet for BBFunc {
+	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+		Ok(())
+	}
+}
+
+
+const _ :fn() = || {
+	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
+	assert_impl_all::<CCFunc>();
+};
+
+const _ :fn() = || {
+	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
+	assert_impl_all::<BBFunc>();
+};
+
 
 #[print_all_links]
 fn main() {
