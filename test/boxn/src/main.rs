@@ -3,6 +3,7 @@ use std::boxed::Box;
 use regex::Regex;
 use std::fmt;
 
+
 macro_rules! error_class {
 	($type:ident) => {
 	#[derive(Debug,Clone)]

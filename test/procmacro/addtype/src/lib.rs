@@ -54,6 +54,7 @@ fn proc_log_init(prefix :&str) -> i32 {
 		if getv.len() > 0 {
 			msgfmt = format!("{}",getv);
 		}
+		println!("msgfmt [{}]",msgfmt);
 		let stderr =ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(&msgfmt)))
         .target(Target::Stderr).build();
@@ -284,5 +285,15 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 	codes.parse().unwrap()
 }
 
+#[proc_macro_attribute]
+pub fn set_all_args(_args :TokenStream, input :TokenStream) -> TokenStream {
+	input
+}
 
+#[proc_macro_derive(ArgSet)]
+pub fn argset_impl(item :TokenStream) -> TokenStream {
+	call_trace!("item\n{}",item.to_string());
+	let c = "".to_string();
+	c.parse().unwrap()
+}
 

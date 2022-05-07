@@ -9,3 +9,4 @@ edition = "2021"
 addtype = { path = "../addtype"}
 funccall = { path = "../funccall"}
 lazy_static = "1.4.0"
+regex = "^1"

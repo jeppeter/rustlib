@@ -1,11 +1,83 @@
 extern crate addtype;
 extern crate funccall;
 
+use std::error::Error;
+use std::boxed::Box;
+use regex::Regex;
+use std::fmt;
+
+
 mod bob;
 
-use addtype::{print_func_name,print_all_links,call_list_all};
+use addtype::{print_func_name,print_all_links,call_list_all,ArgSet,set_all_args};
 use funccall::{FuncName,call_functions};
 use lazy_static::lazy_static;
+
+macro_rules! error_class {
+	($type:ident) => {
+	#[derive(Debug,Clone)]
+	pub struct $type {
+		msg :String,		
+	}
+
+	#[allow(dead_code)]
+	impl $type {
+		fn create(c :&str) -> $type {
+			$type {msg : format!("{}",c)}
+		}
+	}
+
+	impl fmt::Display for $type {
+		fn fmt(&self,f :&mut fmt::Formatter) -> fmt::Result {
+			write!(f,"{}",self.msg)
+		}
+	}
+
+	impl Error for $type {}
+	};
+}
+
+macro_rules! new_error {
+	($type:ty,$($a:expr),*) => {
+		{
+		let mut c :String= format!("[{}:{}][{}]",file!(),line!(),stringify!($type));
+		c.push_str(&(format!($($a),*)[..]));
+		return Err(Box::new(<$type>::create(c.as_str())));
+	  }
+	};
+}
+
+
+#[derive(Clone)]
+pub struct NameSpaceEx {
+
+}
+
+impl NameSpaceEx {
+	pub fn new() -> NameSpaceEx {
+		NameSpaceEx{}
+	}
+	pub fn get_bool(&self, _k :&str) -> bool {
+		return false;
+	}
+	pub fn get_int(&self,_k :&str) -> i64 {
+		return 0;
+	}
+	pub fn get_float(&self,_k :&str) -> f64 {
+		return 0.0;
+	}
+	pub fn get_array(&self,_k :&str) -> Vec<String> {
+		return Vec::new();
+	}
+	pub fn get_string(&self,_k :&str) -> String {
+		return "".to_string();
+	}
+}
+
+pub trait ArgSet {
+	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>>;
+}
+
 
 #[print_func_name]
 fn hello_world() -> String {
@@ -30,6 +102,21 @@ lazy_static !{
 		vret
 	};
 }*/
+
+#[derive(ArgSet)]
+#[set_all_args]
+pub struct CCFunc {
+	aval :f64,
+	bval :f64,
+	cval :Vec<String>,
+}
+
+#[derive(ArgSet)]
+pub struct BBFunc {
+	csub :CCFunc,
+	xstr :String,
+	bval : bool,
+}
 
 #[print_all_links]
 fn main() {
