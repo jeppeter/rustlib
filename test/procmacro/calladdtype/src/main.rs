@@ -76,6 +76,7 @@ impl NameSpaceEx {
 
 pub trait ArgSet {
 	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>>;
+	fn new() -> Self;
 }
 
 
@@ -115,6 +116,13 @@ impl ArgSet for CCFunc {
 	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		Ok(())
 	}
+	fn new() -> Self {
+		CCFunc {
+			aval : 0.0,
+			bval : 0.0,
+			cval : Vec::new(),
+		}
+	}
 }
 
 #[derive(ArgSet)]
@@ -125,6 +133,13 @@ pub struct BBFunc {
 }
 
 impl ArgSet for BBFunc {
+	fn new() -> Self {
+		BBFunc{
+			csub : CCFunc::new(),
+			xstr : "".to_string(),
+			bval : false,
+		}
+	}
 	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		Ok(())
 	}
