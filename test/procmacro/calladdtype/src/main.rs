@@ -140,7 +140,8 @@ impl ArgSet for BBFunc {
 			bval : false,
 		}
 	}
-	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+	fn set_value(&mut self,k :&str, _ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+		println!("{} set", k);
 		Ok(())
 	}
 }
@@ -162,17 +163,25 @@ const _ :fn() = || {
 	assert_impl_all::<BBFunc>();
 };
 
+fn call_arg_set<T : ArgSet>(cv :&mut T,ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+	cv.set_value("bs.cc",ns.clone())?;
+	Ok(())
+}
+
 
 #[print_all_links]
 fn main() {
 	let cc = String::from("hello_world");
 	let scc = &(String::from("get_a_reply")[..]);
 	let bcc = "hello_world";
+	let mut cv = BBFunc::new();
+	let ns = NameSpaceEx::new();
 	call_list_all!("hello_world",&(cc[..]),&(String::from("get_a_repl")[..]));
 	call_list_all!("hello_world");
 	call_list_all!(bcc);
 	call_list_all!();
 	bob::bob_func();
+	call_arg_set(&mut cv,ns).unwrap();
 	return;
 }
 
