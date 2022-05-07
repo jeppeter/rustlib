@@ -41,6 +41,16 @@
 
 use structopt::StructOpt;
 
+struct CA {
+    bb :Vec<String>,
+}
+
+struct Copt {
+    cd :CA,
+    cx :i64,
+    bc :f64,
+}
+
 #[allow(dead_code)]
 #[derive(StructOpt, Debug)]
 #[structopt(name = "rename_all", rename_all = "screaming_snake_case")]
