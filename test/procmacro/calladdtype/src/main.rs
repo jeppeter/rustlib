@@ -138,6 +138,12 @@ const _ :fn() = || {
 
 const _ :fn() = || {
 	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
+	assert_impl_all::<CCFunc>();
+};
+
+
+const _ :fn() = || {
+	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
 	assert_impl_all::<BBFunc>();
 };
 
