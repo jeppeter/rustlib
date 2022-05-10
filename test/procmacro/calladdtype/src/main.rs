@@ -5,6 +5,7 @@ use std::error::Error;
 use std::boxed::Box;
 use regex::Regex;
 use std::fmt;
+use std::collections::HashMap;
 
 
 mod bob;
@@ -130,6 +131,15 @@ pub struct BBFunc {
 	csub :CCFunc,
 	xstr :String,
 	bval : bool,
+	ii : i32,
+	ui : u32,
+	ii6 : i64,
+	ui6 : u64,
+	fi : f32,
+	fi6 :f64,
+	bv :Vec<f64>,
+	ccr : ::regex::Regex,
+	cc :HashMap<String,CCFunc>,
 }
 
 impl ArgSet for BBFunc {
@@ -138,6 +148,16 @@ impl ArgSet for BBFunc {
 			csub : CCFunc::new(),
 			xstr : "".to_string(),
 			bval : false,
+			ii : 0,
+			ui : 0,
+			ii6 : 0,
+			ui6 : 0,
+			fi : 0.0,
+			fi6 : 0.0,
+			bv : Vec::new(),
+			ccr : Regex::new("hello").unwrap(),
+			cc : HashMap::new(),
+
 		}
 	}
 	fn set_value(&mut self,k :&str, _ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {

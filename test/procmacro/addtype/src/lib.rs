@@ -51,72 +51,72 @@ const RAND_NAME_STRING :[u8; 62]= *b"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG
 const DEFAULT_MSG_FMT :&str = "{d(%Y-%m-%d %H:%M:%S)}[{l}]{m}\n";
 
 fn proc_log_init(prefix :&str) -> i32 {
-		let mut msgfmt :String = String::from(DEFAULT_MSG_FMT);
-		let mut getv :String;
-		let mut retv :i32 = 0;
-		let mut level :LevelFilter  = log::LevelFilter::Error;
-		let mut rbuiler :RootBuilder;
-		let mut cbuild :ConfigBuilder;
-		let mut key :String;
-		let wfile :String ;
-		key = format!("{}_MSGFMT", prefix);
-		getv = get_environ_var(&key);
-		if getv.len() > 0 {
-			msgfmt = format!("{}",getv);
+	let mut msgfmt :String = String::from(DEFAULT_MSG_FMT);
+	let mut getv :String;
+	let mut retv :i32 = 0;
+	let mut level :LevelFilter  = log::LevelFilter::Error;
+	let mut rbuiler :RootBuilder;
+	let mut cbuild :ConfigBuilder;
+	let mut key :String;
+	let wfile :String ;
+	key = format!("{}_MSGFMT", prefix);
+	getv = get_environ_var(&key);
+	if getv.len() > 0 {
+		msgfmt = format!("{}",getv);
+	}
+	println!("msgfmt [{}]",msgfmt);
+	let stderr =ConsoleAppender::builder()
+	.encoder(Box::new(PatternEncoder::new(&msgfmt)))
+	.target(Target::Stderr).build();
+
+	key = format!("{}_LEVEL", prefix);
+	getv = get_environ_var(&key);
+	if getv.len() > 0 {
+		match getv.parse::<i32>() {
+			Ok(v) => {
+				retv = v;
+				println!("retv [{}]",retv);
+			},
+			Err(e) => {
+				retv = 0;
+				eprintln!("can not parse [{}] error[{}]", getv,e);
+			}
 		}
-		println!("msgfmt [{}]",msgfmt);
-		let stderr =ConsoleAppender::builder()
-        .encoder(Box::new(PatternEncoder::new(&msgfmt)))
-        .target(Target::Stderr).build();
+	}        
 
-        key = format!("{}_LEVEL", prefix);
-        getv = get_environ_var(&key);
-        if getv.len() > 0 {
-        	match getv.parse::<i32>() {
-        		Ok(v) => {
-        			retv = v;
-        			println!("retv [{}]",retv);
-        		},
-        		Err(e) => {
-        			retv = 0;
-        			eprintln!("can not parse [{}] error[{}]", getv,e);
-        		}
-        	}
-        }        
+	if retv >= 40 {
+		level = log::LevelFilter::Trace;
+	} else if retv >= 30 {
+		level = log::LevelFilter::Debug;
+	} else if retv >= 20 {
+		level = log::LevelFilter::Info;
+	} else if retv >= 10 {
+		level = log::LevelFilter::Warn;
+	}
 
-        if retv >= 40 {
-        	level = log::LevelFilter::Trace;
-        } else if retv >= 30 {
-        	level = log::LevelFilter::Debug;
-        } else if retv >= 20 {
-        	level = log::LevelFilter::Info;
-        } else if retv >= 10 {
-        	level = log::LevelFilter::Warn;
-        }
+	cbuild = Config::builder()
+	.appender(
+		Appender::builder()
+		.filter(Box::new(ThresholdFilter::new(level)))
+		.build("stderr", Box::new(stderr)),
+		);
+	rbuiler =  Root::builder().appender("stderr");
 
-	    cbuild = Config::builder()
-	        .appender(
-	            Appender::builder()
-	                .filter(Box::new(ThresholdFilter::new(level)))
-	                .build("stderr", Box::new(stderr)),
-	        );
-	    rbuiler =  Root::builder().appender("stderr");
+	key = format!("{}_LOGFILE",prefix);
 
-	    key = format!("{}_LOGFILE",prefix);
+	wfile = get_environ_var(&key);
+	if wfile.len() > 0 {
+		let logfile = FileAppender::builder().encoder(Box::new(PatternEncoder::new(&msgfmt))).build(&wfile).unwrap();
 
-	    wfile = get_environ_var(&key);
-	    if wfile.len() > 0 {
-	    	let logfile = FileAppender::builder().encoder(Box::new(PatternEncoder::new(&msgfmt))).build(&wfile).unwrap();
+		cbuild = cbuild.appender(Appender::builder().build("logfile", Box::new(logfile)));
+		rbuiler = rbuiler.appender("logfile");
+	}
 
-	        cbuild = cbuild.appender(Appender::builder().build("logfile", Box::new(logfile)));
-	        rbuiler = rbuiler.appender("logfile");
-	    }
+	let config = cbuild.build(rbuiler.build(level)).unwrap();
 
-	    let config = cbuild.build(rbuiler.build(level)).unwrap();
+	let _handle = log4rs::init_config(config).unwrap();
 
-	    let _handle = log4rs::init_config(config).unwrap();
-
-		retv	
+	retv	
 }
 
 lazy_static! {
@@ -182,7 +182,6 @@ fn get_random_bytes(num :u32, basevec :&[u8]) -> String {
 }
 
 
-//fn get_static_names() -> Rc<RefCell<Vec<String>>> {
 
 #[proc_macro_attribute]
 pub fn print_func_name(_args :TokenStream, input :TokenStream) -> TokenStream {
@@ -227,7 +226,7 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 			*scb = funcname;
 			codes += &(format!(" static ref {} :Vec<FuncName> = {{\n", *scb)[..]);
 		}
-		
+
 		codes += "        let mut vret :Vec<FuncName> = Vec::new();\n";
 
 		for (_k,v )in cb.iter() {
@@ -270,7 +269,7 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 					} else {
 						codes += &(format!("call_functions({},&{});\n",t.to_string(),*scb)[..]);	
 					}
-					
+
 				},
 				proc_macro2::TokenTree::Punct(t) => {
 					call_trace!("[{}]Punct [{}]",i,t.to_string());
@@ -284,7 +283,7 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 					} else {
 						codes += &(format!("call_functions({},&{});\n",t.to_string(),scb)[..]);	
 					}
-					
+
 				}
 			}
 			i += 1;
@@ -302,8 +301,105 @@ pub fn set_all_args(_args :TokenStream, input :TokenStream) -> TokenStream {
 
 error_class!{TypeError}
 
+fn get_name_type(n : syn::Field) -> Result<(String,String), Box<dyn Error>> {
+	let mut name :String = "".to_string();
+	let mut typename :String = "".to_string();
+	match n.ident {
+		Some(ref _i) => {
+			name = format!("{}",_i);
+		},
+		None => {
+			new_error!{TypeError,"can not get"}
+		}
+	}
+
+	match n.ty {
+		syn::Type::Path(ref _p) => {
+			let mut pidx :i32 = 0;
+			if _p.path.leading_colon.is_some() {
+				typename.push_str("::");
+			}
+			for _s in _p.path.segments.iter() {
+				if pidx > 0 {
+					typename.push_str("::");
+				}
+				typename.push_str(&(format!("{}",_s.ident)));
+				call_trace!("f [{}]",typename);
+				match _s.arguments {
+					syn::PathArguments::None => {},
+					syn::PathArguments::AngleBracketed(ref _an) => {
+						typename.push_str("<");
+						let mut idx :i32 = 0;
+						for _ii in _an.args.iter() {
+							match _ii {
+								syn::GenericArgument::Type(ref _pi) => {
+									match _pi {
+										syn::Type::Path(ref _pt) => {
+											let mut jdx : i32 = 0;
+											if idx > 0 {
+												typename.push_str(",");
+											}
+											for _tt in _pt.path.segments.iter() {
+												if jdx > 0 {
+													typename.push_str("::");
+												}
+												typename.push_str(&(format!("{}", _tt.ident)));
+												jdx += 1;
+											}
+										},
+										_ => { new_error!{TypeError, "not "}}
+									}
+								},
+								_ => {
+									new_error!{TypeError,"no args type"}
+								}
+							}
+							idx += 1;
+						}
+						typename.push_str(">");
+					},
+					syn::PathArguments::Parenthesized(ref _pn) => {
+						new_error!{TypeError,"Parenthesized"}
+					}
+				}
+				pidx += 1;
+			}
+		},
+		_ => {
+			new_error!{TypeError,"ty not support for"}
+		}
+	}
+	call_trace!("name [{}] typename [{}]",name,typename);
+	Ok((name,typename))
+}
+
 #[proc_macro_derive(ArgSet)]
 pub fn argset_impl(item :TokenStream) -> TokenStream {
+	call_trace!("item\n{}",item.to_string());
+	let c = "".to_string();
+	let co :syn::DeriveInput = syn::parse(item).unwrap();
+	match co.data {
+		syn::Data::Struct(ref _vv) => {
+			match _vv.fields {
+				syn::Fields::Named(ref _n) => {
+					for _v in _n.named.iter() {
+						let (n,tn) = get_name_type(_v.clone()).unwrap();
+					}
+				},
+				_ => {
+					call_trace!("not Named");
+				}
+			}
+		},
+		_ => {
+			call_trace!("not Struct");
+		}
+	}
+	c.parse().unwrap()
+}
+
+
+fn argset_impl2(item :TokenStream) -> TokenStream {
 	call_trace!("item\n{}",item.to_string());
 	let c = "".to_string();
 	let co :syn::DeriveInput = syn::parse(item).unwrap();
