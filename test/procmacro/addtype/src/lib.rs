@@ -21,6 +21,8 @@ use log4rs::config::{Appender, Config, Root,RootBuilder,ConfigBuilder};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::filter::threshold::ThresholdFilter;
 
+pub mod error;
+
 //use std::cell::RefCell;
 //use std::rc::Rc;
 
@@ -290,10 +292,78 @@ pub fn set_all_args(_args :TokenStream, input :TokenStream) -> TokenStream {
 	input
 }
 
+
+
 #[proc_macro_derive(ArgSet)]
 pub fn argset_impl(item :TokenStream) -> TokenStream {
 	call_trace!("item\n{}",item.to_string());
 	let c = "".to_string();
+	let co :syn::DeriveInput = syn::parse(item).unwrap();
+	match co.data {
+		syn::Data::Struct(ref _vv) => {
+			match _vv.fields {
+				syn::Fields::Named(ref _n) => {
+					for _v in _n.named.iter() {
+						match _v.ident {
+							Some(ref _i) => {
+								call_trace!("ident [{}]",_i);							
+							},
+							None => {
+								call_trace!("ident no");
+							}
+						}
+						match _v.ty {
+							syn::Type::Path(ref _p) => {
+								for _s in _p.path.segments.iter() {
+									call_trace!("s [{}]",_s.ident);
+									match _s.arguments {
+										syn::PathArguments::None => {
+											call_trace!("PathArguments::None");
+										},
+										syn::PathArguments::AngleBracketed(ref _an)  => {
+											call_trace!("AngleBracketed");
+											for _ii in _an.args.iter() {
+												match _ii {
+													syn::GenericArgument::Type(ref _pi) => {
+														match _pi {
+															syn::Type::Path(ref _pt) => {
+																for _sp in _pt.path.segments.iter() {
+																	call_trace!("_sp [{}]", _sp.ident);
+																}
+															},
+															_ => {
+																call_trace!("_ii no type");
+															}
+														}
+													},
+													_ => {
+														call_trace!("_ii no type");
+													}
+												}
+											}
+										},
+										syn::PathArguments::Parenthesized(ref _pa) => {
+											call_trace!("PathArguments::Parenthesized");
+										}
+
+									}
+								}
+							},
+							_ => {
+								call_trace!("no path");
+							}
+						}
+					}
+				},
+				_ => {
+					call_trace!("not Named");
+				}
+			}
+		},
+		_ => {
+			call_trace!("not Struct");
+		}
+	}
 	c.parse().unwrap()
 }
 
