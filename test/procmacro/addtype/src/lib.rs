@@ -21,7 +21,15 @@ use log4rs::config::{Appender, Config, Root,RootBuilder,ConfigBuilder};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::filter::threshold::ThresholdFilter;
 
-pub mod error;
+use std::fmt::{Debug};
+use std::fmt;
+use std::error::Error;
+use std::boxed::Box;
+
+
+#[macro_use]
+mod errors;
+
 
 //use std::cell::RefCell;
 //use std::rc::Rc;
@@ -292,7 +300,7 @@ pub fn set_all_args(_args :TokenStream, input :TokenStream) -> TokenStream {
 	input
 }
 
-
+error_class!{TypeError}
 
 #[proc_macro_derive(ArgSet)]
 pub fn argset_impl(item :TokenStream) -> TokenStream {
