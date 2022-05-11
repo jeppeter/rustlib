@@ -118,23 +118,11 @@ pub struct CCFunc {
 	cval :Vec<String>,
 }
 
-// impl ArgSet for CCFunc {
-// 	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-// 		Ok(())
-// 	}
-// 	fn new() -> Self {
-// 		CCFunc {
-// 			aval : 0.0,
-// 			bval : 0.0,
-// 			cval : Vec::new(),
-// 		}
-// 	}
-// }
 
 #[derive(ArgSet,Debug)]
 pub struct BBFunc {
 	csub :CCFunc,
-	bbx : HashMap<String,String>,
+	//bbx : HashMap<String,String>,
 	xstr :String,
 	bval : bool,
 	ii : i32,
@@ -144,44 +132,6 @@ pub struct BBFunc {
 	fi : f32,
 	fi6 :f64,
 }
-
-// impl ArgSet for BBFunc {
-// 	fn new() -> Self {
-// 		BBFunc{
-// 			csub : CCFunc::new(),
-// 			xstr : "".to_string(),
-// 			bval : false,
-// 			ii : 0,
-// 			ui : 0,
-// 			ii6 : 0,
-// 			ui6 : 0,
-// 			fi : 0.0,
-// 			fi6 : 0.0,
-// 		}
-// 	}
-// 	fn set_value(&mut self,k :&str, _ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-// 		println!("{} set", k);
-// 		Ok(())
-// 	}
-// }
-
-
-// const _ :fn() = || {
-// 	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
-// 	assert_impl_all::<CCFunc>();
-// };
-
-// const _ :fn() = || {
-// 	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
-// 	assert_impl_all::<CCFunc>();
-// };
-
-
-// const _ :fn() = || {
-// 	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
-// 	assert_impl_all::<BBFunc>();
-// };
-
 
 
 

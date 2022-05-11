@@ -574,12 +574,12 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
 					}
 				},
 				_ => {
-					syn_error_fmt!("not Named structure");
+					syn_error_fmt!("not Named structure\n{}",item.to_string());
 				}
 			}
 		},
 		_ => {
-			syn_error_fmt!("not struct format");
+			syn_error_fmt!("not struct format\n{}",item.to_string());
 		}
 	}
 
