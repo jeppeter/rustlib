@@ -72,28 +72,6 @@ fn get_random_bytes(num :u32, basevec :&[u8]) -> String {
 
 
 
-#[proc_macro_attribute]
-pub fn print_func_name(_args :TokenStream, input :TokenStream) -> TokenStream {
-	let sp = Span::call_site();
-	let src = sp.source_file();
-	let fname = format!("{}",src.path().to_str().unwrap());
-	match syn::parse(input.clone()) {
-		Ok(v1) => {
-			let v :syn::ItemFn = v1;
-			{
-				let mut cb = LINK_NAMES.lock().unwrap();
-				let cs = format!("{}",fname);
-				//em_log_trace!("insert [{}]=[{}]",v.sig.ident.to_string(),cs);
-				cb.insert(v.sig.ident.to_string(),cs);
-			}			
-		},
-		Err(e) => {
-			em_log_error!("error {}", e);
-		}
-	}
-	em_log_info!("call print_func_name [{}]",fname);
-	input
-}
 
 #[proc_macro_attribute]
 pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
@@ -134,53 +112,23 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 	}
 }
 
-#[proc_macro]
-pub fn call_list_all(input1 :TokenStream) -> TokenStream {
-	let mut codes :String = "".to_string();
-	//let mut i :i32 = 0;
-	let input = proc_macro2::TokenStream::from(input1.clone());
-	let mut lastc :String = "".to_string();
-	//em_log_info!("{:?}",input1.clone());
-	{
-		let sc = SET_NAME.clone();
-		let scb = sc.lock().unwrap();
-		for v in input {		
-			//em_log_trace!("[{}]=[{:?}]",i,v);
-			match v {
-				proc_macro2::TokenTree::Literal(t) => {
-					//em_log_trace!("[{}]Literal [{}]",i,t.to_string());
-					codes += &(format!("call_functions({},&{});\n", t.to_string(),*scb)[..]);
-				},
-				proc_macro2::TokenTree::Ident(t) => {
-					//em_log_trace!("[{}]Ident [{}]",i,t.to_string());
-					if lastc == "&" {
-						codes += &(format!("call_functions(&{},&{});\n",t.to_string(),*scb)[..]);
-					} else {
-						codes += &(format!("call_functions({},&{});\n",t.to_string(),*scb)[..]);	
-					}
-
-				},
-				proc_macro2::TokenTree::Punct(t) => {
-					//em_log_trace!("[{}]Punct [{}]",i,t.to_string());
-					codes = codes;
-					lastc = t.to_string();
-				},
-				proc_macro2::TokenTree::Group(t) => {
-					//em_log_trace!("[{}]Group [{}]",i,t.to_string());
-					if lastc == "&" {
-						codes += &(format!("call_functions(&{},&{});\n",t.to_string(),scb)[..]);
-					} else {
-						codes += &(format!("call_functions({},&{});\n",t.to_string(),scb)[..]);	
-					}
-
-				}
-			}
-			//i += 1;
-		}
-
+macro_rules! syn_error_fmt {
+	($($a:expr),*) => {
+		let cerr = format!($($a),*);
+		eprintln!("{}",cerr);
+		em_log_error!("{}",cerr);
+		return cerr.parse().unwrap();
+		//return syn::Error::new(
+        //            Span::call_site(),
+        //            $cerr,
+        //        ).to_compile_error().to_string().parse().unwrap();
 	}
-	em_log_info!("codes\n{}",codes );
-	codes.parse().unwrap()
+}
+
+
+#[proc_macro_attribute]
+pub fn extargs_map_function(_args :TokenStream , input :TokenStream) -> TokenStream {
+	input
 }
 
 
@@ -378,18 +326,6 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 	rets
 }
 
-macro_rules! syn_error_fmt {
-	($($a:expr),*) => {
-		let cerr = format!($($a),*);
-		eprintln!("{}",cerr);
-		em_log_error!("{}",cerr);
-		return cerr.parse().unwrap();
-		//return syn::Error::new(
-        //            Span::call_site(),
-        //            $cerr,
-        //        ).to_compile_error().to_string().parse().unwrap();
-	}
-}
 
 #[proc_macro_derive(ArgSet)]
 pub fn argset_impl(item :TokenStream) -> TokenStream {

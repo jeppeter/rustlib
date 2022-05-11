@@ -10,3 +10,4 @@ addtype = { path = "../addtype"}
 funccall = { path = "../funccall"}
 lazy_static = "1.4.0"
 regex = "^1"
+serde_json = "^1.0.42"

@@ -8,12 +8,20 @@ use regex::Regex;
 use std::fmt;
 #[allow(unused_imports)]
 use std::collections::HashMap;
+use funccall::{ExtKeyParse,NameSpaceEx,ArgSetImpl};
+use std::cell::RefCell;
+#[allow(unused_imports)]
+use serde_json::Value;
+use std::sync::Arc;
+use std::any::Any;
+
+
 
 
 mod bob;
 
-use addtype::{print_func_name,print_all_links,call_list_all,ArgSet};
-use funccall::{FuncName,call_functions};
+use addtype::{ArgSet,extargs_map_function};
+#[allow(unused_imports)]
 use lazy_static::lazy_static;
 
 
@@ -52,81 +60,34 @@ macro_rules! new_error {
 	};
 }
 
-
-#[derive(Clone)]
-pub struct NameSpaceEx {
-}
-
-impl NameSpaceEx {
-	pub fn new() -> NameSpaceEx {
-		NameSpaceEx{}
-	}
-	pub fn get_bool(&self, _k :&str) -> bool {
-		return false;
-	}
-	pub fn get_int(&self,_k :&str) -> i64 {
-		return 0;
-	}
-	pub fn get_float(&self,_k :&str) -> f64 {
-		return 0.0;
-	}
-	pub fn get_array(&self,_k :&str) -> Vec<String> {
-		return Vec::new();
-	}
-	pub fn get_string(&self,_k :&str) -> String {
-		return "".to_string();
-	}
-}
-
-#[derive(Clone)]
-pub struct ExtKeyParse {
-}
-
-pub type ExtArgsParseHelpFunc = fn(&ExtKeyParse) -> String;
-pub type ExtArgsJsonFunc = fn(NameSpaceEx,ExtKeyParse,Value)  -> Result<(),Box<dyn Error>> ;
-pub type ExtArgsActionFunc = fn(NameSpaceEx,i32,ExtKeyParse,Vec<String>) -> Result<i32,Box<dyn Error>>;
-pub type ExtArgsCallbackFunc = fn(NameSpaceEx,Option<Arc<RefCell<dyn ArgSetImpl>>>,Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>>;
-
-#[derive(Clone)]
-pub enum ExtArgsParseFunc {
-	HelpFunc(ExtArgsParseHelpFunc),
-	JsonFunc(ExtArgsJsonFunc),
-	ActionFunc(ExtArgsActionFunc),
-	CallbackFunc(ExtArgsCallbackFunc),
-}
-
-
-
-pub trait ArgSetImpl {
-	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>>;
-	fn new() -> Self;
-}
-
+#[allow(dead_code)]
 fn name_help(_k :&ExtKeyParse) -> String {
 	return "name help".to_string();
 }
 
+#[allow(dead_code)]
 fn name_json_set(_ns :NameSpaceEx,_k :ExtKeyParse,_v :Value) -> Result<(),Box<dyn Error>> {
 	println!("name_json_set");
 	Ok(())
 }
 
+#[allow(dead_code)]
 fn name_value_set(_ns :NameSpaceEx,_i :i32,_k :ExtKeyParse, _params :Vec<String>) -> Result<i32,Box<dyn Error>> {
 	println!("name value set");
 	return Ok(1);
 }
 
+#[allow(dead_code)]
 fn parser_handler(_ns :NameSpaceEx, _args :Option<Arc<RefCell<dyn ArgSetImpl>>>, _parser :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
 	println!("parser handler");
 	Ok(())
 }
 
+#[allow(dead_code)]
 fn call_handler(_ns :NameSpaceEx, _args :Option<Arc<RefCell<dyn ArgSetImpl>>>, _parser :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
 	println!("call handler");
 	Ok(())
 }
-
-
 
 
 #[derive(ArgSet,Debug)]
@@ -161,15 +122,8 @@ fn call_arg_set<T : ArgSetImpl>(cv :&mut T,ns :NameSpaceEx) -> Result<(),Box<dyn
 
 #[extargs_map_function(opthelp=name_help,jsonfunc=name_json_set,actfunc=name_value_set,callbackfunc=parser_handler,call_handler)]
 fn main() {
-	let cc = String::from("hello_world");
-	let scc = &(String::from("get_a_reply")[..]);
-	let bcc = "hello_world";
 	let mut cv = BBFunc::new();
 	let ns = NameSpaceEx::new();
-	call_list_all!("hello_world",&(cc[..]),&(String::from("get_a_repl")[..]));
-	call_list_all!("hello_world");
-	call_list_all!(bcc);
-	call_list_all!();
 	bob::bob_func();
 	call_arg_set(&mut cv,ns).unwrap();
 	println!("cv [{:?}]",cv);
