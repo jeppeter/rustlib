@@ -166,14 +166,6 @@ macro_rules! call_error {
 	}
 }
 
-macro_rules! call_warn {
-	($($arg:tt)+) => {
-		let mut c :String= format!("[{}:{}] ",file!(),line!());
-		c.push_str(&(format!($($arg)+)[..]));
-		type_call_debug_out(10, c);
-	}
-}
-
 
 macro_rules! call_info {
 	($($arg:tt)+) => {
@@ -275,7 +267,7 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 	let mut codes :String = "".to_string();
-	let mut i :i32 = 0;
+	//let mut i :i32 = 0;
 	let input = proc_macro2::TokenStream::from(input1.clone());
 	let mut lastc :String = "".to_string();
 	//call_info!("{:?}",input1.clone());
@@ -313,7 +305,7 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 
 				}
 			}
-			i += 1;
+			//i += 1;
 		}
 
 	}
@@ -329,7 +321,7 @@ pub fn set_all_args(_args :TokenStream, input :TokenStream) -> TokenStream {
 error_class!{TypeError}
 
 fn get_name_type(n : syn::Field) -> Result<(String,String), Box<dyn Error>> {
-	let mut name :String = "".to_string();
+	let name :String ;
 	let mut typename :String = "".to_string();
 	match n.ident {
 		Some(ref _i) => {
@@ -402,7 +394,7 @@ fn get_name_type(n : syn::Field) -> Result<(String,String), Box<dyn Error>> {
 
 fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<String>) -> String {
 	let mut rets :String = "".to_string();
-	let mut typeerrname :String = format!("{}_SetTypeError",ident);
+	let mut typeerrname :String = format!("{}_typeerror",ident);
 	if structnames.len() > 0 {
 		for i in structnames.clone() {
 			/*to make the type check for ArgSetImpl*/
@@ -412,6 +404,9 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 			rets.push_str(&format!("}};\n"));
 		}
 	}
+
+	typeerrname.push_str("_");
+	typeerrname.push_str(&(get_random_bytes(15,&RAND_NAME_STRING)));
 
 
 
@@ -517,10 +512,21 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 	rets
 }
 
+macro_rules! syn_error_fmt {
+	($($a:expr),*) => {
+		eprintln!($($a),*);
+		call_error!($($a),*);
+		return "".to_string().parse().unwrap();
+		//return syn::Error::new(
+        //            Span::call_site(),
+        //            &format!($($a),*),
+        //        ).to_compile_error().to_string().parse().unwrap();
+	}
+}
+
 #[proc_macro_derive(ArgSet)]
 pub fn argset_impl(item :TokenStream) -> TokenStream {
 	call_trace!("item\n{}",item.to_string());
-	let mut c = "".to_string();
 	let co :syn::DeriveInput;
 	let sname :String;
 	let mut names :HashMap<String,String> = HashMap::new();
@@ -531,7 +537,15 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
 			co = v.clone();
 		},
 		Err(_e) => {
-			return c.parse().unwrap();
+			syn_error_fmt!("not parse \n{}",item.to_string());
+          	//return syn::Error::new(
+            //        Span::call_site(),
+            //        &format!(
+            //            "not parse \n{}",
+            //            item.to_string()
+            //        ),
+            //    ).to_compile_error().to_string().parse().unwrap();
+
 		}
 	}
 
@@ -546,15 +560,15 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
 					for _v in _n.named.iter() {
 						let res = get_name_type(_v.clone());
 						if res.is_err() {
-							return c.parse().unwrap();
+							let e = res.err().unwrap();
+							syn_error_fmt!("{:?}",e);
 						}
 						let (n,tn) = res.unwrap();
 						if tn.contains(consts::KEYWORD_LEFT_ARROW) && tn != consts::KEYWORD_VEC_STRING {
-							call_error!("tn [{}] not valid", tn);
-							//return c.parse().unwrap();
+							syn_error_fmt!("tn [{}] not valid",tn);
 						}
 						if names.get(&n).is_some() {
-							call_error!("n [{}] has already in", n);
+							syn_error_fmt!("n [{}] has already in",n);
 						}
 
 						if !util::check_in_array(ARGSET_KEYWORDS.clone(),&tn) {
@@ -566,12 +580,12 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
 					}
 				},
 				_ => {
-					call_trace!("not Named");
+					syn_error_fmt!("not Named structure");
 				}
 			}
 		},
 		_ => {
-			call_trace!("not Struct");
+			syn_error_fmt!("not struct format");
 		}
 	}
 

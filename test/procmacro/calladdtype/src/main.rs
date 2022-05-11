@@ -132,6 +132,7 @@ pub struct CCFunc {
 #[derive(ArgSet,Debug)]
 pub struct BBFunc {
 	csub :CCFunc,
+	bbx : HashMap<String,String>,
 	xstr :String,
 	bval : bool,
 	ii : i32,
