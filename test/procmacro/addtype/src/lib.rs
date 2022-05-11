@@ -10,179 +10,51 @@ use std::cmp::Ordering;
 use rand::Rng;
 use bytes::{BytesMut,BufMut};
 
-use std::env;
-
-
-use log::{error, info, trace};
-use log::{LevelFilter};
-use log4rs::append::console::{ConsoleAppender, Target};
-use log4rs::append::file::FileAppender;
-use log4rs::config::{Appender, Config, Root,RootBuilder,ConfigBuilder};
-use log4rs::encode::pattern::PatternEncoder;
-use log4rs::filter::threshold::ThresholdFilter;
 
 use std::fmt::{Debug};
 use std::fmt;
 use std::error::Error;
 use std::boxed::Box;
 
-
+mod consts;
 #[macro_use]
 mod errors;
-mod consts;
+#[macro_use]
+mod logger;
 mod util;
 
-
+use consts::{KEYWORD_U64,KEYWORD_I64,KEYWORD_F64,KEYWORD_U32,KEYWORD_I32,KEYWORD_F32,KEYWORD_TYPE_STRING,KEYWORD_TYPE_BOOL,KEYWORD_VEC_STRING,KEYWORD_LEFT_ARROW};
+use logger::{em_debug_out};
+use util::{check_in_array};
 
 
 //use std::cell::RefCell;
 //use std::rc::Rc;
 
 
-fn get_environ_var(envname :&str) -> String {
-	match env::var(envname) {
-		Ok(v) => {
-			format!("{}",v)
-		},
-		Err(_e) => {
-			String::from("")
-		}
-	}
-}
 
 const RAND_NAME_STRING :[u8; 62]= *b"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-const DEFAULT_MSG_FMT :&str = "{d(%Y-%m-%d %H:%M:%S)}[{l}]{m}\n";
 
-fn proc_log_init(prefix :&str) -> i32 {
-	let mut msgfmt :String = String::from(DEFAULT_MSG_FMT);
-	let mut getv :String;
-	let mut retv :i32 = 0;
-	let mut level :LevelFilter  = log::LevelFilter::Error;
-	let mut rbuiler :RootBuilder;
-	let mut cbuild :ConfigBuilder;
-	let mut key :String;
-	let wfile :String ;
-	key = format!("{}_MSGFMT", prefix);
-	getv = get_environ_var(&key);
-	if getv.len() > 0 {
-		msgfmt = format!("{}",getv);
-	}
-	let stderr =ConsoleAppender::builder()
-	.encoder(Box::new(PatternEncoder::new(&msgfmt)))
-	.target(Target::Stderr).build();
-
-	key = format!("{}_LEVEL", prefix);
-	getv = get_environ_var(&key);
-	if getv.len() > 0 {
-		match getv.parse::<i32>() {
-			Ok(v) => {
-				retv = v;
-			},
-			Err(e) => {
-				retv = 0;
-				eprintln!("can not parse [{}] error[{}]", getv,e);
-			}
-		}
-	}        
-
-	if retv >= 40 {
-		level = log::LevelFilter::Trace;
-	} else if retv >= 30 {
-		level = log::LevelFilter::Debug;
-	} else if retv >= 20 {
-		level = log::LevelFilter::Info;
-	} else if retv >= 10 {
-		level = log::LevelFilter::Warn;
-	}
-
-	cbuild = Config::builder()
-	.appender(
-		Appender::builder()
-		.filter(Box::new(ThresholdFilter::new(level)))
-		.build("stderr", Box::new(stderr)),
-		);
-	rbuiler =  Root::builder().appender("stderr");
-
-	key = format!("{}_LOGFILE",prefix);
-
-	wfile = get_environ_var(&key);
-	if wfile.len() > 0 {
-		let logfile = FileAppender::builder().encoder(Box::new(PatternEncoder::new(&msgfmt))).build(&wfile).unwrap();
-
-		cbuild = cbuild.appender(Appender::builder().build("logfile", Box::new(logfile)));
-		rbuiler = rbuiler.appender("logfile");
-	}
-
-	let config = cbuild.build(rbuiler.build(level)).unwrap();
-
-	let _handle = log4rs::init_config(config).unwrap();
-
-	retv	
-}
 
 lazy_static! {
 	static ref LINK_NAMES :Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
 	static ref SET_NAME : Arc<Mutex<String>> = Arc::new(Mutex::new(String::from("FUNC_CALL")));
-	static ref CALL_LEVEL : i32 = {
-		proc_log_init("CALL")
-	};
 
 	static ref ARGSET_KEYWORDS :Vec<String> = {
 		let mut retv :Vec<String> = Vec::new();
-		retv.push(format!("{}",consts::KEYWORD_U64));
-		retv.push(format!("{}",consts::KEYWORD_I64));
-		retv.push(format!("{}",consts::KEYWORD_F64));
-		retv.push(format!("{}",consts::KEYWORD_U32));
-		retv.push(format!("{}",consts::KEYWORD_I32));
-		retv.push(format!("{}",consts::KEYWORD_F32));
-		retv.push(format!("{}",consts::KEYWORD_TYPE_STRING));
-		retv.push(format!("{}",consts::KEYWORD_TYPE_BOOL));
-		retv.push(format!("{}",consts::KEYWORD_VEC_STRING));
+		retv.push(format!("{}",KEYWORD_U64));
+		retv.push(format!("{}",KEYWORD_I64));
+		retv.push(format!("{}",KEYWORD_F64));
+		retv.push(format!("{}",KEYWORD_U32));
+		retv.push(format!("{}",KEYWORD_I32));
+		retv.push(format!("{}",KEYWORD_F32));
+		retv.push(format!("{}",KEYWORD_TYPE_STRING));
+		retv.push(format!("{}",KEYWORD_TYPE_BOOL));
+		retv.push(format!("{}",KEYWORD_VEC_STRING));
 		retv
 	};
 }
-
-pub (crate)  fn type_call_debug_out(level :i32, outs :String) {
-	if *CALL_LEVEL >= level {
-		if level <= 0 {
-			error!("{}",outs);
-		} else if level < 40 {
-			info!("{}",outs);
-		}  else {
-			trace!("{}",outs);
-		}
-	}
-	return;
-}
-
-macro_rules! call_error {
-	($($arg:tt)+) => {
-		let mut c :String= format!("[{}:{}] ",file!(),line!());
-		c.push_str(&(format!($($arg)+)[..]));
-		type_call_debug_out(0, c);
-	}
-}
-
-
-macro_rules! call_info {
-	($($arg:tt)+) => {
-		let mut c :String= format!("[{}:{}] ",file!(),line!());
-		c.push_str(&(format!($($arg)+)[..]));
-		type_call_debug_out(20, c);
-	}
-}
-
-
-
-macro_rules! call_trace {
-	($($arg:tt)+) => {
-		let mut c :String= format!("[{}:{}] ",file!(),line!());
-		c.push_str(&(format!($($arg)+)[..]));
-		type_call_debug_out(40, c);
-	}
-}
-
 
 
 fn get_random_bytes(num :u32, basevec :&[u8]) -> String {
@@ -211,15 +83,15 @@ pub fn print_func_name(_args :TokenStream, input :TokenStream) -> TokenStream {
 			{
 				let mut cb = LINK_NAMES.lock().unwrap();
 				let cs = format!("{}",fname);
-				//call_trace!("insert [{}]=[{}]",v.sig.ident.to_string(),cs);
+				//em_log_trace!("insert [{}]=[{}]",v.sig.ident.to_string(),cs);
 				cb.insert(v.sig.ident.to_string(),cs);
 			}			
 		},
 		Err(e) => {
-			call_error!("error {}", e);
+			em_log_error!("error {}", e);
 		}
 	}
-	call_info!("call print_func_name [{}]",fname);
+	em_log_info!("call print_func_name [{}]",fname);
 	input
 }
 
@@ -257,7 +129,7 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 		outs = codes;
 		outs += "\n";
 		outs += &(input.to_string()[..]);
-		call_info!("outs\n{}",outs);
+		em_log_info!("outs\n{}",outs);
 		return outs.parse().unwrap();
 	}
 }
@@ -268,19 +140,19 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 	//let mut i :i32 = 0;
 	let input = proc_macro2::TokenStream::from(input1.clone());
 	let mut lastc :String = "".to_string();
-	//call_info!("{:?}",input1.clone());
+	//em_log_info!("{:?}",input1.clone());
 	{
 		let sc = SET_NAME.clone();
 		let scb = sc.lock().unwrap();
 		for v in input {		
-			//call_trace!("[{}]=[{:?}]",i,v);
+			//em_log_trace!("[{}]=[{:?}]",i,v);
 			match v {
 				proc_macro2::TokenTree::Literal(t) => {
-					//call_trace!("[{}]Literal [{}]",i,t.to_string());
+					//em_log_trace!("[{}]Literal [{}]",i,t.to_string());
 					codes += &(format!("call_functions({},&{});\n", t.to_string(),*scb)[..]);
 				},
 				proc_macro2::TokenTree::Ident(t) => {
-					//call_trace!("[{}]Ident [{}]",i,t.to_string());
+					//em_log_trace!("[{}]Ident [{}]",i,t.to_string());
 					if lastc == "&" {
 						codes += &(format!("call_functions(&{},&{});\n",t.to_string(),*scb)[..]);
 					} else {
@@ -289,12 +161,12 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 
 				},
 				proc_macro2::TokenTree::Punct(t) => {
-					//call_trace!("[{}]Punct [{}]",i,t.to_string());
+					//em_log_trace!("[{}]Punct [{}]",i,t.to_string());
 					codes = codes;
 					lastc = t.to_string();
 				},
 				proc_macro2::TokenTree::Group(t) => {
-					//call_trace!("[{}]Group [{}]",i,t.to_string());
+					//em_log_trace!("[{}]Group [{}]",i,t.to_string());
 					if lastc == "&" {
 						codes += &(format!("call_functions(&{},&{});\n",t.to_string(),scb)[..]);
 					} else {
@@ -307,7 +179,7 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 		}
 
 	}
-	call_info!("codes\n{}",codes );
+	em_log_info!("codes\n{}",codes );
 	codes.parse().unwrap()
 }
 
@@ -337,7 +209,7 @@ fn get_name_type(n : syn::Field) -> Result<(String,String), Box<dyn Error>> {
 					typename.push_str("::");
 				}
 				typename.push_str(&(format!("{}",_s.ident)));
-				//call_trace!("f [{}]",typename);
+				//em_log_trace!("f [{}]",typename);
 				match _s.arguments {
 					syn::PathArguments::None => {},
 					syn::PathArguments::AngleBracketed(ref _an) => {
@@ -382,7 +254,7 @@ fn get_name_type(n : syn::Field) -> Result<(String,String), Box<dyn Error>> {
 			new_error!{TypeError,"ty not support for"}
 		}
 	}
-	call_trace!("name [{}] typename [{}]",name,typename);
+	em_log_trace!("name [{}] typename [{}]",name,typename);
 	Ok((name,typename))
 }
 
@@ -411,15 +283,15 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 	rets.push_str(&format!("        {} {{\n",ident));
 	for (k,v) in names.clone().iter() {
 		rets.push_str(&format!("            "));
-		if v == consts::KEYWORD_TYPE_STRING {
+		if v == KEYWORD_TYPE_STRING {
 			rets.push_str(&format!("{} : \"\".to_string(),\n", k));
-		} else if v == consts::KEYWORD_U32 || v == consts::KEYWORD_I32 || v == consts::KEYWORD_U64 || v == consts::KEYWORD_I64 {
+		} else if v == KEYWORD_U32 || v == KEYWORD_I32 || v == KEYWORD_U64 || v == KEYWORD_I64 {
 			rets.push_str(&format!("{} : 0,\n",k));
-		} else if v == consts::KEYWORD_F32  || v == consts::KEYWORD_F64 {
+		} else if v == KEYWORD_F32  || v == KEYWORD_F64 {
 			rets.push_str(&format!("{} : 0.0,\n",k));
-		} else if v == consts::KEYWORD_VEC_STRING {
+		} else if v == KEYWORD_VEC_STRING {
 			rets.push_str(&format!("{} : Vec::new(),\n",k));
-		} else if v == consts::KEYWORD_TYPE_BOOL {
+		} else if v == KEYWORD_TYPE_BOOL {
 			rets.push_str(&format!("{} : false,\n",k));
 		}else  {
 			/*to make new type*/
@@ -435,7 +307,7 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 	rets.push_str(&format!("    fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {{\n"));
 	let mut i :i32 = 0;
 	for (k,v) in names.clone().iter() {
-		if !util::check_in_array(ARGSET_KEYWORDS.clone(), v) {
+		if !check_in_array(ARGSET_KEYWORDS.clone(), v) {
 			continue;
 		}
 
@@ -447,23 +319,23 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 		}
 		rets.push_str(&format!("k == \"{}\" {{\n", k));
 		rets.push_str(&format!("            "));
-		if v == consts::KEYWORD_TYPE_STRING {
+		if v == KEYWORD_TYPE_STRING {
 			rets.push_str(&format!("self.{} = ns.get_string(k);\n", k));
-		} else if v == consts::KEYWORD_I32 {
+		} else if v == KEYWORD_I32 {
 			rets.push_str(&format!("self.{} = ns.get_int(k) as i32;\n",k));
-		} else if v == consts::KEYWORD_U32 {
+		} else if v == KEYWORD_U32 {
 			rets.push_str(&format!("self.{} = ns.get_int(k) as u32;\n",k));
-		} else if v == consts::KEYWORD_F32 {
+		} else if v == KEYWORD_F32 {
 			rets.push_str(&format!("self.{} = ns.get_float(k) as f32;\n",k));
-		} else if v == consts::KEYWORD_I64 {
+		} else if v == KEYWORD_I64 {
 			rets.push_str(&format!("self.{} = ns.get_int(k);\n",k));
-		} else if v == consts::KEYWORD_U64 {
+		} else if v == KEYWORD_U64 {
 			rets.push_str(&format!("self.{} = ns.get_int(k) as u64;\n",k));
-		} else if v == consts::KEYWORD_F64 {
+		} else if v == KEYWORD_F64 {
 			rets.push_str(&format!("self.{} = ns.get_float(k);\n",k));
-		} else if v == consts::KEYWORD_TYPE_BOOL {
+		} else if v == KEYWORD_TYPE_BOOL {
 			rets.push_str(&format!("self.{} = ns.get_bool(k);\n",k));
-		} else if v == consts::KEYWORD_VEC_STRING {
+		} else if v == KEYWORD_VEC_STRING {
 			rets.push_str(&format!("self.{} = ns.get_array(k);\n",k));
 		} 
 		i += 1;
@@ -510,7 +382,7 @@ macro_rules! syn_error_fmt {
 	($($a:expr),*) => {
 		let cerr = format!($($a),*);
 		eprintln!("{}",cerr);
-		call_error!("{}",cerr);
+		em_log_error!("{}",cerr);
 		return cerr.parse().unwrap();
 		//return syn::Error::new(
         //            Span::call_site(),
@@ -521,7 +393,7 @@ macro_rules! syn_error_fmt {
 
 #[proc_macro_derive(ArgSet)]
 pub fn argset_impl(item :TokenStream) -> TokenStream {
-	call_trace!("item\n{}",item.to_string());
+	em_log_trace!("item\n{}",item.to_string());
 	let co :syn::DeriveInput;
 	let sname :String;
 	let mut names :HashMap<String,String> = HashMap::new();
@@ -545,7 +417,7 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
 	}
 
 	sname = format!("{}",co.ident);
-	call_trace!("sname [{}]",sname);
+	em_log_trace!("sname [{}]",sname);
 
 
 	match co.data {
@@ -558,15 +430,15 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
 							syn_error_fmt!("{:?}",res.err().unwrap());
 						}
 						let (n,tn) = res.unwrap();
-						if tn.contains(consts::KEYWORD_LEFT_ARROW) && tn != consts::KEYWORD_VEC_STRING {
+						if tn.contains(KEYWORD_LEFT_ARROW) && tn != KEYWORD_VEC_STRING {
 							syn_error_fmt!("tn [{}] not valid",tn);
 						}
 						if names.get(&n).is_some() {
 							syn_error_fmt!("n [{}] has already in",n);
 						}
 
-						if !util::check_in_array(ARGSET_KEYWORDS.clone(),&tn) {
-							call_trace!("input typename [{}]",tn);
+						if !check_in_array(ARGSET_KEYWORDS.clone(),&tn) {
+							em_log_trace!("input typename [{}]",tn);
 							structnames.push(format!("{}",tn));
 						}
 
@@ -585,7 +457,7 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
 
 	/*now to compile ok*/
 	let cc = format_code(&sname,names.clone(),structnames.clone());
-	call_trace!("cc\n{}",cc);
+	em_log_trace!("cc\n{}",cc);
 
 	cc.parse().unwrap()
 }
