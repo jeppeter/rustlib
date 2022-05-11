@@ -128,7 +128,14 @@ macro_rules! syn_error_fmt {
 
 #[proc_macro_attribute]
 pub fn extargs_map_function(_args :TokenStream , input :TokenStream) -> TokenStream {
-	input
+	let mut code :String = "".to_string();
+	em_log_trace!("args [{:?}]",_args);	
+	for v in _args.clone() {
+		em_log_trace!("v [{:?}]",v);
+	}
+
+	code.push_str(&(input.to_string()));
+	code.parse().unwrap()
 }
 
 
