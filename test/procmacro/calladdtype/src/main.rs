@@ -55,7 +55,6 @@ macro_rules! new_error {
 
 #[derive(Clone)]
 pub struct NameSpaceEx {
-
 }
 
 impl NameSpaceEx {
@@ -79,36 +78,55 @@ impl NameSpaceEx {
 	}
 }
 
+#[derive(Clone)]
+pub struct ExtKeyParse {
+}
+
+pub type ExtArgsParseHelpFunc = fn(&ExtKeyParse) -> String;
+pub type ExtArgsJsonFunc = fn(NameSpaceEx,ExtKeyParse,Value)  -> Result<(),Box<dyn Error>> ;
+pub type ExtArgsActionFunc = fn(NameSpaceEx,i32,ExtKeyParse,Vec<String>) -> Result<i32,Box<dyn Error>>;
+pub type ExtArgsCallbackFunc = fn(NameSpaceEx,Option<Arc<RefCell<dyn ArgSetImpl>>>,Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>>;
+
+#[derive(Clone)]
+pub enum ExtArgsParseFunc {
+	HelpFunc(ExtArgsParseHelpFunc),
+	JsonFunc(ExtArgsJsonFunc),
+	ActionFunc(ExtArgsActionFunc),
+	CallbackFunc(ExtArgsCallbackFunc),
+}
+
+
 
 pub trait ArgSetImpl {
 	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>>;
 	fn new() -> Self;
 }
 
-
-#[print_func_name]
-fn hello_world() -> String {
-	println!("hello world");
-	String::from("hello_world")
+fn name_help(_k :&ExtKeyParse) -> String {
+	return "name help".to_string();
 }
 
-#[print_func_name]
-fn get_a_reply() -> String {
-	println!("reply ok");
-	String::from("reply ok")
+fn name_json_set(_ns :NameSpaceEx,_k :ExtKeyParse,_v :Value) -> Result<(),Box<dyn Error>> {
+	println!("name_json_set");
+	Ok(())
 }
 
-/*
-lazy_static !{
-	static ref FUNC_CALL :Vec<FuncName> = {
-		let mut vret:Vec<FuncName> = Vec::new();
-		vret.push(FuncName::new(
-			String::from("hello_world"),
-			hello_world,
-		));
-		vret
-	};
-}*/
+fn name_value_set(_ns :NameSpaceEx,_i :i32,_k :ExtKeyParse, _params :Vec<String>) -> Result<i32,Box<dyn Error>> {
+	println!("name value set");
+	return Ok(1);
+}
+
+fn parser_handler(_ns :NameSpaceEx, _args :Option<Arc<RefCell<dyn ArgSetImpl>>>, _parser :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	println!("parser handler");
+	Ok(())
+}
+
+fn call_handler(_ns :NameSpaceEx, _args :Option<Arc<RefCell<dyn ArgSetImpl>>>, _parser :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	println!("call handler");
+	Ok(())
+}
+
+
 
 
 #[derive(ArgSet,Debug)]
@@ -141,7 +159,7 @@ fn call_arg_set<T : ArgSetImpl>(cv :&mut T,ns :NameSpaceEx) -> Result<(),Box<dyn
 }
 
 
-#[print_all_links]
+#[extargs_map_function(opthelp=name_help,jsonfunc=name_json_set,actfunc=name_value_set,callbackfunc=parser_handler,call_handler)]
 fn main() {
 	let cc = String::from("hello_world");
 	let scc = &(String::from("get_a_reply")[..]);
@@ -156,12 +174,4 @@ fn main() {
 	call_arg_set(&mut cv,ns).unwrap();
 	println!("cv [{:?}]",cv);
 	return;
-}
-
-
-
-#[allow(dead_code)]
-#[print_func_name]
-fn c_f() {
-	println!("c_f");
 }
