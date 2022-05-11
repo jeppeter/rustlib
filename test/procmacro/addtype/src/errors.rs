@@ -46,18 +46,3 @@ macro_rules! new_error {
 	};
 }
 
-macro_rules! debug_output {
-	($($a:expr),*) => {
-		let mut c :String = format!("[{}:{}]",file!(),line!());
-		c.push_str(&(format!($($a),*)[..]));
-		eprintln!("{}", c);
-	}
-}
-
-macro_rules! error_output {
-	($($a:expr),*) => {
-		let mut c :String = format!("[{}:{}]",file!(),line!());
-		c.push_str(&(format!($($a),*)[..]));
-		eprintln!("{}", c);
-	}
-}

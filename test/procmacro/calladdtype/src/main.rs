@@ -14,6 +14,8 @@ use addtype::{print_func_name,print_all_links,call_list_all,ArgSet,set_all_args}
 use funccall::{FuncName,call_functions};
 use lazy_static::lazy_static;
 
+
+
 macro_rules! error_class {
 	($type:ident) => {
 	#[derive(Debug,Clone)]
@@ -75,7 +77,8 @@ impl NameSpaceEx {
 	}
 }
 
-pub trait ArgSet {
+
+pub trait ArgSetImpl {
 	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>>;
 	fn new() -> Self;
 }
@@ -105,28 +108,28 @@ lazy_static !{
 	};
 }*/
 
-#[derive(ArgSet)]
-#[set_all_args]
+
+#[derive(ArgSet,Debug)]
 pub struct CCFunc {
 	aval :f64,
 	bval :f64,
 	cval :Vec<String>,
 }
 
-impl ArgSet for CCFunc {
-	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-		Ok(())
-	}
-	fn new() -> Self {
-		CCFunc {
-			aval : 0.0,
-			bval : 0.0,
-			cval : Vec::new(),
-		}
-	}
-}
+// impl ArgSet for CCFunc {
+// 	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+// 		Ok(())
+// 	}
+// 	fn new() -> Self {
+// 		CCFunc {
+// 			aval : 0.0,
+// 			bval : 0.0,
+// 			cval : Vec::new(),
+// 		}
+// 	}
+// }
 
-#[derive(ArgSet)]
+#[derive(ArgSet,Debug)]
 pub struct BBFunc {
 	csub :CCFunc,
 	xstr :String,
@@ -137,54 +140,50 @@ pub struct BBFunc {
 	ui6 : u64,
 	fi : f32,
 	fi6 :f64,
-	bv :Vec<f64>,
-	ccr : ::regex::Regex,
-	cc :HashMap<String,CCFunc>,
 }
 
-impl ArgSet for BBFunc {
-	fn new() -> Self {
-		BBFunc{
-			csub : CCFunc::new(),
-			xstr : "".to_string(),
-			bval : false,
-			ii : 0,
-			ui : 0,
-			ii6 : 0,
-			ui6 : 0,
-			fi : 0.0,
-			fi6 : 0.0,
-			bv : Vec::new(),
-			ccr : Regex::new("hello").unwrap(),
-			cc : HashMap::new(),
-
-		}
-	}
-	fn set_value(&mut self,k :&str, _ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-		println!("{} set", k);
-		Ok(())
-	}
-}
+// impl ArgSet for BBFunc {
+// 	fn new() -> Self {
+// 		BBFunc{
+// 			csub : CCFunc::new(),
+// 			xstr : "".to_string(),
+// 			bval : false,
+// 			ii : 0,
+// 			ui : 0,
+// 			ii6 : 0,
+// 			ui6 : 0,
+// 			fi : 0.0,
+// 			fi6 : 0.0,
+// 		}
+// 	}
+// 	fn set_value(&mut self,k :&str, _ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+// 		println!("{} set", k);
+// 		Ok(())
+// 	}
+// }
 
 
-const _ :fn() = || {
-	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
-	assert_impl_all::<CCFunc>();
-};
+// const _ :fn() = || {
+// 	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
+// 	assert_impl_all::<CCFunc>();
+// };
 
-const _ :fn() = || {
-	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
-	assert_impl_all::<CCFunc>();
-};
+// const _ :fn() = || {
+// 	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
+// 	assert_impl_all::<CCFunc>();
+// };
 
 
-const _ :fn() = || {
-	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
-	assert_impl_all::<BBFunc>();
-};
+// const _ :fn() = || {
+// 	fn  assert_impl_all<T : ?Sized + ArgSet>() {}
+// 	assert_impl_all::<BBFunc>();
+// };
 
-fn call_arg_set<T : ArgSet>(cv :&mut T,ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-	cv.set_value("bs.cc",ns.clone())?;
+
+
+
+fn call_arg_set<T : ArgSetImpl>(cv :&mut T,ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+	cv.set_value("csub.cval",ns.clone())?;
 	Ok(())
 }
 
@@ -202,6 +201,7 @@ fn main() {
 	call_list_all!();
 	bob::bob_func();
 	call_arg_set(&mut cv,ns).unwrap();
+	println!("cv [{:?}]",cv);
 	return;
 }
 

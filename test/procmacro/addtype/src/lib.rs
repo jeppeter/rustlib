@@ -29,6 +29,10 @@ use std::boxed::Box;
 
 #[macro_use]
 mod errors;
+mod consts;
+mod util;
+
+
 
 
 //use std::cell::RefCell;
@@ -125,6 +129,20 @@ lazy_static! {
 	static ref CALL_LEVEL : i32 = {
 		proc_log_init("CALL")
 	};
+
+	static ref ARGSET_KEYWORDS :Vec<String> = {
+		let mut retv :Vec<String> = Vec::new();
+		retv.push(format!("{}",consts::KEYWORD_U64));
+		retv.push(format!("{}",consts::KEYWORD_I64));
+		retv.push(format!("{}",consts::KEYWORD_F64));
+		retv.push(format!("{}",consts::KEYWORD_U32));
+		retv.push(format!("{}",consts::KEYWORD_I32));
+		retv.push(format!("{}",consts::KEYWORD_F32));
+		retv.push(format!("{}",consts::KEYWORD_TYPE_STRING));
+		retv.push(format!("{}",consts::KEYWORD_TYPE_BOOL));
+		retv.push(format!("{}",consts::KEYWORD_VEC_STRING));
+		retv
+	};
 }
 
 pub (crate)  fn type_call_debug_out(level :i32, outs :String) {
@@ -147,6 +165,15 @@ macro_rules! call_error {
 		type_call_debug_out(0, c);
 	}
 }
+
+macro_rules! call_warn {
+	($($arg:tt)+) => {
+		let mut c :String= format!("[{}:{}] ",file!(),line!());
+		c.push_str(&(format!($($arg)+)[..]));
+		type_call_debug_out(10, c);
+	}
+}
+
 
 macro_rules! call_info {
 	($($arg:tt)+) => {
@@ -194,7 +221,7 @@ pub fn print_func_name(_args :TokenStream, input :TokenStream) -> TokenStream {
 			{
 				let mut cb = LINK_NAMES.lock().unwrap();
 				let cs = format!("{}",fname);
-				call_trace!("insert [{}]=[{}]",v.sig.ident.to_string(),cs);
+				//call_trace!("insert [{}]=[{}]",v.sig.ident.to_string(),cs);
 				cb.insert(v.sig.ident.to_string(),cs);
 			}			
 		},
@@ -251,19 +278,19 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 	let mut i :i32 = 0;
 	let input = proc_macro2::TokenStream::from(input1.clone());
 	let mut lastc :String = "".to_string();
-	call_info!("{:?}",input1.clone());
+	//call_info!("{:?}",input1.clone());
 	{
 		let sc = SET_NAME.clone();
 		let scb = sc.lock().unwrap();
 		for v in input {		
-			call_trace!("[{}]=[{:?}]",i,v);
+			//call_trace!("[{}]=[{:?}]",i,v);
 			match v {
 				proc_macro2::TokenTree::Literal(t) => {
-					call_trace!("[{}]Literal [{}]",i,t.to_string());
+					//call_trace!("[{}]Literal [{}]",i,t.to_string());
 					codes += &(format!("call_functions({},&{});\n", t.to_string(),*scb)[..]);
 				},
 				proc_macro2::TokenTree::Ident(t) => {
-					call_trace!("[{}]Ident [{}]",i,t.to_string());
+					//call_trace!("[{}]Ident [{}]",i,t.to_string());
 					if lastc == "&" {
 						codes += &(format!("call_functions(&{},&{});\n",t.to_string(),*scb)[..]);
 					} else {
@@ -272,12 +299,12 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 
 				},
 				proc_macro2::TokenTree::Punct(t) => {
-					call_trace!("[{}]Punct [{}]",i,t.to_string());
+					//call_trace!("[{}]Punct [{}]",i,t.to_string());
 					codes = codes;
 					lastc = t.to_string();
 				},
 				proc_macro2::TokenTree::Group(t) => {
-					call_trace!("[{}]Group [{}]",i,t.to_string());
+					//call_trace!("[{}]Group [{}]",i,t.to_string());
 					if lastc == "&" {
 						codes += &(format!("call_functions(&{},&{});\n",t.to_string(),scb)[..]);
 					} else {
@@ -324,7 +351,7 @@ fn get_name_type(n : syn::Field) -> Result<(String,String), Box<dyn Error>> {
 					typename.push_str("::");
 				}
 				typename.push_str(&(format!("{}",_s.ident)));
-				call_trace!("f [{}]",typename);
+				//call_trace!("f [{}]",typename);
 				match _s.arguments {
 					syn::PathArguments::None => {},
 					syn::PathArguments::AngleBracketed(ref _an) => {
@@ -373,17 +400,169 @@ fn get_name_type(n : syn::Field) -> Result<(String,String), Box<dyn Error>> {
 	Ok((name,typename))
 }
 
+fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<String>) -> String {
+	let mut rets :String = "".to_string();
+	let mut typeerrname :String = format!("{}_SetTypeError",ident);
+	if structnames.len() > 0 {
+		for i in structnames.clone() {
+			/*to make the type check for ArgSetImpl*/
+			rets.push_str(&format!("const _ :fn() = || {{\n"));
+			rets.push_str(&format!("    fn assert_impl_all<T : ?Sized + ArgSetImpl>() {{}}\n"));
+			rets.push_str(&format!("    assert_impl_all::<{}>();\n", i));
+			rets.push_str(&format!("}};\n"));
+		}
+	}
+
+
+
+	rets.push_str(&format!("error_class!{{{}}}\n",typeerrname));
+
+	rets.push_str(&format!("impl ArgSetImpl for {} {{\n",ident));
+	rets.push_str(&format!("    fn new() -> Self {{\n"));
+	rets.push_str(&format!("        {} {{\n",ident));
+	for (k,v) in names.clone().iter() {
+		rets.push_str(&format!("            "));
+		if v == consts::KEYWORD_TYPE_STRING {
+			rets.push_str(&format!("{} : \"\".to_string(),\n", k));
+		} else if v == consts::KEYWORD_U32 || v == consts::KEYWORD_I32 || v == consts::KEYWORD_U64 || v == consts::KEYWORD_I64 {
+			rets.push_str(&format!("{} : 0,\n",k));
+		} else if v == consts::KEYWORD_F32  || v == consts::KEYWORD_F64 {
+			rets.push_str(&format!("{} : 0.0,\n",k));
+		} else if v == consts::KEYWORD_VEC_STRING {
+			rets.push_str(&format!("{} : Vec::new(),\n",k));
+		} else if v == consts::KEYWORD_TYPE_BOOL {
+			rets.push_str(&format!("{} : false,\n",k));
+		}else  {
+			/*to make new type*/
+			rets.push_str(&format!("{} : {}::new(),\n",k,v));
+		}
+	}
+	rets.push_str(&format!("        }}\n"));
+	rets.push_str(&format!("    }}\n"));
+
+
+	rets.push_str(&format!("    \n"));
+
+	rets.push_str(&format!("    fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {{\n"));
+	let mut i :i32 = 0;
+	for (k,v) in names.clone().iter() {
+		if !util::check_in_array(ARGSET_KEYWORDS.clone(), v) {
+			continue;
+		}
+
+		rets.push_str(&format!("        "));
+		if i > 0 {
+			rets.push_str(&format!("}} else if "));
+		} else {
+			rets.push_str(&format!("if "));
+		}
+		rets.push_str(&format!("k == \"{}\" {{\n", k));
+		rets.push_str(&format!("            "));
+		if v == consts::KEYWORD_TYPE_STRING {
+			rets.push_str(&format!("self.{} = ns.get_string(k);\n", k));
+		} else if v == consts::KEYWORD_I32 {
+			rets.push_str(&format!("self.{} = ns.get_int(k) as i32;\n",k));
+		} else if v == consts::KEYWORD_U32 {
+			rets.push_str(&format!("self.{} = ns.get_int(k) as u32;\n",k));
+		} else if v == consts::KEYWORD_F32 {
+			rets.push_str(&format!("self.{} = ns.get_float(k) as f32;\n",k));
+		} else if v == consts::KEYWORD_I64 {
+			rets.push_str(&format!("self.{} = ns.get_int(k);\n",k));
+		} else if v == consts::KEYWORD_U64 {
+			rets.push_str(&format!("self.{} = ns.get_int(k) as u64;\n",k));
+		} else if v == consts::KEYWORD_F64 {
+			rets.push_str(&format!("self.{} = ns.get_float(k);\n",k));
+		} else if v == consts::KEYWORD_TYPE_BOOL {
+			rets.push_str(&format!("self.{} = ns.get_bool(k);\n",k));
+		} else if v == consts::KEYWORD_VEC_STRING {
+			rets.push_str(&format!("self.{} = ns.get_array(k);\n",k));
+		} 
+		i += 1;
+	}
+
+	if structnames.len() > 0 {
+		for s in structnames.clone() {
+			for (k,v) in names.clone().iter() {
+				if s.eq(v) {
+					rets.push_str(&format!("        "));
+					if i > 0 {
+						rets.push_str(&format!("}} else if "));
+					} else {
+						rets.push_str(&format!("if "));
+					}
+					rets.push_str(&format!("k.starts_with(&format!(\"{}.\")) {{\n",k));
+					rets.push_str(&format!("            let nk = format!(\"{{}}\",k);\n"));
+					rets.push_str(&format!("            let re = Regex::new(r\"^{}\\.\").unwrap();\n",k));
+					rets.push_str(&format!("            let kn = re.replace_all(&nk,\"\").to_string();\n"));
+					rets.push_str(&format!("            self.{}.set_value(&kn,ns.clone())?;\n",k));
+					break;
+				}
+			}
+			i += 1;
+		}
+	}
+
+
+	if i > 0 {
+		rets.push_str(&format!("        }} else {{\n"));
+		rets.push_str(&format!("            new_error!{{ {},\"{{}} not valid\" , k}}\n", typeerrname));
+		rets.push_str(&format!("        }}\n"));
+	}
+	rets.push_str(&format!("        Ok(())\n"));
+
+	rets.push_str(&format!("    }}\n"));
+
+	rets.push_str(&format!("}}\n"));
+
+	rets
+}
+
 #[proc_macro_derive(ArgSet)]
 pub fn argset_impl(item :TokenStream) -> TokenStream {
 	call_trace!("item\n{}",item.to_string());
-	let c = "".to_string();
-	let co :syn::DeriveInput = syn::parse(item).unwrap();
+	let mut c = "".to_string();
+	let co :syn::DeriveInput;
+	let sname :String;
+	let mut names :HashMap<String,String> = HashMap::new();
+	let mut structnames :Vec<String> = Vec::new();
+
+	match syn::parse::<syn::DeriveInput>(item.clone()) {
+		Ok(v) => {
+			co = v.clone();
+		},
+		Err(_e) => {
+			return c.parse().unwrap();
+		}
+	}
+
+	sname = format!("{}",co.ident);
+	call_trace!("sname [{}]",sname);
+
+
 	match co.data {
 		syn::Data::Struct(ref _vv) => {
 			match _vv.fields {
 				syn::Fields::Named(ref _n) => {
 					for _v in _n.named.iter() {
-						let (n,tn) = get_name_type(_v.clone()).unwrap();
+						let res = get_name_type(_v.clone());
+						if res.is_err() {
+							return c.parse().unwrap();
+						}
+						let (n,tn) = res.unwrap();
+						if tn.contains(consts::KEYWORD_LEFT_ARROW) && tn != consts::KEYWORD_VEC_STRING {
+							call_error!("tn [{}] not valid", tn);
+							//return c.parse().unwrap();
+						}
+						if names.get(&n).is_some() {
+							call_error!("n [{}] has already in", n);
+						}
+
+						if !util::check_in_array(ARGSET_KEYWORDS.clone(),&tn) {
+							call_trace!("input typename [{}]",tn);
+							structnames.push(format!("{}",tn));
+						}
+
+						names.insert(format!("{}",n),format!("{}",tn));
 					}
 				},
 				_ => {
@@ -395,79 +574,12 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
 			call_trace!("not Struct");
 		}
 	}
-	c.parse().unwrap()
+
+	/*now to compile ok*/
+	let cc = format_code(&sname,names.clone(),structnames.clone());
+	call_trace!("cc\n{}",cc);
+
+	cc.parse().unwrap()
 }
 
-
-fn argset_impl2(item :TokenStream) -> TokenStream {
-	call_trace!("item\n{}",item.to_string());
-	let c = "".to_string();
-	let co :syn::DeriveInput = syn::parse(item).unwrap();
-	match co.data {
-		syn::Data::Struct(ref _vv) => {
-			match _vv.fields {
-				syn::Fields::Named(ref _n) => {
-					for _v in _n.named.iter() {
-						match _v.ident {
-							Some(ref _i) => {
-								call_trace!("ident [{}]",_i);							
-							},
-							None => {
-								call_trace!("ident no");
-							}
-						}
-						match _v.ty {
-							syn::Type::Path(ref _p) => {
-								for _s in _p.path.segments.iter() {
-									call_trace!("s [{}]",_s.ident);
-									match _s.arguments {
-										syn::PathArguments::None => {
-											call_trace!("PathArguments::None");
-										},
-										syn::PathArguments::AngleBracketed(ref _an)  => {
-											call_trace!("AngleBracketed");
-											for _ii in _an.args.iter() {
-												match _ii {
-													syn::GenericArgument::Type(ref _pi) => {
-														match _pi {
-															syn::Type::Path(ref _pt) => {
-																for _sp in _pt.path.segments.iter() {
-																	call_trace!("_sp [{}]", _sp.ident);
-																}
-															},
-															_ => {
-																call_trace!("_ii no type");
-															}
-														}
-													},
-													_ => {
-														call_trace!("_ii no type");
-													}
-												}
-											}
-										},
-										syn::PathArguments::Parenthesized(ref _pa) => {
-											call_trace!("PathArguments::Parenthesized");
-										}
-
-									}
-								}
-							},
-							_ => {
-								call_trace!("no path");
-							}
-						}
-					}
-				},
-				_ => {
-					call_trace!("not Named");
-				}
-			}
-		},
-		_ => {
-			call_trace!("not Struct");
-		}
-	}
-	c.parse().unwrap()
-}
 
