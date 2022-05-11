@@ -68,7 +68,6 @@ fn proc_log_init(prefix :&str) -> i32 {
 	if getv.len() > 0 {
 		msgfmt = format!("{}",getv);
 	}
-	println!("msgfmt [{}]",msgfmt);
 	let stderr =ConsoleAppender::builder()
 	.encoder(Box::new(PatternEncoder::new(&msgfmt)))
 	.target(Target::Stderr).build();
@@ -79,7 +78,6 @@ fn proc_log_init(prefix :&str) -> i32 {
 		match getv.parse::<i32>() {
 			Ok(v) => {
 				retv = v;
-				println!("retv [{}]",retv);
 			},
 			Err(e) => {
 				retv = 0;
@@ -313,10 +311,6 @@ pub fn call_list_all(input1 :TokenStream) -> TokenStream {
 	codes.parse().unwrap()
 }
 
-#[proc_macro_attribute]
-pub fn set_all_args(_args :TokenStream, input :TokenStream) -> TokenStream {
-	input
-}
 
 error_class!{TypeError}
 
@@ -514,12 +508,13 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 
 macro_rules! syn_error_fmt {
 	($($a:expr),*) => {
-		eprintln!($($a),*);
-		call_error!($($a),*);
-		return "".to_string().parse().unwrap();
+		let cerr = format!($($a),*);
+		eprintln!("{}",cerr);
+		call_error!("{}",cerr);
+		return cerr.parse().unwrap();
 		//return syn::Error::new(
         //            Span::call_site(),
-        //            &format!($($a),*),
+        //            $cerr,
         //        ).to_compile_error().to_string().parse().unwrap();
 	}
 }
@@ -560,8 +555,7 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
 					for _v in _n.named.iter() {
 						let res = get_name_type(_v.clone());
 						if res.is_err() {
-							let e = res.err().unwrap();
-							syn_error_fmt!("{:?}",e);
+							syn_error_fmt!("{:?}",res.err().unwrap());
 						}
 						let (n,tn) = res.unwrap();
 						if tn.contains(consts::KEYWORD_LEFT_ARROW) && tn != consts::KEYWORD_VEC_STRING {

@@ -3,14 +3,16 @@ extern crate funccall;
 
 use std::error::Error;
 use std::boxed::Box;
+#[allow(unused_imports)]
 use regex::Regex;
 use std::fmt;
+#[allow(unused_imports)]
 use std::collections::HashMap;
 
 
 mod bob;
 
-use addtype::{print_func_name,print_all_links,call_list_all,ArgSet,set_all_args};
+use addtype::{print_func_name,print_all_links,call_list_all,ArgSet};
 use funccall::{FuncName,call_functions};
 use lazy_static::lazy_static;
 
