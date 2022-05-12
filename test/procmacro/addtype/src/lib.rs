@@ -23,7 +23,7 @@ mod errors;
 mod logger;
 mod util;
 
-use consts::{KEYWORD_U64,KEYWORD_I64,KEYWORD_F64,KEYWORD_U32,KEYWORD_I32,KEYWORD_F32,KEYWORD_TYPE_STRING,KEYWORD_TYPE_BOOL,KEYWORD_VEC_STRING,KEYWORD_LEFT_ARROW};
+use consts::{KEYWORD_U64,KEYWORD_I64,KEYWORD_F64,KEYWORD_U32,KEYWORD_I32,KEYWORD_F32,KEYWORD_TYPE_STRING,KEYWORD_TYPE_BOOL,KEYWORD_VEC_STRING,KEYWORD_LEFT_ARROW,FUNC_ACTFUNC,FUNC_OPTHELP,FUNC_JSONFUNC,FUNC_CALLBACK};
 use logger::{em_debug_out};
 use util::{check_in_array};
 
@@ -34,6 +34,7 @@ use util::{check_in_array};
 
 
 const RAND_NAME_STRING :[u8; 62]= *b"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 
 
 
@@ -113,6 +114,150 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 	}
 }
 
+#[derive(Debug)]
+struct FuncAttrs {
+	helpfuncs :Vec<String>,
+	jsonfuncs :Vec<String>,
+	actfuncs : Vec<String>,
+	callbackfuncs : Vec<String>,
+}
+
+impl FuncAttrs {
+	fn set_funcnames(&mut self,k :&str, v :&str, input : syn::parse::ParseStream) -> Result<(),syn::Error> {
+		if k.len() == 0 && v.len() == 0 {
+			return Ok(());
+		} else if v.len() == 0 {
+			self.callbackfuncs.push(format!("{}",k));
+		} else {
+			if k == FUNC_CALLBACK {
+				self.callbackfuncs.push(format!("{}",v));
+			} else if k == FUNC_OPTHELP {
+				self.helpfuncs.push(format!("{}",v));
+			} else if k == FUNC_JSONFUNC {
+				self.jsonfuncs.push(format!("{}",v));
+			} else if k == FUNC_ACTFUNC {
+				self.actfuncs.push(format!("{}",v));
+			} else {
+				let c = format!("we not accept [{}] keyword only accept {}|{}|{}|{}", k,
+					FUNC_ACTFUNC,FUNC_OPTHELP,FUNC_JSONFUNC,FUNC_CALLBACK);
+				return Err(syn::Error::new(input.span(),&c));
+			}
+		}
+		return Ok(());
+	}	
+	fn format_code(&self) -> String {
+		let mut rets :String = "".to_string();
+		let mut fname :String = "st_functions".to_string();
+
+		fname.push_str("_");
+		fname.push_str(&(get_random_bytes(15,&RAND_NAME_STRING)));
+		fname = fname.to_uppercase();
+		rets.push_str("lazy_static ! {\n");
+		rets.push_str(&format_tab_space(1));
+		rets.push_str(&format!("static ref {} :HashMap<String,ExtArgsParseFunc> = {{\n",fname));
+		rets.push_str(&format_tab_space(2));
+		rets.push_str(&format!("let mut retv :HashMap<String,ExtArgsParseFunc> = HashMap::new();\n"));
+		if self.jsonfuncs.len() > 0 {
+			for f in self.jsonfuncs.iter() {
+				rets.push_str(&format_tab_space(2));
+				rets.push_str(&format!("retv.insert(format!(\"{}\"), ExtArgsParseFunc::JsonFunc({}));\n",f,f));
+			}
+		}
+
+		if self.actfuncs.len() > 0 {
+			for f in self.actfuncs.iter() {
+				rets.push_str(&format_tab_space(2));
+				rets.push_str(&format!("retv.insert(format!(\"{}\"), ExtArgsParseFunc::ActionFunc({}));\n",f,f));
+			}
+		}
+
+		if self.helpfuncs.len() > 0 {
+			for f in self.helpfuncs.iter() {
+				rets.push_str(&format_tab_space(2));
+				rets.push_str(&format!("retv.insert(format!(\"{}\"), ExtArgsParseFunc::HelpFunc({}));\n",f,f));
+			}
+		}
+
+		if self.callbackfuncs.len() > 0 {
+			for f in self.callbackfuncs.iter() {
+				rets.push_str(&format_tab_space(2));
+				rets.push_str(&format!("retv.insert(format!(\"{}\"), ExtArgsParseFunc::CallbackFunc({}));\n",f,f));
+			}
+		}
+
+		rets.push_str(&format_tab_space(2));
+		rets.push_str(&format!("retv\n"));
+
+		rets.push_str(&format_tab_space(1));
+		rets.push_str("};\n");
+
+		rets.push_str("}\n");
+		{
+			let mut scb = SET_NAME.lock().unwrap();
+			*scb = format!("{}",fname);
+			em_log_trace!("SET_NAME [{}]",scb);
+		}
+
+		em_log_trace!("rets\n{}",rets);
+		return rets;
+	}
+}
+
+impl syn::parse::Parse for FuncAttrs {
+	#[allow(unused_assignments)]
+	fn parse(input : syn::parse::ParseStream) -> syn::parse::Result<Self> {
+		let mut retv :FuncAttrs = FuncAttrs {
+			helpfuncs : Vec::new(),
+			jsonfuncs : Vec::new(),
+			actfuncs : Vec::new(),
+			callbackfuncs : Vec::new(),
+		};
+		let mut k :String = "".to_string();
+		let mut v :String = "".to_string();
+		loop {
+			if input.peek(syn::Ident) {
+				let c : syn::Ident = input.parse()?;
+				em_log_trace!("ident [{}]", c);
+				if k.len() == 0 {
+					k = format!("{}", c);
+				} else if v.len() == 0 {
+					v = format!("{}", c);
+				} else {
+					let c = format!("we acept  xx=xx or xx format");
+					return Err(syn::Error::new(input.span(),&c));					
+				}
+			} else if input.peek(syn::Token![=]) {
+				let _c : syn::token::Eq = input.parse()?;
+				em_log_trace!("=");
+			} else if input.peek(syn::Token![,]) {
+				let _c : syn::token::Comma = input.parse()?;
+				em_log_trace!(",");
+				retv.set_funcnames(&k,&v,input.clone())?;
+				k = "".to_string();
+				v = "".to_string();
+			} else {
+				if input.is_empty() {
+					break;
+				}
+				let c = format!("not valid token [{}]",input.to_string());
+				return Err(syn::Error::new(input.span(),&c));
+			}			
+		}
+		retv.set_funcnames(&k,&v,input.clone())?;
+		k = "".to_string();
+		v = "".to_string();
+		return Ok(retv);
+	}
+}
+
+fn format_tab_space(isize :usize) -> String {
+	let mut rets :String = "".to_string();
+	while rets.len() < (isize * 4) {
+		rets.push_str("    ");
+	}
+	return rets;
+}
+
 macro_rules! syn_error_fmt {
 	($($a:expr),*) => {
 		let cerr = format!($($a),*);
@@ -123,19 +268,20 @@ macro_rules! syn_error_fmt {
         //            Span::call_site(),
         //            $cerr,
         //        ).to_compile_error().to_string().parse().unwrap();
-	}
+    }
 }
-
 
 #[proc_macro_attribute]
 pub fn extargs_map_function(_args :TokenStream , input :TokenStream) -> TokenStream {
 	let mut code :String = "".to_string();
-	em_log_trace!("args [{:?}]",_args);	
-	for v in _args.clone() {
-		em_log_trace!("v [{:?}]",v);
-	}
+	let nargs = _args.clone();
+	let attrs  = syn::parse_macro_input!(nargs as FuncAttrs);
+	em_log_trace!("attrs [{:?}]",attrs);
 
+	/**/
+	code.push_str(&attrs.format_code());
 	code.push_str(&(input.to_string()));
+	em_log_trace!("code \n{}",code);	
 	code.parse().unwrap()
 }
 
@@ -221,8 +367,10 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 		for i in structnames.clone() {
 			/*to make the type check for ArgSetImpl*/
 			rets.push_str(&format!("const _ :fn() = || {{\n"));
-			rets.push_str(&format!("    fn assert_impl_all<T : ?Sized + ArgSetImpl>() {{}}\n"));
-			rets.push_str(&format!("    assert_impl_all::<{}>();\n", i));
+			rets.push_str(&(format_tab_space(1)));
+			rets.push_str(&format!("fn assert_impl_all<T : ?Sized + ArgSetImpl>() {{}}\n"));
+			rets.push_str(&(format_tab_space(1)));
+			rets.push_str(&format!("assert_impl_all::<{}>();\n", i));
 			rets.push_str(&format!("}};\n"));
 		}
 	}
@@ -235,10 +383,12 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 	rets.push_str(&format!("error_class!{{{}}}\n",typeerrname));
 
 	rets.push_str(&format!("impl ArgSetImpl for {} {{\n",ident));
-	rets.push_str(&format!("    fn new() -> Self {{\n"));
-	rets.push_str(&format!("        {} {{\n",ident));
+	rets.push_str(&(format_tab_space(1)));
+	rets.push_str(&format!("fn new() -> Self {{\n"));
+	rets.push_str(&(format_tab_space(2)));
+	rets.push_str(&format!("{} {{\n",ident));
 	for (k,v) in names.clone().iter() {
-		rets.push_str(&format!("            "));
+		rets.push_str(&format_tab_space(3));
 		if v == KEYWORD_TYPE_STRING {
 			rets.push_str(&format!("{} : \"\".to_string(),\n", k));
 		} else if v == KEYWORD_U32 || v == KEYWORD_I32 || v == KEYWORD_U64 || v == KEYWORD_I64 {
@@ -254,20 +404,25 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 			rets.push_str(&format!("{} : {}::new(),\n",k,v));
 		}
 	}
-	rets.push_str(&format!("        }}\n"));
-	rets.push_str(&format!("    }}\n"));
+	rets.push_str(&format_tab_space(2));
+	rets.push_str(&format!("}}\n"));
+	rets.push_str(&format_tab_space(1));
+	rets.push_str(&format!("}}\n"));
 
 
-	rets.push_str(&format!("    \n"));
+	rets.push_str(&format_tab_space(1));
+	rets.push_str(&format!("\n"));
 
-	rets.push_str(&format!("    fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {{\n"));
+	rets.push_str(&format_tab_space(1));
+	rets.push_str(&format!("fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {{\n"));
 	let mut i :i32 = 0;
 	for (k,v) in names.clone().iter() {
 		if !check_in_array(ARGSET_KEYWORDS.clone(), v) {
 			continue;
 		}
 
-		rets.push_str(&format!("        "));
+
+		rets.push_str(&format_tab_space(2));
 		if i > 0 {
 			rets.push_str(&format!("}} else if "));
 		} else {
@@ -301,17 +456,21 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 		for s in structnames.clone() {
 			for (k,v) in names.clone().iter() {
 				if s.eq(v) {
-					rets.push_str(&format!("        "));
+					rets.push_str(&format_tab_space(2));
 					if i > 0 {
 						rets.push_str(&format!("}} else if "));
 					} else {
 						rets.push_str(&format!("if "));
 					}
 					rets.push_str(&format!("k.starts_with(&format!(\"{}.\")) {{\n",k));
-					rets.push_str(&format!("            let nk = format!(\"{{}}\",k);\n"));
-					rets.push_str(&format!("            let re = Regex::new(r\"^{}\\.\").unwrap();\n",k));
-					rets.push_str(&format!("            let kn = re.replace_all(&nk,\"\").to_string();\n"));
-					rets.push_str(&format!("            self.{}.set_value(&kn,ns.clone())?;\n",k));
+					rets.push_str(&format_tab_space(3));
+					rets.push_str(&format!("let nk = format!(\"{{}}\",k);\n"));
+					rets.push_str(&format_tab_space(3));
+					rets.push_str(&format!("let re = Regex::new(r\"^{}\\.\").unwrap();\n",k));
+					rets.push_str(&format_tab_space(3));
+					rets.push_str(&format!("let kn = re.replace_all(&nk,\"\").to_string();\n"));
+					rets.push_str(&format_tab_space(3));
+					rets.push_str(&format!("self.{}.set_value(&kn,ns.clone())?;\n",k));
 					break;
 				}
 			}
@@ -321,14 +480,20 @@ fn format_code(ident :&str,names :HashMap<String,String>, structnames :Vec<Strin
 
 
 	if i > 0 {
-		rets.push_str(&format!("        }} else {{\n"));
-		rets.push_str(&format!("            new_error!{{ {},\"{{}} not valid\" , k}}\n", typeerrname));
-		rets.push_str(&format!("        }}\n"));
+		rets.push_str(&format_tab_space(2));
+
+		rets.push_str(&format!("}} else {{\n"));
+		rets.push_str(&format_tab_space(3));
+
+		rets.push_str(&format!("new_error!{{ {},\"{{}} not valid\" , k}}\n", typeerrname));
+		rets.push_str(&format_tab_space(2));
+
+		rets.push_str(&format!("}}\n"));
 	}
-	rets.push_str(&format!("        Ok(())\n"));
-
-	rets.push_str(&format!("    }}\n"));
-
+	rets.push_str(&format_tab_space(2));
+	rets.push_str(&format!("Ok(())\n"));
+	rets.push_str(&format_tab_space(1));
+	rets.push_str(&format!("}}\n"));
 	rets.push_str(&format!("}}\n"));
 
 	rets
@@ -357,53 +522,53 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
             //        ),
             //    ).to_compile_error().to_string().parse().unwrap();
 
-		}
-	}
+        }
+    }
 
-	sname = format!("{}",co.ident);
-	em_log_trace!("sname [{}]",sname);
+    sname = format!("{}",co.ident);
+    em_log_trace!("sname [{}]",sname);
 
 
-	match co.data {
-		syn::Data::Struct(ref _vv) => {
-			match _vv.fields {
-				syn::Fields::Named(ref _n) => {
-					for _v in _n.named.iter() {
-						let res = get_name_type(_v.clone());
-						if res.is_err() {
-							syn_error_fmt!("{:?}",res.err().unwrap());
-						}
-						let (n,tn) = res.unwrap();
-						if tn.contains(KEYWORD_LEFT_ARROW) && tn != KEYWORD_VEC_STRING {
-							syn_error_fmt!("tn [{}] not valid",tn);
-						}
-						if names.get(&n).is_some() {
-							syn_error_fmt!("n [{}] has already in",n);
-						}
+    match co.data {
+    	syn::Data::Struct(ref _vv) => {
+    		match _vv.fields {
+    			syn::Fields::Named(ref _n) => {
+    				for _v in _n.named.iter() {
+    					let res = get_name_type(_v.clone());
+    					if res.is_err() {
+    						syn_error_fmt!("{:?}",res.err().unwrap());
+    					}
+    					let (n,tn) = res.unwrap();
+    					if tn.contains(KEYWORD_LEFT_ARROW) && tn != KEYWORD_VEC_STRING {
+    						syn_error_fmt!("tn [{}] not valid",tn);
+    					}
+    					if names.get(&n).is_some() {
+    						syn_error_fmt!("n [{}] has already in",n);
+    					}
 
-						if !check_in_array(ARGSET_KEYWORDS.clone(),&tn) {
-							em_log_trace!("input typename [{}]",tn);
-							structnames.push(format!("{}",tn));
-						}
+    					if !check_in_array(ARGSET_KEYWORDS.clone(),&tn) {
+    						em_log_trace!("input typename [{}]",tn);
+    						structnames.push(format!("{}",tn));
+    					}
 
-						names.insert(format!("{}",n),format!("{}",tn));
-					}
-				},
-				_ => {
-					syn_error_fmt!("not Named structure\n{}",item.to_string());
-				}
-			}
-		},
-		_ => {
-			syn_error_fmt!("not struct format\n{}",item.to_string());
-		}
-	}
+    					names.insert(format!("{}",n),format!("{}",tn));
+    				}
+    			},
+    			_ => {
+    				syn_error_fmt!("not Named structure\n{}",item.to_string());
+    			}
+    		}
+    	},
+    	_ => {
+    		syn_error_fmt!("not struct format\n{}",item.to_string());
+    	}
+    }
 
-	/*now to compile ok*/
-	let cc = format_code(&sname,names.clone(),structnames.clone());
-	em_log_trace!("cc\n{}",cc);
+    /*now to compile ok*/
+    let cc = format_code(&sname,names.clone(),structnames.clone());
+    em_log_trace!("cc\n{}",cc);
 
-	cc.parse().unwrap()
+    cc.parse().unwrap()
 }
 
 

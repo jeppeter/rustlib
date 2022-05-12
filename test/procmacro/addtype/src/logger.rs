@@ -117,6 +117,7 @@ macro_rules! em_log_error {
 	}
 }
 
+#[allow(unused_macros)]
 macro_rules! em_log_warn {
 	($($arg:tt)+) => {
 		let mut c :String= format!("[{}:{}] ",file!(),line!());
