@@ -1,6 +1,6 @@
 
 use proc_macro::TokenStream;
-use proc_macro2::Span;
+//use proc_macro2::Span;
 use syn;
 use std::sync::{Mutex,Arc};
 use lazy_static::lazy_static;
@@ -76,9 +76,10 @@ fn get_random_bytes(num :u32, basevec :&[u8]) -> String {
 #[proc_macro_attribute]
 pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 	{
-		let sp = Span::call_site();
-		let src = sp.source_file();
-		let fname = format!("{}",src.path().to_str().unwrap());
+		//let sp = Span::call_site();
+		//let src = sp.source_file();
+		let fname = format!("xxx");
+		//let fname = format!("{}",src.path().to_str().unwrap());
 		let c = LINK_NAMES.clone();
 		let cb = c.lock().unwrap();
 		let mut codes :String = String::from("");
