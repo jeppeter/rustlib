@@ -581,18 +581,80 @@ struct LoadParserAttr {
 #[allow(dead_code)]
 impl LoadParserAttr {
 	fn format_code(&self) -> String {
-		let c :String = "".to_string();
-		return c;
+		let mut rets :String = "".to_string();
+		{
+			let c = SET_NAME.clone();
+			let sb = c.lock().unwrap();
+			rets.push_str(&format!("{}.load_commandline_string({},{}.clone())\n",self.parserident,self.strident,sb));
+		}
+
+		em_log_trace!("rets [{}]", rets);		
+		return rets;
 	}
 }
 
 impl syn::parse::Parse for LoadParserAttr {
-	#[allow(unused_assignments)]
-	fn parse(_input : syn::parse::ParseStream) -> syn::parse::Result<Self> {
-		let retv = LoadParserAttr{
+	fn parse(input : syn::parse::ParseStream) -> syn::parse::Result<Self> {
+		let mut retv = LoadParserAttr{
 			parserident : "".to_string(),
 			strident : "".to_string(),
 		};
+
+		let mut k :String = "".to_string();
+		loop {
+			if input.is_empty() {
+				break;
+			}
+			if input.peek(syn::Ident) {
+				let c :syn::Ident = input.parse()?;
+				k.push_str(&format!("{}",c));
+			} else if input.peek(syn::token::And) {
+				let _c :syn::token::And = input.parse()?;
+				k.push_str("&");
+			} else if input.peek(syn::token::Paren) {
+				let con ;
+				{
+					em_log_trace!("start parenthesized");
+					let _c = syn::parenthesized!(con in input);
+					em_log_trace!("end parenthesized [{}]", con.to_string());
+					k.push_str(&format!("({})",con.to_string()));
+					let _fields :Box<syn::Expr> = con.parse()?;
+				}
+			} else if input.peek(syn::token::Comma) {
+				let _c : syn::token::Comma = input.parse()?;
+				if retv.parserident.len() == 0 {
+					retv.parserident = format!("{}",k);
+				} else if retv.strident.len() == 0 {
+					retv.strident = format!("{}",k);
+				} else {
+					let c = format!("we only accept two params");
+					return Err(syn::Error::new(input.span(),&c));					
+				}
+				k = "".to_string();
+			} else {
+				let c = format!("not valid macro expand parameters\n{}",input.to_string());
+				return Err(syn::Error::new(input.span(),&c));					
+			}
+		}
+
+		if k.len() > 0 {
+			if retv.parserident.len() == 0 {
+				retv.parserident = format!("{}",k);
+			} else if retv.strident.len() == 0 {
+				retv.strident = format!("{}",k);
+			} else {
+				let c = format!("we only accept two params");
+				return Err(syn::Error::new(input.span(),&c));					
+			}
+			k = "".to_string();
+		}
+
+		if retv.parserident.len() == 0 || retv.strident.len() == 0 {
+			let c = format!("need two params\n{}",input.to_string());
+			return Err(syn::Error::new(input.span(),&c));
+		}
+
+
 		em_log_trace!("{:?}",retv);
 		return Ok(retv);
 	}
@@ -600,13 +662,11 @@ impl syn::parse::Parse for LoadParserAttr {
 
 #[proc_macro]
 pub fn extargs_load_commandline(input :TokenStream) -> TokenStream {
-	let code :String = "".to_string();
+	let mut code :String = "".to_string();
 	em_log_trace!("input \n{}",input.to_string());
 	let nargs = input.clone();
 	let pattr :LoadParserAttr = syn::parse_macro_input!(nargs as LoadParserAttr);
-	em_log_trace!("{:?}",pattr);
-
-	//code.push_str(&pattr.format_code());
+	code.push_str(&pattr.format_code());
 	em_log_trace!("code \n{}",code);
 	return code.parse().unwrap();
 }

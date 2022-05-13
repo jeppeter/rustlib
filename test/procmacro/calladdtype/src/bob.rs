@@ -45,10 +45,10 @@ fn bobcall_handler(_ns :NameSpaceEx, _args :Option<Arc<RefCell<dyn ArgSetImpl>>>
 }
 
 
-//#[extargs_map_function(opthelp=bob_help,jsonfunc=bob_json_set,actfunc=bob_value_set,callbackfunc=bobparser_handler,bobcall_handler)]
+#[extargs_map_function(opthelp=bob_help,jsonfunc=bob_json_set,actfunc=bob_value_set,callbackfunc=bobparser_handler,bobcall_handler)]
 pub fn bob_func() {
 	let mut parser = ExtArgsParser::new();
-	let cmdline :String = "".to_string();
+	let cmdline :String = "bob cmdline".to_string();
 	extargs_load_commandline!(parser,&cmdline);
 	return;
 }

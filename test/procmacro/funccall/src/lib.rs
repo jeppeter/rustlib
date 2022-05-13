@@ -74,7 +74,7 @@ impl ExtArgsParser {
 	}
 
 	pub fn load_commandline_string(&self,s :&str, fnptrs :HashMap<String,ExtArgsParseFunc>) -> Result<(),Box<dyn Error>> {
-		println!("s \n{}", s);
+		println!("input s\n{}", s);
 		for (k,v) in fnptrs.clone().iter() {
 			println!("call [{}] function", k);
 			match v {
