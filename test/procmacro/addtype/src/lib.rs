@@ -571,11 +571,39 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
     cc.parse().unwrap()
 }
 
+#[derive(Clone,Debug)]
+struct ParserAttr {
+	parserident :String,
+	strident :String,
+}
+
+impl ParserAttr {
+	fn format_code(&self) -> String {
+		let c :String = "".to_string();
+		return c;
+	}
+}
+
+impl syn::parse::Parse for ParserAttr {
+	#[allow(unused_assignments)]
+	fn parse(input : syn::parse::ParseStream) -> syn::parse::Result<Self> {
+		let mut retv = ParserAttr{
+			parserident : "".to_string(),
+			strident : "".to_string(),
+		};
+		return Ok(retv);
+	}
+}
+
 #[proc_macro]
 pub fn extargs_load_commandline(input :TokenStream) -> TokenStream {
 	let mut code :String = "".to_string();
+	em_log_trace!("input \n{}",input.to_string());
+	let nargs = input.clone();
+	let pattr = syn::parse_macro_input!(nargs as ParserAttr);
+	em_log_trace!("{:?}",pattr);
 
-	
-
-	code.parse().unwrap()
+	//code.push_str(&pattr.format_code());
+	em_log_trace!("code \n{}",code);
+	return code.parse().unwrap();
 }

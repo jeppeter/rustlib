@@ -126,7 +126,7 @@ fn main() {
 	let ns = NameSpaceEx::new();
 	let mut parser = ExtArgsParser::new();
 	let cmdline :String = "".to_string();
-	extargs_load_commandline!(parser.clone(),&cmdline);
+	extargs_load_commandline!(parser,&cmdline);
 	bob::bob_func();
 	call_arg_set(&mut cv,ns).unwrap();
 	println!("cv [{:?}]",cv);
