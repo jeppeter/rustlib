@@ -126,7 +126,10 @@ fn main() {
 	let ns = NameSpaceEx::new();
 	let mut parser :ExtArgsParser = ExtArgsParser::new();
 	let cmdline :String = "main cmdline".to_string();
-	extargs_load_commandline!(parser,&(cmdline));
+	let c = extargs_load_commandline!(parser,&(cmdline));
+	if c.is_err() {
+		std::process::exit(5);
+	}
 	bob::bob_func();
 	call_arg_set(&mut cv,ns).unwrap();
 	println!("cv [{:?}]",cv);

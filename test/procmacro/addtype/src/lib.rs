@@ -40,7 +40,7 @@ const RAND_NAME_STRING :[u8; 62]= *b"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG
 
 lazy_static! {
 	static ref LINK_NAMES :Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
-	static ref SET_NAME : Arc<Mutex<String>> = Arc::new(Mutex::new(String::from("FUNC_CALL")));
+	static ref EXTARGS_FUNC_MAP_NAME : Arc<Mutex<String>> = Arc::new(Mutex::new(String::from("FUNC_CALL")));
 
 	static ref ARGSET_KEYWORDS :Vec<String> = {
 		let mut retv :Vec<String> = Vec::new();
@@ -88,7 +88,7 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 
 		codes += "lazy_static ! {\n";
 		{
-			let mut scb = SET_NAME.lock().unwrap();
+			let mut scb = EXTARGS_FUNC_MAP_NAME.lock().unwrap();
 			let mut funcname :String;
 			funcname = "FUNC_CALL_".to_string();
 			funcname += &(format!("{}",get_random_bytes(15,&RAND_NAME_STRING))[..]);
@@ -193,9 +193,9 @@ impl FuncAttrs {
 
 		rets.push_str("}\n");
 		{
-			let mut scb = SET_NAME.lock().unwrap();
+			let mut scb = EXTARGS_FUNC_MAP_NAME.lock().unwrap();
 			*scb = format!("{}",fname);
-			em_log_trace!("SET_NAME [{}]",scb);
+			em_log_trace!("EXTARGS_FUNC_MAP_NAME [{}]",scb);
 		}
 
 		em_log_trace!("rets\n{}",rets);
@@ -583,7 +583,7 @@ impl LoadParserAttr {
 	fn format_code(&self) -> String {
 		let mut rets :String = "".to_string();
 		{
-			let c = SET_NAME.clone();
+			let c = EXTARGS_FUNC_MAP_NAME.clone();
 			let sb = c.lock().unwrap();
 			rets.push_str(&format!("{}.load_commandline_string({},{}.clone())\n",self.parserident,self.strident,sb));
 		}
@@ -594,11 +594,20 @@ impl LoadParserAttr {
 }
 
 impl syn::parse::Parse for LoadParserAttr {
+	#[allow(unused_assignments)]
 	fn parse(input : syn::parse::ParseStream) -> syn::parse::Result<Self> {
 		let mut retv = LoadParserAttr{
 			parserident : "".to_string(),
 			strident : "".to_string(),
 		};
+		{
+			let cb = EXTARGS_FUNC_MAP_NAME.clone();
+			let sb = cb.lock().unwrap();
+			if sb.len() == 0 {
+				let c = format!("need call extargs_map_function before\n{}",input.to_string());
+				return Err(syn::Error::new(input.span(),&c));
+			}
+		}
 
 		let mut k :String = "".to_string();
 		loop {

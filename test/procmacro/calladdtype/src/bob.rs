@@ -49,6 +49,9 @@ fn bobcall_handler(_ns :NameSpaceEx, _args :Option<Arc<RefCell<dyn ArgSetImpl>>>
 pub fn bob_func() {
 	let mut parser = ExtArgsParser::new();
 	let cmdline :String = "bob cmdline".to_string();
-	extargs_load_commandline!(parser,&cmdline);
+	let c = extargs_load_commandline!(parser,&cmdline);
+	if c.is_err() {
+		std::process::exit(5);
+	}
 	return;
 }
