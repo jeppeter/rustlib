@@ -3,7 +3,7 @@ extern crate funccall;
 
 use addtype::{extargs_map_function,extargs_load_commandline};
 #[allow(unused_imports)]
-use funccall::{ExtArgsParseFunc,ExtKeyParse,NameSpaceEx,ArgSetImpl};
+use funccall::{ExtArgsParseFunc,ExtKeyParse,NameSpaceEx,ArgSetImpl,ExtArgsParser};
 #[allow(unused_imports)]
 use lazy_static::lazy_static;
 use std::error::Error;
@@ -45,7 +45,7 @@ fn bobcall_handler(_ns :NameSpaceEx, _args :Option<Arc<RefCell<dyn ArgSetImpl>>>
 }
 
 
-#[extargs_map_function(opthelp=bob_help,jsonfunc=bob_json_set,actfunc=bob_value_set,callbackfunc=bobparser_handler,bobcall_handler)]
+//#[extargs_map_function(opthelp=bob_help,jsonfunc=bob_json_set,actfunc=bob_value_set,callbackfunc=bobparser_handler,bobcall_handler)]
 pub fn bob_func() {
 	let mut parser = ExtArgsParser::new();
 	let cmdline :String = "".to_string();

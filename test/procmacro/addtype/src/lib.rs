@@ -114,7 +114,7 @@ pub fn print_all_links(_args :TokenStream, input :TokenStream) -> TokenStream {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 struct FuncAttrs {
 	helpfuncs :Vec<String>,
 	jsonfuncs :Vec<String>,
@@ -571,36 +571,39 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
     cc.parse().unwrap()
 }
 
+#[allow(dead_code)]
 #[derive(Clone,Debug)]
-struct ParserAttr {
+struct LoadParserAttr {
 	parserident :String,
 	strident :String,
 }
 
-impl ParserAttr {
+#[allow(dead_code)]
+impl LoadParserAttr {
 	fn format_code(&self) -> String {
 		let c :String = "".to_string();
 		return c;
 	}
 }
 
-impl syn::parse::Parse for ParserAttr {
+impl syn::parse::Parse for LoadParserAttr {
 	#[allow(unused_assignments)]
-	fn parse(input : syn::parse::ParseStream) -> syn::parse::Result<Self> {
-		let mut retv = ParserAttr{
+	fn parse(_input : syn::parse::ParseStream) -> syn::parse::Result<Self> {
+		let retv = LoadParserAttr{
 			parserident : "".to_string(),
 			strident : "".to_string(),
 		};
+		em_log_trace!("{:?}",retv);
 		return Ok(retv);
 	}
 }
 
 #[proc_macro]
 pub fn extargs_load_commandline(input :TokenStream) -> TokenStream {
-	let mut code :String = "".to_string();
+	let code :String = "".to_string();
 	em_log_trace!("input \n{}",input.to_string());
 	let nargs = input.clone();
-	let pattr = syn::parse_macro_input!(nargs as ParserAttr);
+	let pattr :LoadParserAttr = syn::parse_macro_input!(nargs as LoadParserAttr);
 	em_log_trace!("{:?}",pattr);
 
 	//code.push_str(&pattr.format_code());
