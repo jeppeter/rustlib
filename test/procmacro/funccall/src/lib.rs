@@ -5,7 +5,7 @@ use std::error::Error;
 use std::sync::Arc;
 use std::any::Any;
 //use std::rc::Rc;
-//use std::collections::HashMap;
+use std::collections::HashMap;
 
 
 
@@ -13,6 +13,12 @@ use std::any::Any;
 pub struct ExtKeyParse {
 }
 
+
+impl ExtKeyParse {
+	fn new() -> ExtKeyParse {
+		ExtKeyParse {}
+	}
+}
 
 pub trait ArgSetImpl {
 	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>>;
@@ -59,3 +65,46 @@ pub enum ExtArgsParseFunc {
 	CallbackFunc(ExtArgsCallbackFunc),
 }
 
+#[derive(Clone)]
+pub struct ExtArgsParser{}
+
+impl ExtArgsParser {
+	pub fn new() -> ExtArgsParser {
+		ExtArgsParser {}
+	}
+
+	pub fn load_commandline_string(&self,s :&str, fnptrs :HashMap<String,ExtArgsParseFunc>) -> Result<(),Box<dyn Error>> {
+		println!("s \n{}", s);
+		for (k,v) in fnptrs.clone().iter() {
+			println!("call [{}] function", k);
+			match v {
+				ExtArgsParseFunc::JsonFunc(v1) => {
+					let f = v1.clone();
+					let n = NameSpaceEx::new();
+					let k = ExtKeyParse::new();
+					let v = Value::Null;
+					f(n,k,v)?;
+				},
+				ExtArgsParseFunc::HelpFunc(v1) => {
+					let f = v1.clone();
+					let k = ExtKeyParse::new();
+					println!("get [{}]",f(&k));
+				},
+				ExtArgsParseFunc::ActionFunc(v1) => {
+					let f = v1.clone();
+					let n = NameSpaceEx::new();
+					let k = ExtKeyParse::new();
+					let params = Vec::<String>::new();
+					let c = f(n,0,k,params)?;
+					println!("ret [{}]",c);
+				},
+				ExtArgsParseFunc::CallbackFunc(v1) => {
+					let f = v1.clone();
+					let n = NameSpaceEx::new();
+					f(n,None,None)?;
+				}
+			}
+		}
+		Ok(())
+	}
+}

@@ -8,7 +8,7 @@ use regex::Regex;
 use std::fmt;
 #[allow(unused_imports)]
 use std::collections::HashMap;
-use funccall::{ExtKeyParse,NameSpaceEx,ArgSetImpl,ExtArgsParseFunc};
+use funccall::{ExtKeyParse,NameSpaceEx,ArgSetImpl,ExtArgsParseFunc,ExtArgsParser};
 use std::cell::RefCell;
 #[allow(unused_imports)]
 use serde_json::Value;
@@ -16,7 +16,7 @@ use std::any::Any;
 use std::sync::{Arc};
 
 
-use addtype::{ArgSet,extargs_map_function};
+use addtype::{ArgSet,extargs_map_function,extargs_load_commandline};
 
 
 mod bob;
@@ -124,6 +124,9 @@ fn call_arg_set<T : ArgSetImpl>(cv :&mut T,ns :NameSpaceEx) -> Result<(),Box<dyn
 fn main() {
 	let mut cv = BBFunc::new();
 	let ns = NameSpaceEx::new();
+	let mut parser = ExtArgsParser::new();
+	let cmdline :String = "".to_string();
+	extargs_load_commandline!(parser.clone(),&cmdline);
 	bob::bob_func();
 	call_arg_set(&mut cv,ns).unwrap();
 	println!("cv [{:?}]",cv);

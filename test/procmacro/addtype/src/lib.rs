@@ -571,4 +571,11 @@ pub fn argset_impl(item :TokenStream) -> TokenStream {
     cc.parse().unwrap()
 }
 
+#[proc_macro]
+pub fn extargs_load_commandline(input :TokenStream) -> TokenStream {
+	let mut code :String = "".to_string();
 
+	
+
+	code.parse().unwrap()
+}
