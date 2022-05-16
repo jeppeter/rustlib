@@ -18,7 +18,7 @@ use std::sync::{Arc};
 
 use addtype::{ArgSet,extargs_map_function,extargs_load_commandline};
 
-
+mod ali;
 mod bob;
 
 #[allow(unused_imports)]
@@ -130,6 +130,7 @@ fn main() {
 	if c.is_err() {
 		std::process::exit(5);
 	}
+	ali::ali_func();
 	bob::bob_func();
 	call_arg_set(&mut cv,ns).unwrap();
 	println!("cv [{:?}]",cv);

@@ -73,35 +73,38 @@ impl ExtArgsParser {
 		ExtArgsParser {}
 	}
 
-	pub fn load_commandline_string(&self,s :&str, fnptrs :HashMap<String,ExtArgsParseFunc>) -> Result<(),Box<dyn Error>> {
+	pub fn load_commandline_string(&self,s :&str, fnptrs1 :Option<HashMap<String,ExtArgsParseFunc>>) -> Result<(),Box<dyn Error>> {
 		println!("input s\n{}", s);
-		for (k,v) in fnptrs.clone().iter() {
-			println!("call [{}] function", k);
-			match v {
-				ExtArgsParseFunc::JsonFunc(v1) => {
-					let f = v1.clone();
-					let n = NameSpaceEx::new();
-					let k = ExtKeyParse::new();
-					let v = Value::Null;
-					f(n,k,v)?;
-				},
-				ExtArgsParseFunc::HelpFunc(v1) => {
-					let f = v1.clone();
-					let k = ExtKeyParse::new();
-					println!("get [{}]",f(&k));
-				},
-				ExtArgsParseFunc::ActionFunc(v1) => {
-					let f = v1.clone();
-					let n = NameSpaceEx::new();
-					let k = ExtKeyParse::new();
-					let params = Vec::<String>::new();
-					let c = f(n,0,k,params)?;
-					println!("ret [{}]",c);
-				},
-				ExtArgsParseFunc::CallbackFunc(v1) => {
-					let f = v1.clone();
-					let n = NameSpaceEx::new();
-					f(n,None,None)?;
+		if fnptrs1.is_some() {
+			let fnptrs = fnptrs1.unwrap();
+			for (k,v) in fnptrs.clone().iter() {
+				println!("call [{}] function", k);
+				match v {
+					ExtArgsParseFunc::JsonFunc(v1) => {
+						let f = v1.clone();
+						let n = NameSpaceEx::new();
+						let k = ExtKeyParse::new();
+						let v = Value::Null;
+						f(n,k,v)?;
+					},
+					ExtArgsParseFunc::HelpFunc(v1) => {
+						let f = v1.clone();
+						let k = ExtKeyParse::new();
+						println!("get [{}]",f(&k));
+					},
+					ExtArgsParseFunc::ActionFunc(v1) => {
+						let f = v1.clone();
+						let n = NameSpaceEx::new();
+						let k = ExtKeyParse::new();
+						let params = Vec::<String>::new();
+						let c = f(n,0,k,params)?;
+						println!("ret [{}]",c);
+					},
+					ExtArgsParseFunc::CallbackFunc(v1) => {
+						let f = v1.clone();
+						let n = NameSpaceEx::new();
+						f(n,None,None)?;
+					}
 				}
 			}
 		}
