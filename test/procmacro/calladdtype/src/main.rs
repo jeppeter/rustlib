@@ -102,6 +102,7 @@ pub struct CCFunc {
 #[derive(ArgSet,Debug)]
 pub struct BBFunc {
 	csub :CCFunc,
+	usub :CCFunc,
 	//bbx : HashMap<String,String>,
 	xstr :String,
 	bval : bool,
@@ -118,6 +119,7 @@ pub struct BBFunc {
 
 fn call_arg_set<T : ArgSetImpl>(cv :&mut T,ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	cv.set_value("","csub_subnargs",ns.clone())?;
+	cv.set_value("","usub_subnargs",ns.clone())?;
 	Ok(())
 }
 
