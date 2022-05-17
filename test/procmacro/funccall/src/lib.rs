@@ -21,7 +21,7 @@ impl ExtKeyParse {
 }
 
 pub trait ArgSetImpl {
-	fn set_value(&mut self,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>>;
+	fn set_value(&mut self,prefix :&str,k :&str, ns :NameSpaceEx) -> Result<(),Box<dyn Error>>;
 	fn new() -> Self where Self :Sized;
 }
 
@@ -34,18 +34,23 @@ impl NameSpaceEx {
 		NameSpaceEx{}
 	}
 	pub fn get_bool(&self, _k :&str) -> bool {
+		println!("namespace k [{}]",_k);
 		return false;
 	}
 	pub fn get_int(&self,_k :&str) -> i64 {
+		println!("namespace k [{}]",_k);
 		return 0;
 	}
 	pub fn get_float(&self,_k :&str) -> f64 {
+		println!("namespace k [{}]",_k);
 		return 0.0;
 	}
 	pub fn get_array(&self,_k :&str) -> Vec<String> {
+		println!("namespace k [{}]",_k);
 		return Vec::new();
 	}
 	pub fn get_string(&self,_k :&str) -> String {
+		println!("namespace k [{}]",_k);
 		return "".to_string();
 	}
 }

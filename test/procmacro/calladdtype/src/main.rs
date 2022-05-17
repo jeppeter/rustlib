@@ -115,7 +115,7 @@ pub struct BBFunc {
 
 
 fn call_arg_set<T : ArgSetImpl>(cv :&mut T,ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-	cv.set_value("csub.cval",ns.clone())?;
+	cv.set_value("","csub_cval",ns.clone())?;
 	Ok(())
 }
 
