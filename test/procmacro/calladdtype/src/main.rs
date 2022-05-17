@@ -95,6 +95,7 @@ pub struct CCFunc {
 	aval :f64,
 	bval :f64,
 	cval :Vec<String>,
+	subnargs :Vec<String>,
 }
 
 
@@ -110,12 +111,13 @@ pub struct BBFunc {
 	ui6 : u64,
 	fi : f32,
 	fi6 :f64,
+	args :Vec<String>,
 }
 
 
 
 fn call_arg_set<T : ArgSetImpl>(cv :&mut T,ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-	cv.set_value("","csub_cval",ns.clone())?;
+	cv.set_value("","csub_subnargs",ns.clone())?;
 	Ok(())
 }
 
