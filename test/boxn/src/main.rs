@@ -183,6 +183,11 @@ struct ParserCompat {
 }
 
 #[derive(Clone)]
+struct ParserState {
+	val :i32,
+}
+
+#[derive(Clone)]
 struct ExtKeyParse {
 	typname :String,
 }
@@ -203,7 +208,7 @@ impl ExtKeyParse {
 enum ExtArgsFunc {
 	LoadFunc(Rc<dyn Fn(String,ExtKeyParse,Vec<ParserCompat>) -> Result<(),Box<dyn Error>>>),
 	ActionFunc(Rc<dyn Fn(NameSpaceEx,i32,ExtKeyParse,Vec<String>) -> Result<i32,Box<dyn Error>>>),
-	LoadJsonFunc(Rc<dyn Fn(NameSpaceEx) -> Result<(),Box<dyn Error>>>),
+	LoadJsonFunc(Rc<dyn Fn(NameSpaceEx,Option<ParserState>) -> Result<(),Box<dyn Error>>>),
 	JsonFunc(Rc<dyn Fn(NameSpaceEx,ExtKeyParse,Value) -> Result<(),Box<dyn Error>>>),	
 }
 
@@ -211,6 +216,7 @@ enum ExtArgsFunc {
 struct ExtArgsParserInner {
 	setmapfuncs :Rc<RefCell<HashMap<i32,Rc<RefCell<ExtArgsFunc>>>>>,
 	val : Rc<RefCell<i32>>,
+	arg_state : Option<ParserState>,
 	load_priority :Vec<i32>,
 }
 
@@ -222,6 +228,7 @@ impl ExtArgsParserInner {
 			setmapfuncs : Rc::new(RefCell::new(HashMap::new())),
 			val : Rc::new(RefCell::new(0)),
 			load_priority : vec![SUB_COMMAND_JSON_SET,COMMAND_JSON_SET,ENVIRONMENT_SET,ENV_SUB_COMMAND_JSON_SET,ENV_COMMAND_JSON_SET],
+			arg_state :None,
 		};
 
 		retv.insert_setmap_funcs();
@@ -229,29 +236,34 @@ impl ExtArgsParserInner {
 	}
 
 
-	fn parse_subcommand_json_set(&self, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-		extargs_log_trace!("val [{}]", self.val.borrow());
+	fn parse_subcommand_json_set(&self, ns :NameSpaceEx,pstate1 :Option<ParserState>) -> Result<(),Box<dyn Error>> {	
+		let pstate = pstate1.unwrap();
+		extargs_log_trace!("val [{}] state [{}]", self.val.borrow(),pstate.val);
 		Ok(())
 	}
 
-	fn parse_command_json_set(&self, ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-		extargs_log_trace!("val [{}]", self.val.borrow());
+	fn parse_command_json_set(&self, ns :NameSpaceEx,pstate1 :Option<ParserState>) -> Result<(),Box<dyn Error>> {	
+		let pstate = pstate1.unwrap();
+		extargs_log_trace!("val [{}] state [{}]", self.val.borrow(),pstate.val);
 		Ok(())
 	}
 
-	fn parse_environment_set(&self, ns :NameSpaceEx) ->  Result<(),Box<dyn Error>> {
-		extargs_log_trace!("val [{}]", self.val.borrow());
+	fn parse_environment_set(&self, ns :NameSpaceEx,pstate1 :Option<ParserState>) -> Result<(),Box<dyn Error>> {	
+		let pstate = pstate1.unwrap();
+		extargs_log_trace!("val [{}] state [{}]", self.val.borrow(),pstate.val);
 		Ok(())
 	}
 
-	fn parse_env_subcommand_json_set(&self,ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-		extargs_log_trace!("val [{}]", self.val.borrow());
-		Ok(())		
+	fn parse_env_subcommand_json_set(&self,ns :NameSpaceEx,pstate1 :Option<ParserState>) -> Result<(),Box<dyn Error>> {	
+		let pstate = pstate1.unwrap();
+		extargs_log_trace!("val [{}] state [{}]", self.val.borrow(),pstate.val);
+		Ok(())
 	}
 
-	fn parse_env_command_json_set(&self, ns :NameSpaceEx)  -> Result<(),Box<dyn Error>> {
-		extargs_log_trace!("val [{}]", self.val.borrow());
-		Ok(())		
+	fn parse_env_command_json_set(&self, ns :NameSpaceEx,pstate1 :Option<ParserState>) -> Result<(),Box<dyn Error>> {	
+		let pstate = pstate1.unwrap();
+		extargs_log_trace!("val [{}] state [{}]", self.val.borrow(),pstate.val);
+		Ok(())
 	}
 
 
@@ -271,30 +283,30 @@ impl ExtArgsParserInner {
 		let b = Arc::new(RefCell::new(self.clone()));
 		let s1 = b.clone();
 		extargs_log_trace!("setmapfuncs [{}]",SUB_COMMAND_JSON_SET);
-		self.setmapfuncs.borrow_mut().insert(SUB_COMMAND_JSON_SET,Rc::new(RefCell::new(ExtArgsFunc::LoadJsonFunc(Rc::new(move |n| { s1.borrow().parse_subcommand_json_set(n) })))));
+		self.setmapfuncs.borrow_mut().insert(SUB_COMMAND_JSON_SET,Rc::new(RefCell::new(ExtArgsFunc::LoadJsonFunc(Rc::new(move |n,s| { s1.borrow().parse_subcommand_json_set(n,s) })))));
 		let s1 = b.clone();
 		extargs_log_trace!("setmapfuncs [{}]",COMMAND_JSON_SET);
-		self.setmapfuncs.borrow_mut().insert(COMMAND_JSON_SET,Rc::new(RefCell::new(ExtArgsFunc::LoadJsonFunc(Rc::new(move |n| { s1.borrow().parse_command_json_set(n) })))));
+		self.setmapfuncs.borrow_mut().insert(COMMAND_JSON_SET,Rc::new(RefCell::new(ExtArgsFunc::LoadJsonFunc(Rc::new(move |n,s| { s1.borrow().parse_command_json_set(n,s) })))));
 		let s1 = b.clone();
 		extargs_log_trace!("setmapfuncs [{}]",ENVIRONMENT_SET);
-		self.setmapfuncs.borrow_mut().insert(ENVIRONMENT_SET,Rc::new(RefCell::new(ExtArgsFunc::LoadJsonFunc(Rc::new(move |n| { s1.borrow().parse_environment_set(n) })))));
+		self.setmapfuncs.borrow_mut().insert(ENVIRONMENT_SET,Rc::new(RefCell::new(ExtArgsFunc::LoadJsonFunc(Rc::new(move |n,s| { s1.borrow().parse_environment_set(n,s) })))));
 		let s1 = b.clone();
 		extargs_log_trace!("setmapfuncs [{}]",ENV_SUB_COMMAND_JSON_SET);
-		self.setmapfuncs.borrow_mut().insert(ENV_SUB_COMMAND_JSON_SET,Rc::new(RefCell::new(ExtArgsFunc::LoadJsonFunc(Rc::new(move |n| { s1.borrow().parse_env_subcommand_json_set(n) })))));
+		self.setmapfuncs.borrow_mut().insert(ENV_SUB_COMMAND_JSON_SET,Rc::new(RefCell::new(ExtArgsFunc::LoadJsonFunc(Rc::new(move |n,s| { s1.borrow().parse_env_subcommand_json_set(n,s) })))));
 		let s1 = b.clone();
 		extargs_log_trace!("setmapfuncs [{}]",ENV_COMMAND_JSON_SET);
-		self.setmapfuncs.borrow_mut().insert(ENV_COMMAND_JSON_SET,Rc::new(RefCell::new(ExtArgsFunc::LoadJsonFunc(Rc::new(move |n| { s1.borrow().parse_env_command_json_set(n) })))));
+		self.setmapfuncs.borrow_mut().insert(ENV_COMMAND_JSON_SET,Rc::new(RefCell::new(ExtArgsFunc::LoadJsonFunc(Rc::new(move |n,s| { s1.borrow().parse_env_command_json_set(n,s) })))));
 		return;
 	}
 
 
-	fn call_parse_setmap_func(&self,idx :i32,ns:NameSpaceEx) -> Result<(),Box<dyn Error>> {
+	fn call_parse_setmap_func(&self,idx :i32,ns:NameSpaceEx,pstate : Option<ParserState>) -> Result<(),Box<dyn Error>> {
 		let fnptr = self.get_setmap_func(idx);
 		if fnptr.is_some() {
 			let f2 = fnptr.unwrap();
 			match f2 {
 				ExtArgsFunc::LoadJsonFunc(f) => {
-					return f(ns);
+					return f(ns,pstate);
 				},
 				_ => {
 					new_error!{ParserError,"return [{}] not LoadJsonFunc", idx}
@@ -308,12 +320,17 @@ impl ExtArgsParserInner {
 
 	pub fn call_command(&mut self) -> Result<(),Box<dyn Error>> {
 		let ns = NameSpaceEx::new();
+		if self.arg_state.is_none() {
+			self.arg_state = Some(ParserState{val : 0});
+		}
+		let mut arg_state :ParserState = self.arg_state.as_ref().unwrap().clone();
 		for p in self.load_priority.clone() {
 			{
 		      let mut age_mut_ref: RefMut<i32> = self.val.borrow_mut();
 		       *age_mut_ref += 1;
 			}
-			self.call_parse_setmap_func(p,ns.clone())?;
+			arg_state.val += 10;
+			self.call_parse_setmap_func(p,ns.clone(),Some(arg_state.clone()))?;
 		}
 		Ok(())
 	}
