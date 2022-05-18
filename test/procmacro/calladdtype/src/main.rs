@@ -113,6 +113,8 @@ pub struct BBFunc {
 	fi : f32,
 	fi6 :f64,
 	args :Vec<String>,
+	cc_args :Vec<String>,
+	nn_subnargs : Vec<String>,
 }
 
 
