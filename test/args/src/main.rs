@@ -15,10 +15,10 @@ fn main() {
 	let mut base :u32;
 	let mut cparse :String;
 	//let mut wstr :String = String::new();
-	//let mut buf = vec![];
+	let mut buf = vec![];
 	{
-		//let mut wstr = BufWriter::new(&mut buf);
-		let mut wstr = std::io::stdout();
+		let mut wstr = BufWriter::new(&mut buf);
+		//let mut wstr = std::io::stdout();
 
 		let mut cstr :String;
 
@@ -53,6 +53,6 @@ fn main() {
 	    	}
 	    }
 	}
-    //let s = std::str::from_utf8(&buf).unwrap();
-    //print!("total str\n{}",s);
+    let s = std::str::from_utf8(&buf).unwrap();
+    print!("total str\n{}",s);
 }
