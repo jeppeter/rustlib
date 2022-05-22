@@ -52,6 +52,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	let ns = nserr.unwrap();
 	println!("subcommand={}", ns.get_string("subcommand"));
 	println!("verbose={}", ns.get_int("verbose"));
+	println!("args={:?}",ns.get_array("args"));
 
 	return Ok(());
 }

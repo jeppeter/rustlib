@@ -1,6 +1,22 @@
 use std::env;
 use std::i64;
 use std::io::{Write,BufWriter};
+use std::borrow::Cow;
+
+
+pub fn basename<'a>(path: &'a str) -> Cow<'a, str> {
+	let splc :char;
+	if env::consts::OS == "windows" {
+		splc = '\\';
+	} else {
+		splc = '/';
+	}
+    let mut pieces = path.rsplitn(2, |c| c == splc);
+    match pieces.next() {
+        Some(p) => p.into(),
+        None => path.into(),
+    }
+}
 
 fn write_fmts<T : Write>(iowrite :&mut T,s :&str) -> Result<usize,std::io::Error> {
 	let mut c = iowrite.write(s.as_bytes())?;
@@ -21,10 +37,16 @@ fn main() {
 		//let mut wstr = std::io::stdout();
 
 		let mut cstr :String;
+		cstr = format!("OS={}",env::consts::OS);
+		write_fmts(&mut wstr,&cstr).unwrap();
 
 	    for arg in env::args() {
+	    	if i == 0 {
+	    		cstr = format!("prog={}",basename(&arg));
+	    		write_fmts(&mut wstr,&cstr);
+	    	}
 	    	cstr = format!("[{}]=[{}]", i, arg);
-	    	write_fmts(&mut wstr,&cstr).unwrap();
+	    	write_fmts(&mut wstr,&cstr).unwrap();	    	
 	    	//writeln!(wstr,"[{}]=[{}]", i, arg).unwrap();
 	    	i += 1;
 	    	if i == 1 {
