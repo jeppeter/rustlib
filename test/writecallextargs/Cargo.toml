@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 tempfile = "^3.3.0"
+
+extargsparse_worker = { path = "x:\\extargsparse-rs\\extargsparse_worker"}
+extargsparse_codegen = { path = "x:\\extargsparse-rs\\extargsparse_codegen"}

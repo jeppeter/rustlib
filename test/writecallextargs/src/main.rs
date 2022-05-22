@@ -4,6 +4,10 @@ use std::thread;
 use std::time;
 use std::fs;
 
+use extaparse_worker::{ExtArgsParser};
+
+
+
 #[#[derive(Debug)]]
 struct FuncComposer {
 	funcstr :String,
@@ -129,6 +133,99 @@ impl ExtArgsDir {
 		retv
 	}
 
+	fn get_parser_struct(tabs :i32 ,parser :ExtArgsParser,options :ExtArgsOptions, cmdname :&str) -> Result<String,Box<dyn Error>> {
+		let mut rets :String = "".to_string();
+		let subcmds :Vec<String>;
+		let opts :Vec<ExtKeyParse>;
+		let mut idx : i32 = 0;
+		let  mut strprefix :String;
+
+		if cmdname.len() > 0 {
+			let v :Vec<&str> = cmdname.split(".").collect();
+			strprefix = "".to_string();
+			for c in v.iter() {
+				let cv :Vec<char> = c.chars().collect();
+				let mut cidx :i32 = 0;
+				for cc in cv.iter() {
+					if cidx  == 0 {
+						strprefix.push(cc.to_uppercase());
+					} else {
+						strprefix.push(cc);
+					}
+
+					cidx += 1;
+				}
+			}
+			strprefix.push_str("DataStruct");
+		} else {
+			strprefix = format!("MainDataStruct");
+		}
+
+		subcmds = parser.get_sub_commands_ex(cmdname)?;
+		for c in subcmds.iter() {
+			let mut curcmd :String = format!("{}",cmdname);
+			if curcmd.len() > 0 {
+				curcmd.push_str(".");
+			}
+			curcmd.push_str(&(format!("{}", c)));
+			let curs = self.get_parser_struct(tabs , parser.clone(),options.clone(),&curcmd)?;
+			rets.push_str("\n");
+			rets.push_str(&curs);
+		}
+
+		opts = parser.get_cmd_opts_ex(cmdname)?;
+		for o in opts.iter() {
+			if o.is_flag() && o.type_name() != KEYWORD_HELP && o.type_name() != KEYWORD_JSONFILE && o.type_name() != KEYWORD_PREFIX {
+				let tname :String;
+				let kname :String;
+				if idx == 0 {
+					rets.push_str("#[derive(ArgSet)]\n");
+					rets.push_str(&(format!("struct {} {{\n",strprefix)));
+				}
+				if o.type_name() == KEYWORD_LIST {
+					tname = format!("Vec<String>");
+				} else if o.type_name() == KEYWORD_STRING {
+					tname = format!("String");
+				} else if o.type_name() == KEYWORD_INT {
+					tname = format!("i64");
+				} else if o.type_name() == KEYWORD_FLOAT {
+					tname = format!("f64");
+				} else if o.type_name() == KEYWORD_BOOL {
+					tname = format!("bool");
+				} else if o.type_name() == KEYWORD_ARGS {
+					tname = format!("Vec<String>");
+				} else if o.type_name() == KEYWORD_COUNT {
+					tname = format!("i64");
+				} else {
+					extargs_new_error!{ExtArgsDirError,"not supported type [{}]", o.type_name()}
+				}
+
+				if o.type_name() != KEYWORD_ARGS {
+					kname = format!("{}",o.flag_name());
+				} else {
+					if cmdname.len() > 0 {
+						kname = format!("{}",KEYWORD_SUBNARGS);
+					} else {
+						kname = format!("{}",KEYWORD_ARGS);
+					}
+				}
+
+				rets.push_str(&format!("    {} : {},",))
+				idx += 1;
+			}
+
+		}
+
+		if idx > 0 {
+			rets.push_str("}}\n");
+		}
+
+
+
+
+		Ok(rets)
+	}
+
 	pub fn write_rust_code(optstr :&str,cmdstr :&str, addmode :Vec<String>,funcstr :&str, priority :Vec<i32>) -> Result<(),Box<dyn Error>> {
 
 	}
@@ -137,9 +234,9 @@ impl ExtArgsDir {
 
 
 fn main() {
-    let args :Vec<String> = env::args().collect();
-    if args.len() >= 3 {
-    	let d :ExtArgsDir = ExtArgsDir::new(&(args[1]),&(args[2]));
-    	println!("d  [{:?}]", d);
-    }
+	let args :Vec<String> = env::args().collect();
+	if args.len() >= 3 {
+		let d :ExtArgsDir = ExtArgsDir::new(&(args[1]),&(args[2]));
+		println!("d  [{:?}]", d);
+	}
 }
