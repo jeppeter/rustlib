@@ -133,7 +133,38 @@ impl ExtArgsDir {
 		retv
 	}
 
-	fn get_parser_struct(tabs :i32 ,parser :ExtArgsParser,options :ExtArgsOptions, cmdname :&str) -> Result<String,Box<dyn Error>> {
+	fn uc_first(&self,n :&str) -> String {
+	let cv :Vec<char> = n.chars().collect();
+	let mut cidx :i32 =0;
+	let mut rets :String = "".to_string();
+	let bv :Vec<char> = n.to_uppercase().chars().collect();
+	for c in cv.iter() {
+		if cidx == 0 {
+			rets.push(bv[0]);
+		} else {
+			rets.push(*c);
+		}
+		cidx += 1;
+	}
+	return rets;
+}
+
+
+	fn get_cmd_struct_name(&self, cmdname :&str) -> String {
+		let mut rets :String = "".to_string();
+		if cmdname.len() == 0 {
+			rets.push_str("MainDataStruct");
+		} else {
+			let cv :Vec<&str> = cmdname.split(".").collect();
+			for cs in cv.iter() {
+				rets.push_str(&self.uc_first(cs));
+			}
+			rets.push_str("DataStruct");
+		}
+		return rets;
+	}
+
+	fn get_parser_struct(&self,tabs :i32 ,parser :ExtArgsParser,options :ExtArgsOptions, cmdname :&str) -> Result<String,Box<dyn Error>> {
 		let mut rets :String = "".to_string();
 		let subcmds :Vec<String>;
 		let opts :Vec<ExtKeyParse>;
@@ -162,8 +193,9 @@ impl ExtArgsDir {
 		}
 
 		subcmds = parser.get_sub_commands_ex(cmdname)?;
-		for c in subcmds.iter() {
+		for c in subcmds.iter() {			
 			let mut curcmd :String = format!("{}",cmdname);
+
 			if curcmd.len() > 0 {
 				curcmd.push_str(".");
 			}
@@ -213,7 +245,17 @@ impl ExtArgsDir {
 				rets.push_str(&format!("    {} : {},",))
 				idx += 1;
 			}
+		}
 
+		for c in subcmds.iter() {			
+			if idx == 0 {
+				rets.push_str("#[derive(ArgSet)]\n");
+				rets.push_str(&(format!("struct {} {{\n",strprefix)));
+			}
+
+
+
+			idx += 1;
 		}
 
 		if idx > 0 {
