@@ -8,7 +8,7 @@ use extaparse_worker::{ExtArgsParser};
 
 
 
-#[#[derive(Debug)]]
+#[#[derive(Debug,Clone)]]
 struct FuncComposer {
 	funcstr :String,
 	helpfuncs :Vec<String>,
@@ -169,28 +169,9 @@ impl ExtArgsDir {
 		let subcmds :Vec<String>;
 		let opts :Vec<ExtKeyParse>;
 		let mut idx : i32 = 0;
-		let  mut strprefix :String;
+		let strprefix :String;
 
-		if cmdname.len() > 0 {
-			let v :Vec<&str> = cmdname.split(".").collect();
-			strprefix = "".to_string();
-			for c in v.iter() {
-				let cv :Vec<char> = c.chars().collect();
-				let mut cidx :i32 = 0;
-				for cc in cv.iter() {
-					if cidx  == 0 {
-						strprefix.push(cc.to_uppercase());
-					} else {
-						strprefix.push(cc);
-					}
-
-					cidx += 1;
-				}
-			}
-			strprefix.push_str("DataStruct");
-		} else {
-			strprefix = format!("MainDataStruct");
-		}
+		strprefix = self.get_cmd_struct_name(cmdname);
 
 		subcmds = parser.get_sub_commands_ex(cmdname)?;
 		for c in subcmds.iter() {			
@@ -242,7 +223,7 @@ impl ExtArgsDir {
 					}
 				}
 
-				rets.push_str(&format!("    {} : {},",))
+				rets.push_str(&format!("    {} : {},", kname, tname));
 				idx += 1;
 			}
 		}
@@ -253,22 +234,27 @@ impl ExtArgsDir {
 				rets.push_str(&(format!("struct {} {{\n",strprefix)));
 			}
 
+			let mut cname :String = "".to_string();
+			let kname :String;
+			if cmdname.len() > 0 {
+				cname.push_str(cmdname);
+				cname.push_str(".");
+			}
+			cname.push_str(c);
 
+			kname = self.get_cmd_struct_name(&cname);
 
+			rets.push_str(format!("    {} : {},\n",c,kname));
 			idx += 1;
 		}
 
 		if idx > 0 {
 			rets.push_str("}}\n");
 		}
-
-
-
-
 		Ok(rets)
 	}
 
-	pub fn write_rust_code(optstr :&str,cmdstr :&str, addmode :Vec<String>,funcstr :&str, priority :Vec<i32>) -> Result<(),Box<dyn Error>> {
+	pub fn write_rust_code(optstr :&str,cmdstr :&str, addmode :Vec<String>,fcomposer :FuncComposer, priority :Option<Vec<i32>>,printout :bool, nsname :&str, sname :&str) -> Result<(),Box<dyn Error>> {
 
 	}
 }
