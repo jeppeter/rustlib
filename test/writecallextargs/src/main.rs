@@ -3,14 +3,20 @@ use std::env;
 use std::thread;
 use std::time;
 use std::fs;
+use std::io::prelude::*;
+use std::error::Error;
 
+use extargsparse_worker::{extargs_new_error,extargs_error_class};
 use extargsparse_worker::parser::{ExtArgsParser};
+use extargsparse_worker::options::{ExtArgsOptions};
+use extargsparse_worker::key::{ExtKeyParse,KEYWORD_HELP,KEYWORD_JSONFILE,KEYWORD_PREFIX,KEYWORD_LIST,KEYWORD_STRING,KEYWORD_INT,KEYWORD_FLOAT,KEYWORD_BOOL,KEYWORD_ARGS,KEYWORD_COUNT,KEYWORD_SUBNARGS};
 use extargsparse_worker::const_value::{COMMAND_SET,SUB_COMMAND_JSON_SET,COMMAND_JSON_SET,ENVIRONMENT_SET,ENV_SUB_COMMAND_JSON_SET,ENV_COMMAND_JSON_SET,DEFAULT_SET};
+use extargsparse_codegen::{extargs_load_commandline};
 
 
 
 
-#[#[derive(Debug,Clone)]]
+#[derive(Debug,Clone)]
 struct FuncComposer {
 	funcstr :String,
 	helpfuncs :Vec<String>,
@@ -25,6 +31,7 @@ const FUNC_ACTFUNC :&str = "actfunc";
 const FUNC_CALLBACK :&str = "callbackfunc";
 
 
+#[allow(dead_code)]
 impl FuncComposer {
 	pub fn new() -> FuncComposer {
 		FuncComposer {
@@ -114,12 +121,13 @@ impl FuncComposer {
 	}
 }
 
+extargs_error_class!{ExtArgsDirError}
+
 #[derive(Debug)]
 struct ExtArgsDir {
 	srcdir : String,
 	workdir :String,
 	gendir :String,	
-	reserved : bool,
 	tdir : TempDir,
 }
 
@@ -129,7 +137,6 @@ impl ExtArgsDir {
 			srcdir : "".to_string(),
 			workdir : format!("{}",workdir),
 			gendir : format!("{}",gendir ),
-			reserved : false,
 			tdir : TempDir::new().unwrap(),
 		};
 		let srcd = retv.tdir.path().join("src");
@@ -227,7 +234,7 @@ impl ExtArgsDir {
 					}
 				}
 
-				rets.push_str(&format!("    {} : {},", kname, tname));
+				rets.push_str(&format!("    {} : {},\n", kname, tname));
 				idx += 1;
 			}
 		}
@@ -248,12 +255,12 @@ impl ExtArgsDir {
 
 			kname = self.get_cmd_struct_name(&cname);
 
-			rets.push_str(format!("    {} : {},\n",c,kname));
+			rets.push_str(&format!("    {} : {},\n",c,kname));
 			idx += 1;
 		}
 
 		if idx > 0 {
-			rets.push_str("}}\n");
+			rets.push_str("}\n");
 		}
 		Ok(rets)
 	}
@@ -337,15 +344,15 @@ impl ExtArgsDir {
 	}
 
 	fn format_cargo_toml(&self) -> String {
-		let muts rets :String = "".to_string();
+		let mut rets :String = "".to_string();
 		rets.push_str("[package]\n");
 		rets.push_str("name = \"callextargs\"\n");
 		rets.push_str("version = \"0.1.0\"\n");
 		rets.push_str("edition = \"2018\"\n");
 		rets.push_str("\n");
 		rets.push_str("[dependencies]\n");
-		rets.push_str(&format!("extargsparse_codegen = { path = \"{}\"}\n",self.gendir.replace("\\","\\\\")));
-		rets.push_str(&format!("extargsparse_worker = { path = \"{}\" }\n", self.workdir.replace("\\","\\\\")));
+		rets.push_str(&format!("extargsparse_codegen = {{ path = \"{}\"}}\n",self.gendir.replace("\\","\\\\")));
+		rets.push_str(&format!("extargsparse_worker = {{ path = \"{}\" }}\n", self.workdir.replace("\\","\\\\")));
 		rets.push_str("regex = \"1\"\n");
 		rets.push_str("lazy_static = \"^1.4.0\"\n");
 		rets.push_str("\n");
@@ -354,13 +361,13 @@ impl ExtArgsDir {
 	}
 
 	fn write_cargo_toml(&self) -> Result<(),Box<dyn Error>> {
-		let cargopath = self.tdir.join("Cargo.toml").display().to_string();
-		let mut fp:File = File::open(&cargopath).unwrap();
+		let cargopath = self.tdir.path().join("Cargo.toml").display().to_string();
+		let mut fp: fs::File = fs::File::create(&cargopath).unwrap();
 		fp.write_all(self.format_cargo_toml().as_bytes())?;
 		Ok(())
 	}
 
-	fn format_print_out(&self,parser :ExtArgsParse,cmdname :&str, piname :&str) -> String {
+	fn format_print_out(&self,parser :ExtArgsParser,cmdname :&str, piname :&str) -> String {
 		let subcmds :Vec<String>;
 		let mut rets :String = "".to_string();
 
@@ -372,7 +379,7 @@ impl ExtArgsDir {
 				curcmd.push_str(".");
 			}
 			curcmd.push_str(c);
-			rets.push_str(self.format_print_out(parser.clone(),&curcmd,piname));
+			rets.push_str(&self.format_print_out(parser.clone(),&curcmd,piname));
 		}
 
 		let opts = parser.get_cmd_opts_ex(cmdname).unwrap();
@@ -384,11 +391,10 @@ impl ExtArgsDir {
 		for o in opts.iter() {
 			if o.is_flag() && o.type_name() != KEYWORD_HELP && o.type_name() != KEYWORD_JSONFILE && 
 				o.type_name() != KEYWORD_PREFIX {
-				let curname 
 				if o.type_name() != KEYWORD_ARGS {
 					rets.push_str(&format!("    println!(\"{}.{}.{} = {{}}\", {}.borrow().{}.{});\n", piname,cmdname,o.flag_name(), piname,cmdname,o.flag_name()));
 				} else {
-					let  argname :String = ;
+					let  argname :String;
 					if cmdname.len() > 0 {
 						argname = format!("{}",KEYWORD_SUBNARGS);
 					} else {
@@ -402,10 +408,10 @@ impl ExtArgsDir {
 		rets
 	}
 
-	fn format_main(&self,optstr :&str,cmdstr :&str,printout : bool, parser :ExtArgsParse,nsname :&str, piname :&str) -> String {
+	fn format_main(&self,optstr :&str,cmdstr :&str,printout : bool, parser :ExtArgsParser,priority :Option<Vec<i32>>,nsname :&str, piname :&str) -> String {
 		let mut rets :String = "".to_string();
 
-		rets.push_str("fn main() -> Result<(),Box<dyn Error>> {{\n");
+		rets.push_str("fn main() -> Result<(),Box<dyn Error>> {\n");
 		rets.push_str("    let loads = r#\"");
 		if cmdstr.len() > 0 {
 			rets.push_str(cmdstr);	
@@ -421,7 +427,7 @@ impl ExtArgsDir {
 		}		
 		rets.push_str("\"#;\n");
 		rets.push_str("    let optref = ExtArgsOptions::new(optstr)?;\n");
-		rets.push_str("    let parser = ExtArgsParse::new(Some(optref.clone()),None)?;\n");
+		rets.push_str(&format!("    let parser = ExtArgsParse::new(Some(optref.clone()),{})?;\n",self.format_priority(priority)));
 		rets.push_str("    extargs_load_commandline!(parser,loads)?\n");
 
 		if printout {
@@ -440,17 +446,15 @@ impl ExtArgsDir {
 	}
 
 	fn write_main_rs(&self,mainrs :&str) -> Result<(),Box<dyn Error>> {
-		let mainrspath = self.tdir.join("src").("main.rs").display().to_string();
-		let maindirpath = self.tdir.join("src").display().to_string();
-		if
-		let mut fp:File = File::open(&cargopath).unwrap();
-		fp.write_all(self.format_cargo_toml().as_bytes())?;
+		let mainrspath = self.tdir.path().join("src").join("main.rs").display().to_string();
+		let maindirpath = self.tdir.path().join("src").display().to_string();
+		fs::create_dir_all(&maindirpath)?;
+		let mut fp: fs::File = fs::File::create(&mainrspath).unwrap();
+		fp.write_all(mainrs.as_bytes())?;
 		Ok(())
-
 	}
 
-	#[extargs_map_function()]
-	pub fn write_rust_code(&self,optstr :&str,cmdstr :&str, addmode :Vec<String>,fcomposer :FuncComposer, priority :Option<Vec<i32>>,printout :bool, nsname :&str, piname :&str) -> Result<(),Box<dyn Error>> {
+	pub fn write_rust_code(&self,optstr :&str,cmdstr :&str, _addmode :Vec<String>,fcomposer :FuncComposer, priority :Option<Vec<i32>>,printout :bool, nsname :&str, piname :&str) -> Result<(),Box<dyn Error>> {
 		self.write_cargo_toml()?;
 		/*to get write main file*/
 		let mut rets :String = "".to_string();
@@ -464,16 +468,20 @@ impl ExtArgsDir {
 		}
 		let mut inprior :Option<Vec<i32>> = None;
 		if priority.is_some() {
-			inprior =Some(priority.unwrap().clone());
+			inprior =Some(priority.as_ref().unwrap().clone());
 		}
-		let parser :ExtArgsParse = ExtKeyParse::new(opt, inprior)?;
+		let parser :ExtArgsParser = ExtArgsParser::new(opt, inprior)?;
 		/*now for the */
 		extargs_load_commandline!(parser,cmdstr)?;
 		/*now to get the string*/
-		rets.push_str(&(self.get_parser_struct(0,cmdstr,parser.clone(),"")));
+		rets.push_str(&(self.get_parser_struct(0,parser.clone(),"").unwrap()));
 
-		rets.push_str(&self.format_extargs_map_functions());
-		rets.push_str(&self.format_main(optstr,cmdstr,printout, parser.clone(),nsname,piname));
+		rets.push_str(&self.format_extargs_map_functions(fcomposer.clone()));
+		inprior = None;
+		if priority.is_some() {
+			inprior =Some(priority.as_ref().unwrap().clone());
+		}
+		rets.push_str(&self.format_main(optstr,cmdstr,printout, parser.clone(),inprior,nsname,piname));
 
 		self.write_main_rs(&rets)?;
 		Ok(())
@@ -482,10 +490,25 @@ impl ExtArgsDir {
 
 
 
-fn main() {
+fn main() -> Result<(),Box<dyn Error>> {
 	let args :Vec<String> = env::args().collect();
-	if args.len() >= 3 {
-		let d :ExtArgsDir = ExtArgsDir::new(&(args[1]),&(args[2]));
-		println!("d  [{:?}]", d);
+	if args.len() >= 4 {
+		let gendir :String = format!("{}",args[2]);
+		let workdir :String = format!("{}",args[1]);
+		let d :ExtArgsDir = ExtArgsDir::new(&workdir,&gendir);
+		let cmdstr :String = format!("{}",args[3]);
+		let fcomposer :FuncComposer = FuncComposer::new();
+		let mut optstr :String = "".to_string();
+		let addmode :Vec<String> = Vec::new();
+		if args.len() >= 5{
+			optstr = format!("{}",args[4]);
+		}
+
+		d.write_rust_code(&optstr,&cmdstr,addmode.clone(),fcomposer.clone(),None,true,"ns","piargs")?;
+		println!("write code in [{}]", d.srcdir);
+		while 1 == 1 {
+			thread::sleep(time::Duration::from_millis(1000));
+		}
 	}
+	Ok(())
 }
