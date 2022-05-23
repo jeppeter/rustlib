@@ -360,8 +360,97 @@ impl ExtArgsDir {
 		Ok(())
 	}
 
+	fn format_print_out(&self,parser :ExtArgsParse,cmdname :&str, piname :&str) -> String {
+		let subcmds :Vec<String>;
+		let mut rets :String = "".to_string();
+
+		subcmds = parser.get_sub_commands_ex(cmdname).unwrap();
+		for c in subcmds.iter() {
+			let mut curcmd :String = "".to_string();
+			curcmd.push_str(cmdname);
+			if curcmd.len() > 0 {
+				curcmd.push_str(".");
+			}
+			curcmd.push_str(c);
+			rets.push_str(self.format_print_out(parser.clone(),&curcmd,piname));
+		}
+
+		let opts = parser.get_cmd_opts_ex(cmdname).unwrap();
+		let mut rename = format!("{}",cmdname);
+		if rename.len() == 0 {
+			rename = format!("main");
+		}
+		rets.push_str(&format!("    /* print out {} */\n",rename));
+		for o in opts.iter() {
+			if o.is_flag() && o.type_name() != KEYWORD_HELP && o.type_name() != KEYWORD_JSONFILE && 
+				o.type_name() != KEYWORD_PREFIX {
+				let curname 
+				if o.type_name() != KEYWORD_ARGS {
+					rets.push_str(&format!("    println!(\"{}.{}.{} = {{}}\", {}.borrow().{}.{});\n", piname,cmdname,o.flag_name(), piname,cmdname,o.flag_name()));
+				} else {
+					let  argname :String = ;
+					if cmdname.len() > 0 {
+						argname = format!("{}",KEYWORD_SUBNARGS);
+					} else {
+						argname = format!("{}",KEYWORD_ARGS);
+					}
+					rets.push_str(&format!("    println!(\"{}.{}.{} = {{}}\", {}.borrow().{}.{});\n", piname, cmdname,argname, piname,cmdname,argname));
+				}
+			}
+		}
+		rets.push_str("\n");
+		rets
+	}
+
+	fn format_main(&self,optstr :&str,cmdstr :&str,printout : bool, parser :ExtArgsParse,nsname :&str, piname :&str) -> String {
+		let mut rets :String = "".to_string();
+
+		rets.push_str("fn main() -> Result<(),Box<dyn Error>> {{\n");
+		rets.push_str("    let loads = r#\"");
+		if cmdstr.len() > 0 {
+			rets.push_str(cmdstr);	
+		} else {
+			rets.push_str("{}");
+		}		
+		rets.push_str("\"#;\n");
+		rets.push_str("    let optstr = r#\"");
+		if optstr.len() > 0 {
+			rets.push_str(optstr);	
+		} else {
+			rets.push_str("{}");
+		}		
+		rets.push_str("\"#;\n");
+		rets.push_str("    let optref = ExtArgsOptions::new(optstr)?;\n");
+		rets.push_str("    let parser = ExtArgsParse::new(Some(optref.clone()),None)?;\n");
+		rets.push_str("    extargs_load_commandline!(parser,loads)?\n");
+
+		if printout {
+			rets.push_str(&format!("    let {} = Arc::new(RefCell::new(MainDataStruct::new()));\n",piname));			
+			rets.push_str(&format!("    let {} = parser.parse_commandline_ex(None,None,Some({}.clone()),None)?\n",nsname,piname));
+		} else {
+			rets.push_str(&format!("    let {} = parser.parse_commandline_ex(None,None,None,None)?\n",nsname));
+		}
+
+		if printout {
+			rets.push_str(&self.format_print_out(parser.clone(),"",piname));
+		}
+
+		rets.push_str("}\n");
+		rets
+	}
+
+	fn write_main_rs(&self,mainrs :&str) -> Result<(),Box<dyn Error>> {
+		let mainrspath = self.tdir.join("src").("main.rs").display().to_string();
+		let maindirpath = self.tdir.join("src").display().to_string();
+		if
+		let mut fp:File = File::open(&cargopath).unwrap();
+		fp.write_all(self.format_cargo_toml().as_bytes())?;
+		Ok(())
+
+	}
+
 	#[extargs_map_function()]
-	pub fn write_rust_code(&self,optstr :&str,cmdstr :&str, addmode :Vec<String>,fcomposer :FuncComposer, priority :Option<Vec<i32>>,printout :bool, nsname :&str, sname :&str) -> Result<(),Box<dyn Error>> {
+	pub fn write_rust_code(&self,optstr :&str,cmdstr :&str, addmode :Vec<String>,fcomposer :FuncComposer, priority :Option<Vec<i32>>,printout :bool, nsname :&str, piname :&str) -> Result<(),Box<dyn Error>> {
 		self.write_cargo_toml()?;
 		/*to get write main file*/
 		let mut rets :String = "".to_string();
@@ -384,7 +473,10 @@ impl ExtArgsDir {
 		rets.push_str(&(self.get_parser_struct(0,cmdstr,parser.clone(),"")));
 
 		rets.push_str(&self.format_extargs_map_functions());
-		
+		rets.push_str(&self.format_main(optstr,cmdstr,printout, parser.clone(),nsname,piname));
+
+		self.write_main_rs(&rets)?;
+		Ok(())
 	}
 }
 

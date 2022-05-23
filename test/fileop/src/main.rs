@@ -6,6 +6,7 @@ use std::process;
 use std::io;
 use std::io::prelude::*;
 use std::path::{Path,PathBuf};
+use std::error::Error;
 
 
 fn usage(ec :i32, fmtstr :&str) {
@@ -80,7 +81,12 @@ fn join_path(bname :&str,p :&str) -> String {
 	return np.display().to_string();
 }
 
-fn main() {
+fn create_dir_all(dname :&str) -> Result<(),io::Error> {
+	fs::create_dir_all(dname)?;
+	Ok(())
+}
+
+fn main() -> Result<(),Box<dyn Error>> {
 	let argv :Vec<String> = env::args().collect();
 
 	if argv.len() > 1 {
@@ -120,13 +126,23 @@ fn main() {
 			}
 		} else if argv[1] == "joinpath" {
 			let mut idx :usize = 2;
-			let mut cfile :String = ".".to_string();
+			let mut cfile :String = "".to_string();
 			while idx < argv.len() {
 				cfile = join_path(&cfile,&argv[idx]);
 				idx += 1;
 			}
 			println!("path [{}]",cfile);
+		} else if argv[1] == "createdirall" {
+			let mut idx :usize = 2;
+			let mut cfile :String = "".to_string();
+			while idx < argv.len() {
+				cfile = join_path(&cfile,&argv[idx]);
+				idx += 1;
+			}
+
+			println!("path [{}]",cfile);
+			create_dir_all(&cfile)?;
 		}
 	} 
-	return;
+	return Ok(());
 }

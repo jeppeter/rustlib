@@ -4,6 +4,7 @@ use extargsparse_codegen::{extargs_load_commandline,ArgSet,extargs_map_function}
 use extargsparse_worker::{extargs_error_class,extargs_new_error};
 #[allow(unused_imports)]
 use extargsparse_worker::namespace::{NameSpaceEx};
+use extargsparse_worker::options::{ExtArgsOptions};
 #[allow(unused_imports)]
 use extargsparse_worker::argset::{ArgSetImpl};
 use extargsparse_worker::parser::{ExtArgsParser};
@@ -39,20 +40,12 @@ fn main() -> Result<(),Box<dyn Error>> {
 	let loads = r#"{
 		"verbose|v" : "+"
 	}"#;
-	let parser :ExtArgsParser = ExtArgsParser::new(None,None)?;
-	let perr = extargs_load_commandline!(parser,loads);	
-	if perr.is_err() {
-		let errv = perr.err().unwrap();
-		extargs_new_error!{MainFuncError,"load commandline [{}] erorr [{:?}]", loads,errv}
-	}
+	let optstr = r#"{}"#;
+	let optref = ExtArgsOptions::new(optstr)?;
+	let parser :ExtArgsParser = ExtArgsParser::new(Some(optref.clone()),None)?;
+	extargs_load_commandline!(parser,loads)?;	
 	let argsp = Arc::new(RefCell::new(MainDataStruct::new()));
-	let nserr = parser.parse_commandline_ex(None,None,Some(argsp.clone()),None);
-	if nserr.is_err() {
-		let errv = nserr.err().unwrap();
-		extargs_new_error!{MainFuncError,"[{:?}]", errv}
-	}
-
-	let ns = nserr.unwrap();
+	let ns = parser.parse_commandline_ex(None,None,Some(argsp.clone()),None)?;
 	println!("subcommand={}", ns.get_string("subcommand"));
 	println!("verbose={}", ns.get_int("verbose"));
 	println!("args={:?}",ns.get_array("args"));
