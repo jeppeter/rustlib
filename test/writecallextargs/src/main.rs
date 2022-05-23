@@ -4,7 +4,9 @@ use std::thread;
 use std::time;
 use std::fs;
 
-use extaparse_worker::{ExtArgsParser};
+use extargsparse_worker::parser::{ExtArgsParser};
+use extargsparse_worker::const_value::{COMMAND_SET,SUB_COMMAND_JSON_SET,COMMAND_JSON_SET,ENVIRONMENT_SET,ENV_SUB_COMMAND_JSON_SET,ENV_COMMAND_JSON_SET,DEFAULT_SET};
+
 
 
 
@@ -123,31 +125,33 @@ struct ExtArgsDir {
 
 impl ExtArgsDir {
 	pub fn new(workdir :&str,gendir :&str) -> ExtArgsDir {
-		let retv :ExtArgsDir = ExtArgsDir{
+		let mut retv :ExtArgsDir = ExtArgsDir{
 			srcdir : "".to_string(),
 			workdir : format!("{}",workdir),
 			gendir : format!("{}",gendir ),
 			reserved : false,
 			tdir : TempDir::new().unwrap(),
 		};
+		let srcd = retv.tdir.path().join("src");
+		retv.srcdir = format!("{}",srcd.display());
 		retv
 	}
 
 	fn uc_first(&self,n :&str) -> String {
-	let cv :Vec<char> = n.chars().collect();
-	let mut cidx :i32 =0;
-	let mut rets :String = "".to_string();
-	let bv :Vec<char> = n.to_uppercase().chars().collect();
-	for c in cv.iter() {
-		if cidx == 0 {
-			rets.push(bv[0]);
-		} else {
-			rets.push(*c);
+		let cv :Vec<char> = n.chars().collect();
+		let mut cidx :i32 =0;
+		let mut rets :String = "".to_string();
+		let bv :Vec<char> = n.to_uppercase().chars().collect();
+		for c in cv.iter() {
+			if cidx == 0 {
+				rets.push(bv[0]);
+			} else {
+				rets.push(*c);
+			}
+			cidx += 1;
 		}
-		cidx += 1;
+		return rets;
 	}
-	return rets;
-}
 
 
 	fn get_cmd_struct_name(&self, cmdname :&str) -> String {
@@ -164,7 +168,7 @@ impl ExtArgsDir {
 		return rets;
 	}
 
-	fn get_parser_struct(&self,tabs :i32 ,parser :ExtArgsParser,options :ExtArgsOptions, cmdname :&str) -> Result<String,Box<dyn Error>> {
+	fn get_parser_struct(&self,tabs :i32 ,parser :ExtArgsParser, cmdname :&str) -> Result<String,Box<dyn Error>> {
 		let mut rets :String = "".to_string();
 		let subcmds :Vec<String>;
 		let opts :Vec<ExtKeyParse>;
@@ -181,7 +185,7 @@ impl ExtArgsDir {
 				curcmd.push_str(".");
 			}
 			curcmd.push_str(&(format!("{}", c)));
-			let curs = self.get_parser_struct(tabs , parser.clone(),options.clone(),&curcmd)?;
+			let curs = self.get_parser_struct(tabs , parser.clone(),&curcmd)?;
 			rets.push_str("\n");
 			rets.push_str(&curs);
 		}
@@ -254,8 +258,133 @@ impl ExtArgsDir {
 		Ok(rets)
 	}
 
-	pub fn write_rust_code(optstr :&str,cmdstr :&str, addmode :Vec<String>,fcomposer :FuncComposer, priority :Option<Vec<i32>>,printout :bool, nsname :&str, sname :&str) -> Result<(),Box<dyn Error>> {
+	fn format_priority(&self, priority :Option<Vec<i32>>) -> String {
+		let mut rets :String = "None".to_string();
 
+		if priority.is_some() {
+			rets = "Some".to_string();
+			rets.push_str("(vec![");
+			let pv = priority.unwrap().clone();
+			let mut idx :i32 = 0;
+			for v in pv.iter() {
+				if idx > 0 {
+					rets.push_str(",");
+				}
+				if *v == COMMAND_SET {
+					rets.push_str("COMMAND_SET");
+				} else if *v == SUB_COMMAND_JSON_SET {
+					rets.push_str("SUB_COMMAND_JSON_SET");
+				} else if *v == COMMAND_JSON_SET {
+					rets.push_str("COMMAND_JSON_SET");
+				} else if *v == ENVIRONMENT_SET {
+					rets.push_str("ENVIRONMENT_SET");
+				} else if *v == ENV_SUB_COMMAND_JSON_SET {
+					rets.push_str("ENV_SUB_COMMAND_JSON_SET");
+				} else if *v == ENV_COMMAND_JSON_SET {
+					rets.push_str("ENV_COMMAND_JSON_SET");
+				} else if *v == DEFAULT_SET {
+					rets.push_str("DEFAULT_SET");
+				} else {
+					panic!("not valid priority");
+				}
+				idx += 1;
+			}
+
+
+			rets.push_str("])");
+		}
+
+		rets
+	}
+
+	fn format_imports(&self) -> String {
+		let mut rets :String = "".to_string();
+		rets.push_str("#[allow(unused_imports)]\n");
+		rets.push_str("use extargsparse_codegen::{extargs_load_commandline,ArgSet,extargs_map_function};\n");
+		rets.push_str("#[allow(unused_imports)]\n");
+		rets.push_str("use extargsparse_worker::{extargs_error_class,extargs_new_error};\n");
+		rets.push_str("#[allow(unused_imports)]\n");
+		rets.push_str("use extargsparse_worker::namespace::{NameSpaceEx};\n");
+		rets.push_str("#[allow(unused_imports)]\n");
+		rets.push_str("use extargsparse_worker::argset::{ArgSetImpl};\n");
+		rets.push_str("use extargsparse_worker::parser::{ExtArgsParser};\n");
+		rets.push_str("use extargsparse_worker::funccall::{ExtArgsParseFunc};\n");
+		rets.push_str("#[allow(unused_imports)]\n");
+		rets.push_str("use extargsparse_worker::const_value::{COMMAND_SET,SUB_COMMAND_JSON_SET,COMMAND_JSON_SET,ENVIRONMENT_SET,ENV_SUB_COMMAND_JSON_SET,ENV_COMMAND_JSON_SET,DEFAULT_SET};\n");
+		rets.push_str("\n");
+		rets.push_str("#[allow(unused_imports)]\n");
+		rets.push_str("use std::cell::RefCell;\n");
+		rets.push_str("#[allow(unused_imports)]\n");
+		rets.push_str("use std::sync::Arc;\n");
+		rets.push_str("#[allow(unused_imports)]\n");
+		rets.push_str("use std::error::Error;\n");
+		rets.push_str("use std::boxed::Box;\n");
+		rets.push_str("#[allow(unused_imports)]\n");
+		rets.push_str("use regex::Regex;\n");
+		rets.push_str("#[allow(unused_imports)]\n");
+		rets.push_str("use std::any::Any;\n");
+		rets.push_str("use lazy_static::lazy_static;\n");
+		rets.push_str("use std::collections::HashMap;\n");
+		rets.push_str("\n");
+		rets.push_str("\n");
+
+		rets
+	}
+	fn format_extargs_map_functions(&self,fcomposer :FuncComposer) -> String {
+		let mut rets =  fcomposer.get_extargs_map_func();
+		rets.push_str("\n");
+		rets
+	}
+
+	fn format_cargo_toml(&self) -> String {
+		let muts rets :String = "".to_string();
+		rets.push_str("[package]\n");
+		rets.push_str("name = \"callextargs\"\n");
+		rets.push_str("version = \"0.1.0\"\n");
+		rets.push_str("edition = \"2018\"\n");
+		rets.push_str("\n");
+		rets.push_str("[dependencies]\n");
+		rets.push_str(&format!("extargsparse_codegen = { path = \"{}\"}\n",self.gendir.replace("\\","\\\\")));
+		rets.push_str(&format!("extargsparse_worker = { path = \"{}\" }\n", self.workdir.replace("\\","\\\\")));
+		rets.push_str("regex = \"1\"\n");
+		rets.push_str("lazy_static = \"^1.4.0\"\n");
+		rets.push_str("\n");
+
+		rets
+	}
+
+	fn write_cargo_toml(&self) -> Result<(),Box<dyn Error>> {
+		let cargopath = self.tdir.join("Cargo.toml").display().to_string();
+		let mut fp:File = File::open(&cargopath).unwrap();
+		fp.write_all(self.format_cargo_toml().as_bytes())?;
+		Ok(())
+	}
+
+	#[extargs_map_function()]
+	pub fn write_rust_code(&self,optstr :&str,cmdstr :&str, addmode :Vec<String>,fcomposer :FuncComposer, priority :Option<Vec<i32>>,printout :bool, nsname :&str, sname :&str) -> Result<(),Box<dyn Error>> {
+		self.write_cargo_toml()?;
+		/*to get write main file*/
+		let mut rets :String = "".to_string();
+		rets.push_str(&(self.format_imports()));
+		rets.push_str(&fcomposer.funcstr);
+
+		let mut opt :Option<ExtArgsOptions> = None;
+		if optstr.len() > 0 {
+			let ov = ExtArgsOptions::new(optstr)?;
+			opt = Some(ov.clone());
+		}
+		let mut inprior :Option<Vec<i32>> = None;
+		if priority.is_some() {
+			inprior =Some(priority.unwrap().clone());
+		}
+		let parser :ExtArgsParse = ExtKeyParse::new(opt, inprior)?;
+		/*now for the */
+		extargs_load_commandline!(parser,cmdstr)?;
+		/*now to get the string*/
+		rets.push_str(&(self.get_parser_struct(0,cmdstr,parser.clone(),"")));
+
+		rets.push_str(&self.format_extargs_map_functions());
+		
 	}
 }
 

@@ -5,6 +5,7 @@ use std::vec::Vec;
 use std::process;
 use std::io;
 use std::io::prelude::*;
+use std::path::{Path,PathBuf};
 
 
 fn usage(ec :i32, fmtstr :&str) {
@@ -73,6 +74,12 @@ fn read_file(fname :&str) -> Result<String,io::Error> {
 	Ok(content)
 }
 
+fn join_path(bname :&str,p :&str) -> String {
+	let cp :&Path = Path::new(bname);
+	let np :PathBuf = cp.join(p);
+	return np.display().to_string();
+}
+
 fn main() {
 	let argv :Vec<String> = env::args().collect();
 
@@ -111,6 +118,14 @@ fn main() {
 				}
 				idx += 1;
 			}
+		} else if argv[1] == "joinpath" {
+			let mut idx :usize = 2;
+			let mut cfile :String = ".".to_string();
+			while idx < argv.len() {
+				cfile = join_path(&cfile,&argv[idx]);
+				idx += 1;
+			}
+			println!("path [{}]",cfile);
 		}
 	} 
 	return;
