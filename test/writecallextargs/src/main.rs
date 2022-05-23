@@ -316,6 +316,7 @@ impl ExtArgsDir {
 		rets.push_str("use extargsparse_worker::argset::{ArgSetImpl};\n");
 		rets.push_str("use extargsparse_worker::parser::{ExtArgsParser};\n");
 		rets.push_str("use extargsparse_worker::funccall::{ExtArgsParseFunc};\n");
+		rets.push_str("use extargsparse_worker::options::{ExtArgsOptions};\n");
 		rets.push_str("#[allow(unused_imports)]\n");
 		rets.push_str("use extargsparse_worker::const_value::{COMMAND_SET,SUB_COMMAND_JSON_SET,COMMAND_JSON_SET,ENVIRONMENT_SET,ENV_SUB_COMMAND_JSON_SET,ENV_COMMAND_JSON_SET,DEFAULT_SET};\n");
 		rets.push_str("\n");
@@ -392,15 +393,32 @@ impl ExtArgsDir {
 			if o.is_flag() && o.type_name() != KEYWORD_HELP && o.type_name() != KEYWORD_JSONFILE && 
 				o.type_name() != KEYWORD_PREFIX {
 				if o.type_name() != KEYWORD_ARGS {
-					rets.push_str(&format!("    println!(\"{}.{}.{} = {{}}\", {}.borrow().{}.{});\n", piname,cmdname,o.flag_name(), piname,cmdname,o.flag_name()));
+					if cmdname.len() > 0 {
+						if o.type_name() == KEYWORD_LIST {
+							rets.push_str(&format!("    println!(\"{}.{}.{} = {{:?}}\", {}.borrow().{}.{});\n", piname,cmdname,o.flag_name(), piname,cmdname,o.flag_name()));	
+						} else {
+							rets.push_str(&format!("    println!(\"{}.{}.{} = {{}}\", {}.borrow().{}.{});\n", piname,cmdname,o.flag_name(), piname,cmdname,o.flag_name()));		
+						}
+						
+					} else {
+						if o.type_name() == KEYWORD_LIST {
+							rets.push_str(&format!("    println!(\"{}.{} = {{:?}}\", {}.borrow().{});\n", piname,o.flag_name(), piname,o.flag_name()));	
+						} else {
+							rets.push_str(&format!("    println!(\"{}.{} = {{}}\", {}.borrow().{});\n", piname,o.flag_name(), piname,o.flag_name()));		
+						}
+						
+					}
+					
 				} else {
 					let  argname :String;
 					if cmdname.len() > 0 {
 						argname = format!("{}",KEYWORD_SUBNARGS);
+						rets.push_str(&format!("    println!(\"{}.{}.{} = {{:?}}\", {}.borrow().{}.{});\n", piname, cmdname,argname, piname,cmdname,argname));
 					} else {
 						argname = format!("{}",KEYWORD_ARGS);
+						rets.push_str(&format!("    println!(\"{}.{} = {{:?}}\", {}.borrow().{});\n", piname,argname, piname,argname));
 					}
-					rets.push_str(&format!("    println!(\"{}.{}.{} = {{}}\", {}.borrow().{}.{});\n", piname, cmdname,argname, piname,cmdname,argname));
+					
 				}
 			}
 		}
@@ -427,12 +445,12 @@ impl ExtArgsDir {
 		}		
 		rets.push_str("\"#;\n");
 		rets.push_str("    let optref = ExtArgsOptions::new(optstr)?;\n");
-		rets.push_str(&format!("    let parser = ExtArgsParse::new(Some(optref.clone()),{})?;\n",self.format_priority(priority)));
-		rets.push_str("    extargs_load_commandline!(parser,loads)?\n");
+		rets.push_str(&format!("    let parser = ExtArgsParser::new(Some(optref.clone()),{})?;\n",self.format_priority(priority)));
+		rets.push_str("    extargs_load_commandline!(parser,loads)?;\n");
 
 		if printout {
 			rets.push_str(&format!("    let {} = Arc::new(RefCell::new(MainDataStruct::new()));\n",piname));			
-			rets.push_str(&format!("    let {} = parser.parse_commandline_ex(None,None,Some({}.clone()),None)?\n",nsname,piname));
+			rets.push_str(&format!("    let {} = parser.parse_commandline_ex(None,None,Some({}.clone()),None)?;\n",nsname,piname));
 		} else {
 			rets.push_str(&format!("    let {} = parser.parse_commandline_ex(None,None,None,None)?\n",nsname));
 		}
@@ -440,6 +458,8 @@ impl ExtArgsDir {
 		if printout {
 			rets.push_str(&self.format_print_out(parser.clone(),"",piname));
 		}
+
+		rets.push_str("    Ok(())");
 
 		rets.push_str("}\n");
 		rets
@@ -489,6 +509,21 @@ impl ExtArgsDir {
 }
 
 
+fn read_file(fname :&str) -> String {
+	let ferr = fs::File::open(fname);
+	let mut rets = String::new();
+	if ferr.is_err() {
+		return "".to_string();
+	}
+	let mut f = ferr.unwrap();
+
+	let nerr = f.read_to_string(&mut rets);
+	if nerr.is_err() {
+		return "".to_string();
+	}
+
+	return rets;
+}
 
 fn main() -> Result<(),Box<dyn Error>> {
 	let args :Vec<String> = env::args().collect();
@@ -496,12 +531,12 @@ fn main() -> Result<(),Box<dyn Error>> {
 		let gendir :String = format!("{}",args[2]);
 		let workdir :String = format!("{}",args[1]);
 		let d :ExtArgsDir = ExtArgsDir::new(&workdir,&gendir);
-		let cmdstr :String = format!("{}",args[3]);
+		let cmdstr :String = read_file(&args[3]);
 		let fcomposer :FuncComposer = FuncComposer::new();
 		let mut optstr :String = "".to_string();
 		let addmode :Vec<String> = Vec::new();
 		if args.len() >= 5{
-			optstr = format!("{}",args[4]);
+			optstr = read_file(&args[4]);
 		}
 
 		d.write_rust_code(&optstr,&cmdstr,addmode.clone(),fcomposer.clone(),None,true,"ns","piargs")?;
