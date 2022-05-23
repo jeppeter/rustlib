@@ -225,7 +225,7 @@ impl ExtArgsDir {
 				}
 
 				if o.type_name() != KEYWORD_ARGS {
-					kname = format!("{}",o.flag_name());
+					kname = format!("{}",o.var_name());
 				} else {
 					if cmdname.len() > 0 {
 						kname = format!("{}",KEYWORD_SUBNARGS);
@@ -395,16 +395,16 @@ impl ExtArgsDir {
 				if o.type_name() != KEYWORD_ARGS {
 					if cmdname.len() > 0 {
 						if o.type_name() == KEYWORD_LIST {
-							rets.push_str(&format!("    println!(\"{}.{}.{} = {{:?}}\", {}.borrow().{}.{});\n", piname,cmdname,o.flag_name(), piname,cmdname,o.flag_name()));	
+							rets.push_str(&format!("    println!(\"{}.{}.{}={{:?}}\", {}.borrow().{}.{});\n", piname,cmdname,o.var_name(), piname,cmdname,o.var_name()));	
 						} else {
-							rets.push_str(&format!("    println!(\"{}.{}.{} = {{}}\", {}.borrow().{}.{});\n", piname,cmdname,o.flag_name(), piname,cmdname,o.flag_name()));		
+							rets.push_str(&format!("    println!(\"{}.{}.{}={{}}\", {}.borrow().{}.{});\n", piname,cmdname,o.var_name(), piname,cmdname,o.var_name()));		
 						}
 						
 					} else {
 						if o.type_name() == KEYWORD_LIST {
-							rets.push_str(&format!("    println!(\"{}.{} = {{:?}}\", {}.borrow().{});\n", piname,o.flag_name(), piname,o.flag_name()));	
+							rets.push_str(&format!("    println!(\"{}.{}={{:?}}\", {}.borrow().{});\n", piname,o.var_name(), piname,o.var_name()));	
 						} else {
-							rets.push_str(&format!("    println!(\"{}.{} = {{}}\", {}.borrow().{});\n", piname,o.flag_name(), piname,o.flag_name()));		
+							rets.push_str(&format!("    println!(\"{}.{}={{}}\", {}.borrow().{});\n", piname,o.var_name(), piname,o.var_name()));		
 						}
 						
 					}
@@ -413,10 +413,10 @@ impl ExtArgsDir {
 					let  argname :String;
 					if cmdname.len() > 0 {
 						argname = format!("{}",KEYWORD_SUBNARGS);
-						rets.push_str(&format!("    println!(\"{}.{}.{} = {{:?}}\", {}.borrow().{}.{});\n", piname, cmdname,argname, piname,cmdname,argname));
+						rets.push_str(&format!("    println!(\"{}.{}.{}={{:?}}\", {}.borrow().{}.{});\n", piname, cmdname,argname, piname,cmdname,argname));
 					} else {
 						argname = format!("{}",KEYWORD_ARGS);
-						rets.push_str(&format!("    println!(\"{}.{} = {{:?}}\", {}.borrow().{});\n", piname,argname, piname,argname));
+						rets.push_str(&format!("    println!(\"{}.{}={{:?}}\", {}.borrow().{});\n", piname,argname, piname,argname));
 					}
 					
 				}
