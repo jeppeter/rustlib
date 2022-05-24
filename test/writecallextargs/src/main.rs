@@ -13,22 +13,15 @@ use extargsparse_worker::key::{ExtKeyParse,KEYWORD_HELP,KEYWORD_JSONFILE,KEYWORD
 use extargsparse_worker::const_value::{COMMAND_SET,SUB_COMMAND_JSON_SET,COMMAND_JSON_SET,ENVIRONMENT_SET,ENV_SUB_COMMAND_JSON_SET,ENV_COMMAND_JSON_SET,DEFAULT_SET};
 use extargsparse_codegen::{extargs_load_commandline};
 
-
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 
 #[derive(Debug,Clone)]
 struct FuncComposer {
 	funcstr :String,
-	helpfuncs :Vec<String>,
-	jsonfuncs :Vec<String>,
-	actfuncs : Vec<String>,
-	callbackfuncs : Vec<String>,	
+	innerstr : String,
 }
-
-const FUNC_OPTHELP :&str = "opthelp";
-const FUNC_JSONFUNC :&str = "jsonfunc";
-const FUNC_ACTFUNC :&str = "actfunc";
-const FUNC_CALLBACK :&str = "callbackfunc";
 
 
 #[allow(dead_code)]
@@ -36,37 +29,22 @@ impl FuncComposer {
 	pub fn new() -> FuncComposer {
 		FuncComposer {
 			funcstr : "".to_string(),
-			helpfuncs : Vec::new(),
-			jsonfuncs : Vec::new(),
-			actfuncs : Vec::new(),
-			callbackfuncs : Vec::new(),
+			innerstr : "".to_string(),
 		}
 	}
 
-	fn add_code(&mut self, code :&str) {
+	pub fn add_code(&mut self, code :&str) {
 		self.funcstr.push_str(code);
 		self.funcstr.push_str("\n");
 		return;
 	}
 
-	pub fn add_json_func(&mut self,name :&str, code :&str) {
-		self.add_code(code);
-		self.jsonfuncs.push(format!("{}",name));
+	pub fn add_inner(&mut self, code :&str) {
+		self.innerstr = "".to_string();
+		self.innerstr.push_str(code);
+		return;
 	}
 
-	pub fn add_help_func(&mut self,name :&str, code :&str) {
-		self.add_code(code);
-		self.helpfuncs.push(format!("{}",name));
-	}
-
-	pub fn add_act_func(&mut self,name :&str, code :&str) {
-		self.add_code(code);
-		self.actfuncs.push(format!("{}",name));
-	}
-	pub fn add_call_back(&mut self,name :&str, code :&str) {
-		self.add_code(code);
-		self.callbackfuncs.push(format!("{}",name));
-	}
 
 	pub fn get_func(&self) -> String {
 		return format!("{}",self.funcstr);
@@ -74,48 +52,8 @@ impl FuncComposer {
 
 	pub fn get_extargs_map_func(&self) -> String {
 		let mut rets :String = "".to_string();
-		let mut ival :i32 = 0;
 		rets.push_str("#[extargs_map_function(");
-		if self.helpfuncs.len() > 0 {
-			for f in self.helpfuncs.iter() {
-				if ival > 0 {
-					rets.push_str(",");
-				}
-				rets.push_str(&(format!("{}={}",FUNC_OPTHELP,f)));
-				ival += 1;
-			}
-		}
-
-		if self.jsonfuncs.len() > 0 {
-			for f in self.jsonfuncs.iter() {
-				if ival > 0 {
-					rets.push_str(",");
-				}
-				rets.push_str(&(format!("{}={}",FUNC_JSONFUNC,f)));
-				ival += 1;
-			}
-		}
-
-		if self.actfuncs.len() > 0 {
-			for f in self.actfuncs.iter() {
-				if ival > 0 {
-					rets.push_str(",");
-				}
-				rets.push_str(&(format!("{}={}",FUNC_ACTFUNC,f)));
-				ival += 1;
-			}
-		}
-
-		if self.callbackfuncs.len() > 0 {
-			for f in self.callbackfuncs.iter() {
-				if ival > 0 {
-					rets.push_str(",");
-				}
-				rets.push_str(&(format!("{}",f)));
-				ival += 1;
-			}
-		}
-
+		rets.push_str(&self.innerstr);
 		rets.push_str(")]");
 		return rets;
 	}
@@ -526,23 +464,41 @@ fn read_file(fname :&str) -> String {
 }
 
 fn main() -> Result<(),Box<dyn Error>> {
+  	let running = Arc::new(AtomicBool::new(true));		
+  	let r = running.clone();
+  	ctrlc::set_handler(move || {
+  		r.store(false, Ordering::SeqCst);
+  	}).expect("can not set handler");
 	let args :Vec<String> = env::args().collect();
 	if args.len() >= 4 {
 		let gendir :String = format!("{}",args[2]);
 		let workdir :String = format!("{}",args[1]);
 		let d :ExtArgsDir = ExtArgsDir::new(&workdir,&gendir);
 		let cmdstr :String = read_file(&args[3]);
-		let fcomposer :FuncComposer = FuncComposer::new();
+		let mut fcomposer :FuncComposer = FuncComposer::new();
 		let mut optstr :String = "".to_string();
 		let addmode :Vec<String> = Vec::new();
+		let mut funcstr :String = "".to_string();
+		let mut exprstr :String = "".to_string();
 		if args.len() >= 5{
 			optstr = read_file(&args[4]);
 		}
 
+		if args.len() >= 6 {
+			funcstr = read_file(&args[5]);
+		}
+
+		if args.len() >= 7 {
+			exprstr = read_file(&args[6]);
+		}
+
+		fcomposer.add_code(&funcstr);
+		fcomposer.add_inner(&exprstr);
+
 		d.write_rust_code(&optstr,&cmdstr,addmode.clone(),fcomposer.clone(),None,true,"ns","piargs")?;
 		println!("write code in [{}]", d.srcdir);
-		while 1 == 1 {
-			thread::sleep(time::Duration::from_millis(1000));
+		while running.load(Ordering::SeqCst) {
+			thread::sleep(time::Duration::from_millis(50));			
 		}
 	}
 	Ok(())
