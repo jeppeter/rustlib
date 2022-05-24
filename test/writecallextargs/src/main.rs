@@ -22,6 +22,14 @@ use std::ffi::OsStr;
 use lazy_static::lazy_static;
 
 
+macro_rules! extargs_log_trace {
+    ($($arg:tt)+) => {
+        let mut _c :String= format!("[{}:{}] ",file!(),line!());
+        _c.push_str(&(format!($($arg)+)[..]));
+        println!("{}",_c);
+    }
+}
+
 #[derive(Debug,Clone)]
 pub (crate) struct FuncComposer {
     funcstr :String,
@@ -410,16 +418,16 @@ impl ExtArgsDir {
                         } else {
                             rets.push_str(&format!("    println!(\"{}.{}.{}={{}}\", {}.borrow().{}.{});\n", piname,cmdname,o.var_name(), piname,cmdname,o.var_name()));     
                         }
-                        
+
                     } else {
                         if o.type_name() == KEYWORD_LIST {
                             rets.push_str(&format!("    println!(\"{}.{}={{:?}}\", {}.borrow().{});\n", piname,o.var_name(), piname,o.var_name())); 
                         } else {
                             rets.push_str(&format!("    println!(\"{}.{}={{}}\", {}.borrow().{});\n", piname,o.var_name(), piname,o.var_name()));       
                         }
-                        
+
                     }
-                    
+
                 } else {
                     let  argname :String;
                     if cmdname.len() > 0 {
@@ -429,7 +437,7 @@ impl ExtArgsDir {
                         argname = format!("{}",KEYWORD_ARGS);
                         rets.push_str(&format!("    println!(\"{}.{}={{:?}}\", {}.borrow().{});\n", piname,argname, piname,argname));
                     }
-                    
+
                 }
             }
         }
@@ -463,7 +471,7 @@ impl ExtArgsDir {
             rets.push_str(&format!("    let {} = Arc::new(RefCell::new(MainDataStruct::new()));\n",piname));            
             rets.push_str(&format!("    let {} = parser.parse_commandline_ex(None,None,Some({}.clone()),None)?;\n",nsname,piname));
         } else {
-            rets.push_str(&format!("    let {} = parser.parse_commandline_ex(None,None,None,None)?\n",nsname));
+            rets.push_str(&format!("    let {} = parser.parse_commandline_ex(None,None,None,None)?;\n",nsname));
         }
 
         if printout {
@@ -519,7 +527,7 @@ impl ExtArgsDir {
         Ok(())
     }
 
-    fn compile_command(&self) -> Result<(),Box<dyn Error>> {
+    fn compile_command_inner(&self) -> Result<(),Box<dyn Error>> {
         let mut chd = Chdir::new();
         let cargoexe :String;
         let mode :String;
@@ -531,34 +539,48 @@ impl ExtArgsDir {
         }
 
         mode = format!("--{}",*RUST_RUN_MODE);
-        {
-            let mut cmd = process::Command::new(&cargoexe);
-            cmd.arg("build").arg(&mode);
-            let mut chld = cmd.spawn()?;
-            let mut waiting :i32 = 1;
-            waiting = waiting;
-            while waiting > 0 {
-                match chld.try_wait() {
-                    Ok(Some(status)) => {
-                        if !status.success() {
-                            let vargs :Vec<&OsStr> = cmd.get_args().collect();
-                            extargs_new_error!{ExtArgsDirError,"wait {:?} exit {:?}", vargs, status}
-                        }
-                        waiting = 0;
-                    },
-                    Ok(None) => { thread::sleep(time::Duration::from_millis(50));},
-                    Err(e) => {
+
+        let mut cmd = process::Command::new(&cargoexe);
+        cmd.arg("build").arg(&mode);
+        let mut chld = cmd.spawn()?;
+        let mut waiting :i32 = 1;
+        waiting = waiting;
+        while waiting > 0 {
+            match chld.try_wait() {
+                Ok(Some(status)) => {
+                    if !status.success() {
                         let vargs :Vec<&OsStr> = cmd.get_args().collect();
-                        extargs_new_error!{ExtArgsDirError,"wait {:?} error {:?}", vargs, e}
+                        extargs_new_error!{ExtArgsDirError,"wait {:?} exit {:?}", vargs, status}
                     }
+                    waiting = 0;
+                },
+                Ok(None) => { thread::sleep(time::Duration::from_millis(50));},
+                Err(e) => {
+                    let vargs :Vec<&OsStr> = cmd.get_args().collect();
+                    extargs_new_error!{ExtArgsDirError,"wait {:?} error {:?}", vargs, e}
                 }
-            }           
-        }
+            }
+        }           
         Ok(())
     }
 
+    pub fn compile_command(&self) -> Result<(),Box<dyn Error>> {
+        let mut idx :i32 = 0;
+        let mut berr :Result<(),Box<dyn Error>> = Ok(());
+        while idx < 3 {
+            berr = self.compile_command_inner();
+            if berr.is_ok() {
+                return berr;
+            }
+            idx += 1;
+            /*sleep a while*/
+            thread::sleep(time::Duration::from_millis(1000));
+        }
+        return berr;
+    }
+
     #[allow(unused_assignments)]
-    fn run_command(&self,envval :HashMap<String,String>,delvars :Vec<String>, args :Vec<String>) ->  Result<String,Box<dyn Error>>{
+    pub fn run_command(&self,envval :HashMap<String,String>,delvars :Vec<String>, args :Vec<String>) ->  Result<String,Box<dyn Error>>{
         let mut setenvs :HashMap<String,String> = env::vars().collect();
         let mut cont :i32 = 1;
         let mut chd :Chdir = Chdir::new();
@@ -600,7 +622,7 @@ impl ExtArgsDir {
         if *IS_WINDOWS_MODE {
             cname.push_str(".exe");
         }
-        println!("cname {} curdir {}", cname,self.srcdir);
+        extargs_log_trace!("cname {} curdir {}", cname,self.srcdir);
         let mut cmd = process::Command::new(&cname);
         for d in args.clone() {
             cmd.arg(d);
@@ -608,7 +630,7 @@ impl ExtArgsDir {
 
         let output = cmd.env_clear().envs(&setenvs).stdin(process::Stdio::null()).stdout(process::Stdio::piped()).stderr(process::Stdio::inherit()).output()?;
         if !output.status.success() {
-        let vargs :Vec<&OsStr> = cmd.get_args().collect();
+            let vargs :Vec<&OsStr> = cmd.get_args().collect();
             extargs_new_error!{ExtArgsDirError,"run {:?} exit {:?}",vargs,output.status}
         }
 
@@ -626,19 +648,9 @@ impl ExtArgsDir {
         Ok(rets)
     }
 
-    #[allow(unused_assignments)]
-    pub fn compile_and_run(&self,envval :HashMap<String,String>, delenvval :Vec<String>, args :Vec<String>) -> Result<String,Box<dyn Error>> {
-        let mut rets :String = "".to_string();
-        if !self.writed {
-            extargs_new_error!{ExtArgsDirError,"not writed yet"}
-        }
 
-        self.compile_command()?;
-        println!("compile over");
-        rets = self.run_command(envval.clone(),delenvval.clone(),args.clone())?;
-        Ok(rets)
-    }
 }
+
 
 fn read_file(fname :&str) -> String {
     let ferr = fs::File::open(fname);
@@ -701,7 +713,8 @@ fn get_result() -> Result<(),Box<dyn Error>> {
 
         d.write_rust_code(&optstr,&cmdstr,addmode.clone(),fcomposer.clone(),None,true,"ns","piargs")?;
         println!("write code in [{}]", d.srcdir);
-        let c = d.compile_and_run(insertvars.clone(),delvars.clone(),args.clone())?;
+        d.compile_command()?;
+        let c = d.run_command(insertvars.clone(),delvars.clone(),args.clone())?;
         println!("get c\n{}",c);
         while running.load(Ordering::SeqCst) {
             thread::sleep(time::Duration::from_millis(50));         

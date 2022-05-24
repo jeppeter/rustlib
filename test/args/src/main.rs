@@ -30,6 +30,8 @@ fn main() {
 	let mut v :i64;
 	let mut base :u32;
 	let mut cparse :String;
+	let b = format!(r#"get {{ {} }}"#,"ccs");
+
 	//let mut wstr :String = String::new();
 	let mut buf = vec![];
 	{
@@ -39,6 +41,7 @@ fn main() {
 		let mut cstr :String;
 		cstr = format!("OS={}",env::consts::OS);
 		write_fmts(&mut wstr,&cstr).unwrap();
+		write_fmts(&mut wstr,&b).unwrap();
 
 	    for arg in env::args() {
 	    	if i == 0 {
