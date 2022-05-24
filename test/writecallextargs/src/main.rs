@@ -23,11 +23,10 @@ use lazy_static::lazy_static;
 
 
 #[derive(Debug,Clone)]
-struct FuncComposer {
+pub (crate) struct FuncComposer {
     funcstr :String,
     innerstr : String,
 }
-
 
 #[allow(dead_code)]
 impl FuncComposer {
@@ -64,7 +63,7 @@ impl FuncComposer {
     }
 }
 
-struct Chdir {
+pub (crate) struct Chdir {
     origdir :String,
     curdir :String,
 }
@@ -100,10 +99,8 @@ impl Drop for Chdir {
 
 extargs_error_class!{ExtArgsDirError}
 
-
-
 #[derive(Debug)]
-struct ExtArgsDir {
+pub (crate) struct ExtArgsDir {
     srcdir : String,
     workdir :String,
     gendir :String, 
@@ -126,6 +123,22 @@ lazy_static!{
     };
 }
 
+lazy_static!{
+    static ref IS_WINDOWS_MODE :bool = {
+        let mut retv :bool = false;
+        if env::consts::OS == "windows"  {
+            retv = true;
+        }
+        retv
+    };
+    static ref PATH_SPLIT :char = {
+        let mut retv :char = '/';
+        if *IS_WINDOWS_MODE {
+            retv = '\\';
+        }
+        retv
+    };
+}
 
 impl ExtArgsDir {
     pub fn new(exename :&str,workdir :&str,gendir :&str) -> ExtArgsDir {
@@ -511,7 +524,7 @@ impl ExtArgsDir {
         let cargoexe :String;
         let mode :String;
         chd.chdir(&self.srcdir)?;
-        if env::consts::OS == "windows" {
+        if *IS_WINDOWS_MODE {
             cargoexe = format!("cargo.exe");
         } else {
             cargoexe = format!("cargo");
@@ -519,8 +532,7 @@ impl ExtArgsDir {
 
         mode = format!("--{}",*RUST_RUN_MODE);
         {
-            let vecs = ["build",&mode];
-            let mut cmd = process::Command::new("cargo");           
+            let mut cmd = process::Command::new(&cargoexe);
             cmd.arg("build").arg(&mode);
             let mut chld = cmd.spawn()?;
             let mut waiting :i32 = 1;
@@ -545,6 +557,7 @@ impl ExtArgsDir {
         Ok(())
     }
 
+    #[allow(unused_assignments)]
     fn run_command(&self,envval :HashMap<String,String>,delvars :Vec<String>, args :Vec<String>) ->  Result<String,Box<dyn Error>>{
         let mut setenvs :HashMap<String,String> = env::vars().collect();
         let mut cont :i32 = 1;
@@ -555,7 +568,7 @@ impl ExtArgsDir {
             cont = 0;
 
 
-            for (k,v) in setenvs.clone() {
+            for (k,_) in setenvs.clone() {
                 let mut delv :i32 = 0;
                 for k2 in delvars.clone() {
                     if k2 == k {
@@ -583,12 +596,8 @@ impl ExtArgsDir {
         }
 
         chd.chdir(&self.srcdir)?;
-        let mut cch = '/';
-        if env::consts::OS == "windows" {
-            cch = '\\';
-        }
-        let mut cname = format!("target{}{}{}{}",cch,*RUST_RUN_MODE,cch,self.exename);
-        if env::consts::OS == "windows" {
+        let mut cname = format!("target{}{}{}{}",*PATH_SPLIT,*RUST_RUN_MODE,*PATH_SPLIT,self.exename);
+        if *IS_WINDOWS_MODE {
             cname.push_str(".exe");
         }
         println!("cname {} curdir {}", cname,self.srcdir);
@@ -612,10 +621,12 @@ impl ExtArgsDir {
                 extargs_new_error!{ExtArgsDirError,"run {:?} change buffer error {:?}", vargs, e}
             }
         }
+        rets = rets;
 
         Ok(rets)
     }
 
+    #[allow(unused_assignments)]
     pub fn compile_and_run(&self,envval :HashMap<String,String>, delenvval :Vec<String>, args :Vec<String>) -> Result<String,Box<dyn Error>> {
         let mut rets :String = "".to_string();
         if !self.writed {
@@ -628,7 +639,6 @@ impl ExtArgsDir {
         Ok(rets)
     }
 }
-
 
 fn read_file(fname :&str) -> String {
     let ferr = fs::File::open(fname);
@@ -646,18 +656,25 @@ fn read_file(fname :&str) -> String {
     return rets;
 }
 
-fn main() -> Result<(),Box<dyn Error>> {
+fn get_result() -> Result<(),Box<dyn Error>> {
     let running = Arc::new(AtomicBool::new(true));      
     let r = running.clone();
     ctrlc::set_handler(move || {
         r.store(false, Ordering::SeqCst);
     }).expect("can not set handler");
+    let cfile = format!("{}",file!());
+    let cdir = Path::new(&cfile).parent().unwrap();
+    let cdname1 = fs::canonicalize(&cdir).unwrap();
+    let cdname = cdname1.parent().unwrap().parent().unwrap().parent().unwrap().parent().unwrap();
+    let bname = format!("{}",cdname.display().to_string());
+    println!("cfile [{}] cdir[{}]", cfile,bname);
+
     let args :Vec<String> = env::args().collect();
-    if args.len() >= 4 {
-        let gendir :String = format!("{}",args[2]);
-        let workdir :String = format!("{}",args[1]);
+    if args.len() >= 2 {
+        let gendir :String = format!("{}{}extargsparse-rs{}extargsparse_codegen",bname,*PATH_SPLIT,*PATH_SPLIT);
+        let workdir :String = format!("{}{}extargsparse-rs{}extargsparse_worker",bname,*PATH_SPLIT,*PATH_SPLIT);
         let mut d :ExtArgsDir = ExtArgsDir::new("callextargs",&workdir,&gendir);
-        let cmdstr :String = read_file(&args[3]);
+        let cmdstr :String = read_file(&args[1]);
         let mut fcomposer :FuncComposer = FuncComposer::new();
         let mut optstr :String = "".to_string();
         let addmode :Vec<String> = Vec::new();
@@ -667,16 +684,16 @@ fn main() -> Result<(),Box<dyn Error>> {
         let mut delvars :Vec<String> = Vec::new();
         let mut args :Vec<String> = Vec::new();
 
-        if args.len() >= 5{
-            optstr = read_file(&args[4]);
+        if args.len() >= 3{
+            optstr = read_file(&args[2]);
         }
 
-        if args.len() >= 6 {
-            funcstr = read_file(&args[5]);
+        if args.len() >= 4 {
+            funcstr = read_file(&args[3]);
         }
 
-        if args.len() >= 7 {
-            exprstr = read_file(&args[6]);
+        if args.len() >= 5 {
+            exprstr = read_file(&args[4]);
         }
 
         fcomposer.add_code(&funcstr);
@@ -689,6 +706,16 @@ fn main() -> Result<(),Box<dyn Error>> {
         while running.load(Ordering::SeqCst) {
             thread::sleep(time::Duration::from_millis(50));         
         }
+    }
+    Ok(())
+}
+
+fn main() -> Result<(),Box<dyn Error>> {
+    let berr = get_result();
+    if berr.is_err() {
+        while 1 ==1 {
+            thread::sleep(time::Duration::from_millis(50));         
+        }        
     }
     Ok(())
 }
