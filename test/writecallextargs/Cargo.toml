@@ -10,3 +10,4 @@ tempfile = "^3.3.0"
 ctrlc = "^3.2.2"
 extargsparse_worker = { path = "x:\\extargsparse-rs\\extargsparse_worker"}
 extargsparse_codegen = { path = "x:\\extargsparse-rs\\extargsparse_codegen"}
+lazy_static = "^1.4.0"

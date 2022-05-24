@@ -5,6 +5,8 @@ use std::time;
 use std::fs;
 use std::io::prelude::*;
 use std::error::Error;
+use std::path::Path;
+use std::process;
 
 use extargsparse_worker::{extargs_new_error,extargs_error_class};
 use extargsparse_worker::parser::{ExtArgsParser};
@@ -15,6 +17,9 @@ use extargsparse_codegen::{extargs_load_commandline};
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use lazy_static::lazy_static;
 
 
 #[derive(Debug,Clone)]
@@ -59,7 +64,43 @@ impl FuncComposer {
 	}
 }
 
+struct Chdir {
+	origdir :String,
+	curdir :String,
+}
+
+impl Chdir {
+	pub fn new() -> Chdir {
+		let curdir = env::current_dir().unwrap().display().to_string();
+		Chdir {
+			origdir : curdir,
+			curdir : "".to_string(),
+		}
+	}
+
+	pub fn chdir(&mut self,ndir :&str) -> Result<(),Box<dyn Error>> {
+		let np = Path::new(ndir);
+		self.curdir = format!("{}",ndir);
+		env::set_current_dir(&np)?;
+		Ok(())
+	}
+}
+
+impl Drop for Chdir {
+	fn drop(&mut self) {
+		if self.origdir.len() > 0 {
+			let np = Path::new(&self.origdir);
+			let _ = env::set_current_dir(&np).unwrap();
+		}
+		self.origdir = "".to_string();
+		self.curdir = "".to_string();
+		return;
+	}
+}
+
 extargs_error_class!{ExtArgsDirError}
+
+
 
 #[derive(Debug)]
 struct ExtArgsDir {
@@ -67,15 +108,34 @@ struct ExtArgsDir {
 	workdir :String,
 	gendir :String,	
 	tdir : TempDir,
+	writed : bool,
+	exename : String,
 }
 
+#[cfg(debug_assertions)]
+lazy_static!{
+	static ref RUST_RUN_MODE :String = {
+		format!("debug")
+	};
+}
+
+#[cfg(not(debug_assertions))]
+lazy_static!{
+	static ref RUST_RUN_MODE :String = {
+		format!("release")
+	};
+}
+
+
 impl ExtArgsDir {
-	pub fn new(workdir :&str,gendir :&str) -> ExtArgsDir {
+	pub fn new(exename :&str,workdir :&str,gendir :&str) -> ExtArgsDir {
 		let mut retv :ExtArgsDir = ExtArgsDir{
 			srcdir : "".to_string(),
 			workdir : format!("{}",workdir),
 			gendir : format!("{}",gendir ),
 			tdir : TempDir::new().unwrap(),
+			writed : false,
+			exename : format!("{}",exename),
 		};
 		let srcd = retv.tdir.path().join("src");
 		retv.srcdir = format!("{}",srcd.display());
@@ -285,7 +345,7 @@ impl ExtArgsDir {
 	fn format_cargo_toml(&self) -> String {
 		let mut rets :String = "".to_string();
 		rets.push_str("[package]\n");
-		rets.push_str("name = \"callextargs\"\n");
+		rets.push_str(&format!("name = \"{}\"\n",self.exename));
 		rets.push_str("version = \"0.1.0\"\n");
 		rets.push_str("edition = \"2018\"\n");
 		rets.push_str("\n");
@@ -329,7 +389,7 @@ impl ExtArgsDir {
 		rets.push_str(&format!("    /* print out {} */\n",rename));
 		for o in opts.iter() {
 			if o.is_flag() && o.type_name() != KEYWORD_HELP && o.type_name() != KEYWORD_JSONFILE && 
-				o.type_name() != KEYWORD_PREFIX {
+			o.type_name() != KEYWORD_PREFIX {
 				if o.type_name() != KEYWORD_ARGS {
 					if cmdname.len() > 0 {
 						if o.type_name() == KEYWORD_LIST {
@@ -412,7 +472,7 @@ impl ExtArgsDir {
 		Ok(())
 	}
 
-	pub fn write_rust_code(&self,optstr :&str,cmdstr :&str, _addmode :Vec<String>,fcomposer :FuncComposer, priority :Option<Vec<i32>>,printout :bool, nsname :&str, piname :&str) -> Result<(),Box<dyn Error>> {
+	pub fn write_rust_code(&mut self,optstr :&str,cmdstr :&str, _addmode :Vec<String>,fcomposer :FuncComposer, priority :Option<Vec<i32>>,printout :bool, nsname :&str, piname :&str) -> Result<(),Box<dyn Error>> {
 		self.write_cargo_toml()?;
 		/*to get write main file*/
 		let mut rets :String = "".to_string();
@@ -442,7 +502,63 @@ impl ExtArgsDir {
 		rets.push_str(&self.format_main(optstr,cmdstr,printout, parser.clone(),inprior,nsname,piname));
 
 		self.write_main_rs(&rets)?;
+		self.writed = true;
 		Ok(())
+	}
+
+	fn compile_command(&self) -> Result<(),Box<dyn Error>> {
+		let mut chd = Chdir::new();
+		let cargoexe :String;
+		let mode :String;
+		chd.chdir(&self.srcdir)?;
+		if env::consts::OS == "windows" {
+			cargoexe = format!("cargo.exe");
+		} else {
+			cargoexe = format!("cargo");
+		}
+
+		mode = format!("--{}",*RUST_RUN_MODE);
+		{
+			let vecs = ["build",&mode];
+			let mut cmd = process::Command::new("cargo");			
+			cmd.arg("build").arg("--release");
+			let mut chld = cmd.spawn()?;
+			let mut waiting :i32 = 1;
+			waiting = waiting;
+			while waiting > 0 {
+				match chld.try_wait() {
+					Ok(Some(status)) => {
+						if !status.success() {
+							let vargs :Vec<&OsStr> = cmd.get_args().collect();
+							extargs_new_error!{ExtArgsDirError,"wait {:?} exit {:?}", vargs, status}
+						}
+						waiting = 0;
+					},
+					Ok(None) => { thread::sleep(time::Duration::from_millis(50));},
+					Err(e) => {
+						let vargs :Vec<&OsStr> = cmd.get_args().collect();
+						extargs_new_error!{ExtArgsDirError,"wait {:?} error {:?}", vargs, e}
+					}
+				}
+			}			
+		}
+		Ok(())
+	}
+
+	fn run_command(&self,envval :HashMap<String,String>,delvars :Vec<String>, args :Vec<String>) ->  Result<String,Box<dyn Error>>{
+		Ok("".to_string())
+	}
+
+	pub fn compile_and_run(&self,envval :HashMap<String,String>, delenvval :Vec<String>, args :Vec<String>) -> Result<String,Box<dyn Error>> {
+		let mut rets :String = "".to_string();
+		if !self.writed {
+			extargs_new_error!{ExtArgsDirError,"not writed yet"}
+		}
+
+		self.compile_command()?;
+		println!("compile over");
+		rets = self.run_command(envval.clone(),delenvval.clone(),args.clone())?;
+		Ok(rets)
 	}
 }
 
@@ -464,22 +580,26 @@ fn read_file(fname :&str) -> String {
 }
 
 fn main() -> Result<(),Box<dyn Error>> {
-  	let running = Arc::new(AtomicBool::new(true));		
-  	let r = running.clone();
-  	ctrlc::set_handler(move || {
-  		r.store(false, Ordering::SeqCst);
-  	}).expect("can not set handler");
+	let running = Arc::new(AtomicBool::new(true));		
+	let r = running.clone();
+	ctrlc::set_handler(move || {
+		r.store(false, Ordering::SeqCst);
+	}).expect("can not set handler");
 	let args :Vec<String> = env::args().collect();
 	if args.len() >= 4 {
 		let gendir :String = format!("{}",args[2]);
 		let workdir :String = format!("{}",args[1]);
-		let d :ExtArgsDir = ExtArgsDir::new(&workdir,&gendir);
+		let mut d :ExtArgsDir = ExtArgsDir::new("callextargs",&workdir,&gendir);
 		let cmdstr :String = read_file(&args[3]);
 		let mut fcomposer :FuncComposer = FuncComposer::new();
 		let mut optstr :String = "".to_string();
 		let addmode :Vec<String> = Vec::new();
 		let mut funcstr :String = "".to_string();
 		let mut exprstr :String = "".to_string();
+		let mut insertvars :HashMap<String,String> = HashMap::new();
+		let mut delvars :Vec<String> = Vec::new();
+		let mut args :Vec<String> = Vec::new();
+
 		if args.len() >= 5{
 			optstr = read_file(&args[4]);
 		}
@@ -497,6 +617,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 
 		d.write_rust_code(&optstr,&cmdstr,addmode.clone(),fcomposer.clone(),None,true,"ns","piargs")?;
 		println!("write code in [{}]", d.srcdir);
+		let c = d.compile_and_run(insertvars.clone(),delvars.clone(),args.clone())?;
 		while running.load(Ordering::SeqCst) {
 			thread::sleep(time::Duration::from_millis(50));			
 		}
