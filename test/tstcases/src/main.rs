@@ -34,5 +34,9 @@ fn calllib_handler(ns :NameSpaceEx,optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 
 
 fn main() {
-    println!("Hello, world!");
+	let cmdline = r#"
+	{
+		
+	}
+	"#;
 }
