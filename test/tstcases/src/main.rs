@@ -27,16 +27,55 @@ use regex::Regex;
 use std::any::Any;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use winreg::enums::*;
+use winreg::RegKey;
+use winreg::RegValue;
 
 extargs_error_class!{NParseError}
 
 
+const KEYWORD_HKLM :&str = "HKLM";
+const KEYWORD_HCU :&str = "HCU";
+
 fn regread_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
+	let regk :RegKey;
+	let mut idx :usize = 0;
+	let kpath :&str;
+	let mut cv :&str = "";
 	sarr = ns.get_array("subnargs");
-	if sarr.len() < 1 {
+	if sarr.len() < 2 {
 		extargs_new_error!{NParseError,"need 1 args"}
-	}	
+	}
+
+	if sarr[idx] == KEYWORD_HKLM {
+		regk = RegKey::predef(HKEY_LOCAL_MACHINE);
+		idx += 1;
+	} else if sarr[idx] == KEYWORD_HCU {
+		regk = RegKey::predef(HKEY_CURRENT_USER);
+		idx += 1;
+	} else {
+		regk = RegKey::predef(HKEY_LOCAL_MACHINE);
+	}
+
+	if sarr.len() <= idx {
+		extargs_new_error!{NParseError,"need path value"}
+	}
+
+	kpath = &sarr[idx];
+	idx += 1;
+
+	let ckey = regk.open_subkey(kpath)?;
+	let val :RegValue ;
+
+	if sarr.len() > idx {
+		cv = &sarr[idx];
+		idx += 1;
+	}
+	val = ckey.get_raw_value(cv)?;
+
+	println!("open [{}].[{}] value {:?}", kpath, cv,val);
+
 	return Ok(());
 }
 
@@ -50,8 +89,8 @@ fn main() -> Result<(),Box<dyn Error>> {
 		}
 	}
 	"#;
-    let parser :ExtArgsParser = ExtArgsParser::new(None,None)?;
-    extargs_load_commandline!(parser,cmdline)?;
-    let _ = parser.parse_commandline_ex(None,None,None,None)?;
-    return Ok(());
+	let parser :ExtArgsParser = ExtArgsParser::new(None,None)?;
+	extargs_load_commandline!(parser,cmdline)?;
+	let _ = parser.parse_commandline_ex(None,None,None,None)?;
+	return Ok(());
 }
