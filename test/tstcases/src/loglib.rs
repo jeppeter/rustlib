@@ -68,15 +68,11 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		level = log::LevelFilter::Warn;
 	}
 
-	println!("2");
-
 	set_logger_level(retv);
 
 	cbuild = Config::builder();
 	rbuiler = Root::builder();
 	nostderr = ns.get_bool("log_nostderr");
-
-	println!("3");
 
 
 	if !nostderr {
@@ -88,8 +84,6 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		rbuiler = rbuiler.appender("stderr");		
 	}
 
-	println!("4");
-
 
 	sarr = ns.get_array("log_files");
 	for wf in sarr.iter() {
@@ -99,8 +93,6 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	}
 
 
-	println!("5");
-
 	sarr = ns.get_array("log_appends");
 	for wf in sarr.iter() {
 		let logfile = FileAppender::builder().append(true).encoder(Box::new(PatternEncoder::new(DEFAULT_MSG_FMT))).build(wf)?;
@@ -108,15 +100,9 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		rbuiler = rbuiler.appender(wf);
 	}
 
-	println!("6");
-
 
 	let config = cbuild.build(rbuiler.build(level))?;
-	println!("7");
-
 	extargs_set_log_config(config);
-
-	println!("8");
 
 	Ok(())
 }
@@ -165,7 +151,7 @@ macro_rules! debug_error {
 		let mut c :String= format!("[{}:{}]",file!(),line!());
 		c.push_str("<ERROR> ");
 		c.push_str(&log_get_timestamp());
-		c.push_str(":");
+		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
 		c.push_str("\n");
 		log_output_function(1, &c);
@@ -178,7 +164,7 @@ macro_rules! debug_warn {
 		let mut c :String= format!("[{}:{}]",file!(),line!());
 		c.push_str("<WARN> ");
 		c.push_str(&log_get_timestamp());
-		c.push_str(":");
+		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
 		c.push_str("\n");
 		log_output_function(2, &c);
@@ -192,7 +178,7 @@ macro_rules! debug_info {
 		let mut c :String= format!("[{}:{}]",file!(),line!());
 		c.push_str("<INFO> ");
 		c.push_str(&log_get_timestamp());
-		c.push_str(":");
+		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
 		c.push_str("\n");
 		log_output_function(3, &c);
@@ -206,7 +192,7 @@ macro_rules! debug_trace {
 		let mut c :String= format!("[{}:{}]",file!(),line!());
 		c.push_str("<TRACE> ");
 		c.push_str(&log_get_timestamp());
-		c.push_str(":");
+		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
 		c.push_str("\n");
 		log_output_function(4, &c);
