@@ -29,6 +29,11 @@ use winreg::enums::*;
 use winreg::{RegValue,RegKey};
 use std::os::windows::ffi::OsStrExt;
 
+use super::{debug_trace};
+use super::loglib::{log_get_timestamp,log_output_function,init_log};
+
+
+
 
 extargs_error_class!{NParseError}
 
@@ -200,6 +205,8 @@ fn regread_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	let mut idx :usize = 0;
 	let kpath :&str;
 	let mut cv :&str = "";
+
+	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
 	if sarr.len() < 2 {
 		extargs_new_error!{NParseError,"need 1 args"}
@@ -237,17 +244,28 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	let kpath :&str;
 	let mut cv :&str = "";
 	let mut typesarr :Vec<String> = Vec::new();
+
+	init_log(ns.clone())?;
+
+	debug_trace!(" ");
+
 	sarr = ns.get_array("subnargs");
 	if sarr.len() < 2 {
 		extargs_new_error!{NParseError,"need 1 args"}
 	}
 
+	debug_trace!(" ");
+
 	(regk, step) = get_regk(&sarr[idx]);
 	idx = idx + step;
+
+	debug_trace!(" ");
 
 	if sarr.len() <= idx {
 		extargs_new_error!{NParseError,"need path value"}
 	}
+
+	debug_trace!(" ");
 
 	kpath = &sarr[idx];
 	idx = idx + 1;
@@ -255,19 +273,26 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	let ckey = regk.open_subkey(kpath)?;
 	let val :RegValue ;
 
+	debug_trace!(" ");
+
 	if idx < sarr.len() {
 		cv = &sarr[idx];
 		idx += 1;
 	}
 
+	debug_trace!(" ");
 
 	while idx < sarr.len() {
 		typesarr.push(format!("{}",sarr[idx]));
 		idx += 1;
 	}
 
+	debug_trace!(" ");
+
 	val = get_reg_value(typesarr.clone());
 	ckey.set_raw_value(cv,&val)?;
+
+	debug_trace!(" ");
 
 	println!("{:?} succ", sarr);
 
