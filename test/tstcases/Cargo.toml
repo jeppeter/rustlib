@@ -6,8 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-extargsparse_worker = "^0.1.0"
-extargsparse_codegen = "^0.1.0"
+extargsparse_worker = "^0.1.1"
+#extargsparse_worker = {path = "../../../extargsparse-rs/extargsparse_worker"}
+extargsparse_codegen = "^0.1.1"
+#extargsparse_codegen = {path = "../../../extargsparse-rs/extargsparse_codegen"}
 lazy_static = "^1.4.0"
 regex = "1"
 chrono = "^0.4.0"

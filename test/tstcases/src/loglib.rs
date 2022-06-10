@@ -3,6 +3,7 @@ use extargsparse_codegen::{extargs_load_commandline,extargs_map_function};
 use extargsparse_worker::namespace::{NameSpaceEx};
 use extargsparse_worker::funccall::ExtArgsParseFunc;
 use extargsparse_worker::parser::ExtArgsParser;
+use extargsparse_worker::logger::{extargs_set_log_config};
 
 
 use super::loglib_windows::{win_output_debug};
@@ -113,7 +114,8 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let config = cbuild.build(rbuiler.build(level))?;
 	println!("7");
 
-	let _handle = log4rs::init_config(config)?;
+	extargs_set_log_config(config);
+
 	println!("8");
 
 	Ok(())

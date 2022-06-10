@@ -270,7 +270,7 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	kpath = &sarr[idx];
 	idx = idx + 1;
 
-	let ckey = regk.open_subkey(kpath)?;
+	let ckey = regk.open_subkey_with_flags(kpath,KEY_WRITE)?;
 	let val :RegValue ;
 
 	debug_trace!(" ");
@@ -287,9 +287,9 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 		idx += 1;
 	}
 
-	debug_trace!(" ");
-
+	debug_trace!("typesarr {:?}",typesarr);
 	val = get_reg_value(typesarr.clone());
+	debug_trace!("cv {} val {:?}",cv,val);
 	ckey.set_raw_value(cv,&val)?;
 
 	debug_trace!(" ");
