@@ -279,7 +279,6 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
-		"verbose|v" : "+",
 		"regread<regread_handler>## [HKLM|HCU] path [key] ##" : {
 			"$" : "+"
 		},
