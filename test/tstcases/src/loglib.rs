@@ -46,6 +46,56 @@ fn set_logger_level(nv :i64) -> i64 {
 	return retv;
 }
 
+fn parse_log_var(s :&str) -> (String,u64) {
+	let sarr :Vec<&str> = s.split(",").collect();
+	let mut fname :String;
+	let mut fsize :u64 = 0;
+	if sarr.len() > 1 {
+		fname = format!("{}",sarr[0]);
+		let bss :String = format!("{}",sarr[1]);
+		let bs2 = &bss;
+		let bs = bs2.as_bytes();
+		let mut number :String = "".to_string();
+		let mut unit :String = "".to_string();
+		let mut n :usize = bs.len();
+		match bs2.find(|c :char| !c.is_digit(10)) {
+			Some(vn) => {n = vn},
+			None => {},
+		}
+		let mut idx :usize = 0 ;
+		while idx < n {
+			number.push(bs[idx] as char);
+			idx += 1;
+		}
+
+		while idx < bs.len() {
+			unit.push(bs[idx] as char);
+			idx += 1;
+		}
+
+
+		match number.parse::<u64>() {
+			Ok(n) => {fsize = n},
+			Err(_e) => {},
+		}
+		if unit == "b" || unit == "B" {
+			fsize = fsize;
+		} else if unit == "k" || unit == "K" {
+			fsize *= 1024;
+		} else if unit == "m" || unit == "M" {
+			fsize *= 1024 * 1024;
+		} else if unit == "g" || unit == "G" {
+			fsize *= 1024 * 1024 * 1024;
+		} else if unit == "t" || unit == "T" {
+			fsize *= 1024 * 1024 * 1024 * 1024;
+		}
+	} else {
+		fname = format!("{}",s);
+	}
+	return (fname,fsize);
+}
+
+
 pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let mut level :LevelFilter  = log::LevelFilter::Error;
 	let mut rbuiler :RootBuilder;
