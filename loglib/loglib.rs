@@ -9,7 +9,7 @@ use extargsparse_worker::logger::{extargs_set_log_config};
 use super::loglib_windows::{win_output_debug};
 use lazy_static::lazy_static;
 use log::{LevelFilter};
-use log::{error, info, trace,warn};
+use log::{error, info, trace,warn,debug};
 use log4rs::append::console::{ConsoleAppender, Target};
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root,RootBuilder,ConfigBuilder};
@@ -230,7 +230,9 @@ fn log_output_function_inner(level :i64, outs :&str) {
 			warn!("{}",outs);
 		} else if level == 2 {
 			info!("{}",outs);
-		} else if level >= 3 {
+		} else if level == 3 {
+			debug!("{}",outs);
+		} else if level >= 4 {
 			trace!("{}",outs);
 		}
 		win_output_debug(outs);
@@ -282,6 +284,19 @@ macro_rules! debug_info {
 	}
 }
 
+#[macro_export]
+macro_rules! debug_debug {
+	($($arg:tt)+) => {
+		let mut c :String= format!("[{}:{}]",file!(),line!());
+		c.push_str("<DEBUG> ");
+		c.push_str(&log_get_timestamp());
+		c.push_str(": ");
+		c.push_str(&(format!($($arg)+)[..]));
+		c.push_str("\n");
+		log_output_function(3, &c);
+	}
+}
+
 
 #[macro_export]
 macro_rules! debug_trace {
@@ -292,6 +307,6 @@ macro_rules! debug_trace {
 		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
 		c.push_str("\n");
-		log_output_function(3, &c);
+		log_output_function(4, &c);
 	}
 }
