@@ -37,6 +37,9 @@ extargs_error_class!{NParseError}
 
 const KEYWORD_HKLM :&str = "HKLM";
 const KEYWORD_HCU :&str = "HCU";
+const KEYWORD_HKCR :&str = "HKCR";
+const KEYWORD_HKU :&str = "HKU";
+const KEYWORD_HKCC :&str = "HKCC";
 
 const TYPE_REG_SZ :&str = "REG_SZ";
 const TYPE_REG_EXPAND_SZ :&str = "REG_EXPAND_SZ";
@@ -50,10 +53,19 @@ fn get_regk(ktype :&str) -> (RegKey,usize) {
 	let mut step :usize = 0;
 	let retk :RegKey;
 	if ktype == KEYWORD_HKLM {
-		retk = RegKey::predef(HKEY_CURRENT_USER);
+		retk = RegKey::predef(HKEY_LOCAL_MACHINE);
 		step += 1;
 	} else if ktype == KEYWORD_HCU {
 		retk = RegKey::predef(HKEY_CURRENT_USER);
+		step += 1;
+	} else if ktype == KEYWORD_HKCR {
+		retk = RegKey::predef(HKEY_CLASSES_ROOT);
+		step += 1;
+	} else if ktype == KEYWORD_HKCC {
+		retk = RegKey::predef(HKEY_CURRENT_CONFIG);
+		step += 1;
+	} else if ktype == KEYWORD_HKU {
+		retk = RegKey::predef(HKEY_USERS);
 		step += 1;
 	} else {
 		retk = RegKey::predef(HKEY_LOCAL_MACHINE);
@@ -71,8 +83,6 @@ fn main_to_utf16<P: AsRef<OsStr>>(s: P) -> Vec<u16> {
 fn main_v16_to_v8(v: &[u16]) -> Vec<u8> {
 	unsafe { slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 2).to_vec() }
 }
-
-
 
 fn get_reg_value(v :Vec<String>) -> RegValue {
 	let mut idx :usize;
@@ -195,6 +205,7 @@ fn get_reg_value(v :Vec<String>) -> RegValue {
 
 }
 
+#[allow(unused_assignments)]
 fn regread_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
 	let regk :RegKey;
@@ -296,15 +307,44 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	return Ok(());
 }
 
+fn regenum_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	let regk :RegKey;
+	let step :usize;
+	let mut idx :usize = 0;
+	let kpath :&str;
+	let mut cv :&str = "";
+
+
+	init_log(ns)?;
+
+	sarr = ns.get_array("subnargs");
+
+	if sarr.len() < 1 {
+		extargs_new_error!{NParseError,"need at least path"}
+	}
+
+	(regk, step) = get_regk(&sarr[idx]);
+	idx += step;
+	if sarr.len() <= idx {
+		extargs_new_error!{NParseError, "need path to input"}
+	}
+
+	Ok(())
+}
+
 
 #[extargs_map_function(regread_handler,regwrite_handler)]
 pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
-		"regread<regread_handler>## [HKLM|HCU] path [key] ##" : {
+		"regread<regread_handler>## [HKLM|HCU|HKCR|HKCC|HKU] path [key] ##" : {
 			"$" : "+"
 		},
-		"regwrite<regwrite_handler>## [HKLM|HCU] path key [type] [value] ##" : {
+		"regwrite<regwrite_handler>## [HKLM|HCU|HKCR|HKCC|HKU] path key [type] [value] ##" : {
+			"$" : "+"
+		},
+		"regenum<regenum_handler>## [HKLM|HCU|HKCR|HKCC|HKU] path to enum keyname ##" : {
 			"$" : "+"
 		}
 	}
