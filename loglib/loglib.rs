@@ -23,7 +23,6 @@ use std::error::Error;
 use std::boxed::Box;
 use chrono::{Local,Datelike,Timelike};
 use std::collections::HashMap;
-use std::path::Path;
 
 use std::sync::{Mutex,Arc};
 
@@ -112,7 +111,7 @@ fn parse_log_var(s :&str) -> (String,u64,u32) {
 
 
 pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-	let mut level :LevelFilter  = log::LevelFilter::Error;
+	let level :LevelFilter;
 	let mut rbuiler :RootBuilder;
 	let mut cbuild :ConfigBuilder;
 	let mut sarr :Vec<String>;
@@ -120,7 +119,6 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let nostderr :bool;
 	let stderr =ConsoleAppender::builder().encoder(Box::new(PatternEncoder::new(DEFAULT_MSG_FMT))).target(Target::Stderr).build();
 
-	println!("1");
 	retv = ns.get_int("verbose");
 
 	if retv >= 4 {
@@ -131,6 +129,8 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		level = log::LevelFilter::Info;
 	} else if retv >= 1 {
 		level = log::LevelFilter::Warn;
+	} else {
+		level = log::LevelFilter::Error;
 	}
 
 	set_logger_level(retv);
@@ -158,7 +158,7 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 			cbuild = cbuild.appender(Appender::builder().build(&fname, Box::new(logfile)));
 			rbuiler = rbuiler.appender(&fname);
 		} else {
-			let fpattern = format!("{}.{{}}",Path::new(&fname).file_name().unwrap().to_str().unwrap());
+			let fpattern = format!("{}.{{}}",fname);
 			let mut tfiles :u32 = 1;
 			if times > 0 {
 				tfiles = times;
@@ -182,7 +182,7 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 			cbuild = cbuild.appender(Appender::builder().build(wf, Box::new(logfile)));
 			rbuiler = rbuiler.appender(wf);			
 		} else {
-			let fpattern = format!("{}.{{}}",Path::new(&fname).file_name().unwrap().to_str().unwrap());
+			let fpattern = format!("{}.{{}}",fname);
 			let mut tfiles :u32 = 1;
 			if times > 0 {
 				tfiles = times;
@@ -224,13 +224,13 @@ pub fn log_get_timestamp() -> String {
 
 fn log_output_function_inner(level :i64, outs :&str) {
 	if level <= get_logger_level() {
-		if level == 1 {
+		if level == 0 {
 			error!("{}",outs);
-		} else if level == 2 {
+		} else if level == 1 {
 			warn!("{}",outs);
-		} else if level == 3 {
+		} else if level == 2 {
 			info!("{}",outs);
-		} else if level >= 4 {
+		} else if level >= 3 {
 			trace!("{}",outs);
 		}
 		win_output_debug(outs);
@@ -251,7 +251,7 @@ macro_rules! debug_error {
 		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
 		c.push_str("\n");
-		log_output_function(1, &c);
+		log_output_function(0, &c);
 	}
 }
 
@@ -264,7 +264,7 @@ macro_rules! debug_warn {
 		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
 		c.push_str("\n");
-		log_output_function(2, &c);
+		log_output_function(1, &c);
 	}
 }
 
@@ -278,7 +278,7 @@ macro_rules! debug_info {
 		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
 		c.push_str("\n");
-		log_output_function(3, &c);
+		log_output_function(2, &c);
 	}
 }
 
@@ -292,6 +292,6 @@ macro_rules! debug_trace {
 		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
 		c.push_str("\n");
-		log_output_function(4, &c);
+		log_output_function(3, &c);
 	}
 }
