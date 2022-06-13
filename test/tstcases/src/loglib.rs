@@ -162,8 +162,8 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 pub fn prepare_log(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"{
 			"verbose|v" : "+",
-			"log-files##set write rotate files##" : [],
-			"log-appends##set append files##" : [],
+			"log-files## fname[,fsize] set write rotate files##" : [],
+			"log-appends## fname[,fsize] set append files##" : [],
 			"log-nostderr##specified no stderr output##" : false
 	}"#;
 	extargs_load_commandline!(parser,cmdline)?;
