@@ -9,11 +9,8 @@ use extargsparse_worker::argset::{ArgSetImpl};
 use extargsparse_worker::parser::{ExtArgsParser};
 use extargsparse_worker::funccall::{ExtArgsParseFunc};
 
-#[allow(unused_imports)]
 use std::cell::RefCell;
-#[allow(unused_imports)]
 use std::sync::Arc;
-#[allow(unused_imports)]
 use std::error::Error;
 use std::boxed::Box;
 #[allow(unused_imports)]

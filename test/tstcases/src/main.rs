@@ -33,6 +33,7 @@ mod wchar_windows;
 mod loglib_windows;
 mod loglib;
 mod reghdl;
+mod logtst;
 
 
 #[extargs_map_function()]
@@ -40,6 +41,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	let parser :ExtArgsParser = ExtArgsParser::new(None,None)?;
 	reghdl::load_reg_handler(parser.clone())?;
 	loglib::prepare_log(parser.clone())?;
+	logtst::load_log_handler(parser.clone())?;
 	let _ = parser.parse_commandline_ex(None,None,None,None)?;
 	return Ok(());
 }

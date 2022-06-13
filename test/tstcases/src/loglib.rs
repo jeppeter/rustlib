@@ -15,10 +15,15 @@ use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root,RootBuilder,ConfigBuilder};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::filter::threshold::ThresholdFilter;
+use log4rs::append::rolling_file::RollingFileAppender;
+use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
+use log4rs::append::rolling_file::policy::compound::trigger::size::SizeTrigger;
+use log4rs::append::rolling_file::policy::compound::roll::fixed_window::FixedWindowRoller;
 use std::error::Error;
 use std::boxed::Box;
 use chrono::{Local,Datelike,Timelike};
 use std::collections::HashMap;
+use std::path::Path;
 
 use std::sync::{Mutex,Arc};
 
@@ -46,10 +51,11 @@ fn set_logger_level(nv :i64) -> i64 {
 	return retv;
 }
 
-fn parse_log_var(s :&str) -> (String,u64) {
+fn parse_log_var(s :&str) -> (String,u64,u32) {
 	let sarr :Vec<&str> = s.split(",").collect();
-	let mut fname :String;
+	let fname :String;
 	let mut fsize :u64 = 0;
+	let mut times :u32 = 0;
 	if sarr.len() > 1 {
 		fname = format!("{}",sarr[0]);
 		let bss :String = format!("{}",sarr[1]);
@@ -89,10 +95,19 @@ fn parse_log_var(s :&str) -> (String,u64) {
 		} else if unit == "t" || unit == "T" {
 			fsize *= 1024 * 1024 * 1024 * 1024;
 		}
+
+		if sarr.len() > 2 {
+			let tstr:String = format!("{}",sarr[2]);
+			match tstr.parse::<u32>() {
+				Ok(n) => {times = n},
+				Err(_e) => {},
+			}
+		}
+
 	} else {
 		fname = format!("{}",s);
 	}
-	return (fname,fsize);
+	return (fname,fsize,times);
 }
 
 
@@ -137,17 +152,49 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 
 	sarr = ns.get_array("log_files");
 	for wf in sarr.iter() {
-		let logfile = FileAppender::builder().append(false).encoder(Box::new(PatternEncoder::new(DEFAULT_MSG_FMT))).build(wf)?;
-		cbuild = cbuild.appender(Appender::builder().build(wf, Box::new(logfile)));
-		rbuiler = rbuiler.appender(wf);
+		let (fname,fsize,times) = parse_log_var(wf);
+		if fsize == 0 {
+			let logfile = FileAppender::builder().append(false).encoder(Box::new(PatternEncoder::new(DEFAULT_MSG_FMT))).build(&fname)?;
+			cbuild = cbuild.appender(Appender::builder().build(&fname, Box::new(logfile)));
+			rbuiler = rbuiler.appender(&fname);
+		} else {
+			let fpattern = format!("{}.{{}}",Path::new(&fname).file_name().unwrap().to_str().unwrap());
+			let mut tfiles :u32 = 1;
+			if times > 0 {
+				tfiles = times;
+			}
+			let logfile = RollingFileAppender::builder().append(false).encoder(Box::new(PatternEncoder::new(DEFAULT_MSG_FMT))).build(&fname,
+					Box::new(CompoundPolicy::new(
+						Box::new(SizeTrigger::new(fsize)),
+						Box::new(FixedWindowRoller::builder().build(&fpattern,tfiles).unwrap())
+						)))?;
+			cbuild = cbuild.appender(Appender::builder().build(&fname, Box::new(logfile)));
+			rbuiler = rbuiler.appender(&fname);
+		}
 	}
 
 
 	sarr = ns.get_array("log_appends");
 	for wf in sarr.iter() {
-		let logfile = FileAppender::builder().append(true).encoder(Box::new(PatternEncoder::new(DEFAULT_MSG_FMT))).build(wf)?;
-		cbuild = cbuild.appender(Appender::builder().build(wf, Box::new(logfile)));
-		rbuiler = rbuiler.appender(wf);
+		let (fname,fsize,times) = parse_log_var(wf);
+		if fsize == 0 {
+			let logfile = FileAppender::builder().append(true).encoder(Box::new(PatternEncoder::new(DEFAULT_MSG_FMT))).build(wf)?;
+			cbuild = cbuild.appender(Appender::builder().build(wf, Box::new(logfile)));
+			rbuiler = rbuiler.appender(wf);			
+		} else {
+			let fpattern = format!("{}.{{}}",Path::new(&fname).file_name().unwrap().to_str().unwrap());
+			let mut tfiles :u32 = 1;
+			if times > 0 {
+				tfiles = times;
+			}
+			let logfile = RollingFileAppender::builder().append(true).encoder(Box::new(PatternEncoder::new(DEFAULT_MSG_FMT))).build(&fname,
+					Box::new(CompoundPolicy::new(
+						Box::new(SizeTrigger::new(fsize)),
+						Box::new(FixedWindowRoller::builder().build(&fpattern,tfiles).unwrap())
+						)))?;
+			cbuild = cbuild.appender(Appender::builder().build(&fname, Box::new(logfile)));
+			rbuiler = rbuiler.appender(&fname);
+		}
 	}
 
 
@@ -162,8 +209,8 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 pub fn prepare_log(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"{
 			"verbose|v" : "+",
-			"log-files## fname[,fsize] set write rotate files##" : [],
-			"log-appends## fname[,fsize] set append files##" : [],
+			"log-files##fname[,fsize,numfiles] set write rotate files##" : [],
+			"log-appends##fname[,fsize,numfiles] set append files##" : [],
 			"log-nostderr##specified no stderr output##" : false
 	}"#;
 	extargs_load_commandline!(parser,cmdline)?;
