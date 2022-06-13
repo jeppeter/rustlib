@@ -18,7 +18,7 @@ use std::any::Any;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-use super::{debug_trace,debug_warn,debug_error,debug_info};
+use super::{debug_trace,debug_warn,debug_error,debug_info,debug_debug};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 
@@ -39,6 +39,7 @@ fn logtst_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 
 	for i in 0..times {
 		debug_trace!("{} trace",i);
+		debug_debug!("{} debug",i);
 		debug_info!("{} info",i);
 		debug_warn!("{} warn",i);
 		debug_error!("{} error",i);
