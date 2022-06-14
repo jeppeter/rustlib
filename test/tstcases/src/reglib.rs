@@ -1,4 +1,6 @@
 
+use extargsparse_worker::{extargs_error_class,extargs_new_error};
+
 use std::slice;
 use std::ffi::OsStr;
 use winreg::enums::*;
@@ -7,6 +9,7 @@ use winapi::um::winreg as winapi_reg;
 use std::os::windows::ffi::OsStrExt;
 use std::error::Error;
 use std::collections::HashMap;
+use std::path::Path;
 
 pub const REG_HKLM :&str = "HKLM";
 pub const REG_HCU :&str = "HCU";
@@ -21,6 +24,8 @@ pub const TYPE_REG_DWORD :&str = "REG_DWORD";
 pub const TYPE_REG_QWORD :&str = "REG_QWORD";
 pub const TYPE_REG_DWORD_BIG_ENDIAN :&str = "REG_DWORD_BIG_ENDIAN";
 pub const TYPE_REG_MULTI_SZ :&str = "REG_MULTI_SZ";
+
+extargs_error_class!{RegLibError}
 
 fn get_regk(ktype :&str) -> (RegKey,usize) {
 	let mut step :usize = 0;
@@ -57,9 +62,32 @@ fn main_v16_to_v8(v: &[u16]) -> Vec<u8> {
 	unsafe { slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 2).to_vec() }
 }
 
+pub fn open_reg_key_option(ktype :&str,kpath :&str, perms :winapi_reg::REGSAM) -> Result<Option<RegKey>,Box<dyn Error>> {
+	let (regk,_) =  get_regk(ktype);
+	let ores = regk.open_subkey_with_flags(kpath,perms);
+	if ores.is_err() {
+		let e = ores.err().unwrap();
+		match e.kind() {
+			std::io::ErrorKind::NotFound => {
+				return Ok(None);
+			},
+			_ => {
+				extargs_new_error!{RegLibError,"can not open [{}].[{}] with [{:?}] [{:?}]", ktype,kpath,perms,e}		
+			}
+		}
+	}
+	let ckey = ores.unwrap();
+	return Ok(Some(ckey));
+}
+
 pub fn open_reg_key(ktype :&str,kpath :&str, perms :winapi_reg::REGSAM) -> Result<RegKey,Box<dyn Error>> {
 	let (regk,_) =  get_regk(ktype);
-	let ckey :RegKey = regk.open_subkey_with_flags(kpath,perms)?;
+	let ores = regk.open_subkey_with_flags(kpath,perms);
+	if ores.is_err() {
+		let e = ores.err().unwrap();
+		extargs_new_error!{RegLibError,"can not open [{}].[{}] with [{:?}] [{:?}]", ktype,kpath,perms,e}
+	}
+	let ckey = ores.unwrap();
 	return Ok(ckey);
 }
 
@@ -85,7 +113,7 @@ pub fn get_reg_values(k :&RegKey) -> HashMap<String,RegValue> {
 	retv
 }
 
-pub fn get_reg_val(v :Vec<String>) -> RegValue {
+pub fn format_reg_value(v :Vec<String>) -> RegValue {
 	let mut idx :usize;
 
 	if v.len() > 0 {
@@ -203,4 +231,75 @@ pub fn get_reg_val(v :Vec<String>) -> RegValue {
 		bytes : main_v16_to_v8(&main_to_utf16("\0")),
 		vtype : REG_SZ,
 	};
+}
+
+pub fn reg_del_key(ktype :&str, kpath :&str) -> Result<(),Box<dyn Error>> {
+	/*now first to get the parent path*/
+	let opath = Path::new(kpath).parent();
+	if opath.is_none() {
+		extargs_new_error!{RegLibError,"[{}] no parent", kpath}
+	}
+	let ppath = opath.unwrap();
+	let parentstr = format!("{}",ppath.display());
+	let copath = Path::new(kpath).file_name();
+	if copath.is_none() {
+		extargs_new_error!{RegLibError,"[{}] no basename",kpath}
+	}
+	let cpath = copath.unwrap();
+	let cstr = cpath.to_str();
+	if cstr.is_none() {
+		extargs_new_error!{RegLibError,"can not change [{}] basename to str",kpath}
+	}
+	let cpathstr = format!("{}",cstr.unwrap());
+
+	let ores = open_reg_key_option(ktype,&parentstr,KEY_WRITE)?;
+	if ores.is_none() {
+		return Ok(());
+	}
+	let ckey = ores.unwrap();
+	let ores = ckey.delete_subkey_all(&cpathstr);
+	if ores.is_err() {
+		let e = ores.err().unwrap();
+		match e.kind() {
+			std::io::ErrorKind::NotFound => {
+
+			},
+			_ => {
+				extargs_new_error!{RegLibError,"[{}].[{}] delete [{}] error [{:?}]",
+				ktype, parentstr,cpathstr, e}				
+			},
+		}
+	}
+	return Ok(());
+}
+
+pub fn reg_del_val(ktype :&str, kpath :&str,valpath :&str) -> Result<(),Box<dyn Error>> {
+	let ores = open_reg_key_option(ktype,kpath,KEY_WRITE)?;
+	if ores.is_none() {
+		return Ok(());
+	}
+	let ckey = ores.unwrap();
+	let ores = ckey.delete_value(valpath);
+	if ores.is_err() {
+		let e = ores.err().unwrap();
+		match e.kind() {
+			std::io::ErrorKind::NotFound => {},
+			_ => {
+				extargs_new_error!{RegLibError,"delete [{}].[{}] [{}] error[{:?}]",
+				ktype,kpath,valpath,e}
+			},
+		}
+	}
+
+	return Ok(());
+}
+
+pub fn reg_create_key(ktype :&str, kpath :&str,keypath :&str) -> Result<(),Box<dyn Error>> {
+	let ckey = open_reg_key(ktype,kpath,KEY_WRITE)?;
+	let ores = ckey.create_subkey(keypath);
+	if ores.is_err() {
+		let e = ores.err().unwrap();
+		extargs_new_error!{RegLibError,"can not create [{}] on [{}].[{}] error[{:?}]",keypath,ktype,kpath,e}
+	}
+	return Ok(());
 }

@@ -28,7 +28,7 @@ use winreg::{RegValue,RegKey};
 
 use super::{debug_trace};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
-use super::reglib::{open_reg_key,get_reg_val,get_reg_keys,get_reg_values,REG_HKCR};
+use super::reglib::{open_reg_key,format_reg_value,get_reg_keys,get_reg_values,REG_HKCR,reg_del_val,reg_del_key,reg_create_key};
 //use super::loglib::{init_log};
 
 
@@ -41,16 +41,23 @@ fn regread_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	let mut idx :usize = 0;
 	let kpath :&str;
 	let mut cv :&str = "";
+	let ckey ;
 
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
-	if sarr.len() < 2 {
+	if sarr.len() < 1 {
 		extargs_new_error!{NParseError,"need 1 args"}
 	}
 
-	let ckey = open_reg_key(&sarr[0],&sarr[1],KEY_READ)?;
-	kpath = &sarr[1];
-	idx = 2;
+	if sarr.len() > 1 {
+		ckey = open_reg_key(&sarr[0],&sarr[1],KEY_READ)?;
+		kpath = &sarr[1];
+		idx = 2;		
+	} else {
+		ckey = open_reg_key(&sarr[0],"", KEY_READ)?;
+		kpath = "";
+		idx = 1;
+	}
 	let val :RegValue ;
 	if sarr.len() > idx {
 		cv = &sarr[idx];
@@ -68,6 +75,7 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	let mut idx :usize;
 	let mut cv :&str = "";
 	let mut typesarr :Vec<String> = Vec::new();
+	let ckey ;
 
 	init_log(ns.clone())?;
 
@@ -78,7 +86,7 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	}
 
 
-	let ckey = open_reg_key(&sarr[0],&sarr[1],KEY_WRITE)?;
+	ckey = open_reg_key(&sarr[0],&sarr[1],KEY_WRITE)?;
 	idx = 2;
 
 	if sarr.len() <= idx {
@@ -99,7 +107,7 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 		idx += 1;
 	}
 
-	val = get_reg_val(typesarr.clone());
+	val = format_reg_value(typesarr.clone());
 	ckey.set_raw_value(cv,&val)?;
 
 	println!("{:?} succ", sarr);
@@ -111,15 +119,21 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 fn regenum_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
 	let kpath :&str;
+	let ckey ;
 
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
-	if sarr.len() < 2 {
+	if sarr.len() < 1 {
 		extargs_new_error!{NParseError,"need at least path"}
 	}
 
-	let ckey = open_reg_key(&sarr[0],&sarr[1],KEY_READ)?;
-	kpath = &(sarr[1]);
+	if sarr.len() > 1 {
+		ckey = open_reg_key(&sarr[0],&sarr[1],KEY_READ)?;
+		kpath = &(sarr[1]);
+	} else {
+		ckey = open_reg_key(&sarr[0],"", KEY_READ)?;
+		kpath = "";
+	}
 
 	let ks = get_reg_keys(&ckey);
 	let vs = get_reg_values(&ckey);
@@ -248,7 +262,39 @@ fn listabandoncom_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 	Ok(())
 }
 
-#[extargs_map_function(regread_handler,regwrite_handler,regenum_handler,listabandoncom_handler)]
+fn regdelval_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr= ns.get_array("subnargs");
+	if sarr.len() < 3 {
+		extargs_new_error!{NParseError,"need ktype kpath valpath"}
+	}
+	return reg_del_val(&sarr[0],&sarr[1],&sarr[2]);
+}
+
+
+fn regdelkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr= ns.get_array("subnargs");
+	if sarr.len() < 2 {
+		extargs_new_error!{NParseError,"need ktype kpath"}
+	}
+	return reg_del_key(&sarr[0],&sarr[1]);
+}
+
+fn regcreatekey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr= ns.get_array("subnargs");
+	if sarr.len() < 3 {
+		extargs_new_error!{NParseError,"need ktype kpath key"}
+	}
+	return reg_create_key(&sarr[0],&sarr[1],&sarr[2]);
+}
+
+
+#[extargs_map_function(regread_handler,regwrite_handler,regenum_handler,listabandoncom_handler,regdelval_handler,regdelkey_handler,regcreatekey_handler)]
 pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -263,6 +309,15 @@ pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"listabandoncom<listabandoncom_handler>## to list abondan class id##" : {
 			"$" : 0
+		},
+		"regdelval<regdelval_handler>## HKLM|HCU|HKCR|HKCC|HKU path [key] ##" : {
+			"$" : "+"
+		},
+		"regdelkey<regdelkey_handler>## HKLM|HCU|HKCR|HKCC|HKU path ##" : {
+			"$" : "+"
+		},
+		"regcreatekey<regcreatekey_handler>## HKLM|HCU|HKCR|HKCC|HKU path key ##" : {
+			"$" : "+"
 		}
 	}
 	"#;

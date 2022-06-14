@@ -43,6 +43,11 @@ fn main() -> Result<(),Box<dyn Error>> {
 	reghdl::load_reg_handler(parser.clone())?;
 	loglib::prepare_log(parser.clone())?;
 	logtst::load_log_handler(parser.clone())?;
-	let _ = parser.parse_commandline_ex(None,None,None,None)?;
+	let ores = parser.parse_commandline_ex(None,None,None,None);
+	if ores.is_err() {
+		let e = ores.err().unwrap();
+		eprintln!("{:?}", e);
+		return Err(e);
+	}
 	return Ok(());
 }
