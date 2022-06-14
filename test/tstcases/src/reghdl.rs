@@ -26,6 +26,8 @@ use winreg::enums::*;
 use winreg::{RegValue,RegKey};
 use winapi::um::winreg as winapi_reg;
 use std::os::windows::ffi::OsStrExt;
+use std::path::Path;
+use std::fs;
 
 use super::{debug_trace};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
@@ -353,11 +355,30 @@ fn regenum_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 }
 
 fn expand_environ_val(kp :&str) -> String {
-	let mut retv :String = format!("{}",kp);
+	let mut retv :String = format!("{}",kp).to_lowercase();
 
 	for (k,v) in std::env::vars() {
-		let re :Regex = Regex::new(&format!("%{}%",k)).unwrap();
+		let kl = k.to_lowercase();
+		let re :Regex = Regex::new(&format!("%{}%",kl)).unwrap();
+		let vv :String = format!("{}",v);
+		retv = re.replace_all(&retv,&vv).to_string().to_lowercase();
 	}
+	return retv;
+}
+
+fn get_environ_paths() -> Vec<String> {
+	let mut retv :Vec<String>= Vec::new();
+	for (k,v) in std::env::vars() {
+		let kl = k.to_lowercase();
+		if kl == "path" {
+			let re = Regex::new(";").unwrap();
+			for ks in re.split(&v).into_iter() {
+				retv.push(format!("{}",ks));
+			}
+			break;
+		}
+	}
+	return retv;
 }
 
 fn listabandoncom_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
@@ -366,11 +387,12 @@ fn listabandoncom_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 	let ckey :RegKey = open_reg_key_inner(KEYWORD_HKCR,"CLSID",KEY_READ)?;
 	let subkeys :Vec<String> = get_keys(&ckey);
 	let mut abondans :HashMap<String,String> = HashMap::new();
+	let mut envpaths :Vec<String> = Vec::new();
 
 	init_log(ns.clone())?;
 
 	for k in subkeys.iter() {
-		debug_trace!("k [{}]",k);
+		//debug_trace!("k [{}]",k);
 		let cpath = format!("CLSID\\{}\\InprocServer32",k);
 		let ores = open_reg_key_inner(KEYWORD_HKCR,&cpath,KEY_READ);
 		if ores.is_ok() {
@@ -381,9 +403,54 @@ fn listabandoncom_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 				if kk == "" {
 					bmatch = true;
 					let kpath = format!("{}",kv);
+					let kpath = format!("{}",kpath.trim_start_matches("\""));
+					let kpath = format!("{}",kpath.trim_start_matches("\\"));
+					let kpath = format!("{}",kpath.trim_start_matches("\""));
+					let kpath = format!("{}",kpath.trim_end_matches("\""));
+					let kpath = format!("{}",kpath.trim_end_matches("\\"));
+					let kpath = format!("{}",kpath.trim_end_matches("\""));
+					let kpath = format!("{}",kpath.trim_start());
+					let kpath = format!("{}",kpath.trim_end());
+					let kpath = kpath.replace("\\\\","\\").to_lowercase();
+					let kpath = expand_environ_val(&kpath);
+					let npath  = Path::new(&kpath);
+					if npath.is_absolute() {
+						let ometadata = fs::metadata(npath);
+						if ometadata.is_err() {
+							abondans.insert(format!("{}",k),format!("{}",kv));
+						} else {
+							let metadata = ometadata.unwrap();
+							if !metadata.is_file() {
+								abondans.insert(format!("{}",k),format!("{}",kv));	
+							}							
+						}
+					} else {
+						if envpaths.len() == 0 {
+							envpaths = get_environ_paths();
+						}
+						let mut bfind :bool = false;
+						for k in envpaths.iter() {
+							let cpath = Path::new(k).join(&kpath);
+							let ometadata = fs::metadata(cpath);
+							if ometadata.is_ok() {
+								let metadata = ometadata.unwrap();
+								if metadata.is_file() {
+									bfind = true;
+									break;
+								}
+							}
+						}
 
+						if !bfind {
+							abondans.insert(format!("{}",k),format!("not found [{}]",kpath));
+						}
+					}
 					break;
 				}
+			}
+
+			if !bmatch {
+				abondans.insert(format!("{}",k),format!("no InprocServer32\\"));
 			}
 		}
 	}
