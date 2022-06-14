@@ -181,7 +181,7 @@ fn get_environ_paths() -> Vec<String> {
 	return retv;
 }
 
-fn listabandoncom_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+fn abandonedcomkeys_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 
 	init_log(ns.clone())?;
 	let ckey :RegKey = open_reg_key(REG_HKCR,"CLSID",KEY_READ)?;
@@ -294,7 +294,7 @@ fn regcreatekey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
 }
 
 
-#[extargs_map_function(regread_handler,regwrite_handler,regenum_handler,listabandoncom_handler,regdelval_handler,regdelkey_handler,regcreatekey_handler)]
+#[extargs_map_function(regread_handler,regwrite_handler,regenum_handler,abandonedcomkeys_handler,regdelval_handler,regdelkey_handler,regcreatekey_handler)]
 pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -307,7 +307,7 @@ pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		"regenum<regenum_handler>## HKLM|HCU|HKCR|HKCC|HKU path to enum keyname ##" : {
 			"$" : "+"
 		},
-		"listabandoncom<listabandoncom_handler>## to list abondan class id##" : {
+		"abandonedcomkeys<abandonedcomkeys_handler>## to list abondan class id##" : {
 			"$" : 0
 		},
 		"regdelval<regdelval_handler>## HKLM|HCU|HKCR|HKCC|HKU path [key] ##" : {
