@@ -26,10 +26,11 @@ use winreg::enums::*;
 use winreg::{RegValue,RegKey};
 
 
+#[allow(unused_imports)]
 use super::{debug_trace};
+#[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::reglib::{open_reg_key,format_reg_value,get_reg_keys,get_reg_values,REG_HKCR,reg_del_val,reg_del_key,reg_create_key};
-//use super::loglib::{init_log};
 
 
 extargs_error_class!{NParseError}
