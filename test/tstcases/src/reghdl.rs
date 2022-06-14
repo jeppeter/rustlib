@@ -24,10 +24,12 @@ use std::slice;
 use std::ffi::OsStr;
 use winreg::enums::*;
 use winreg::{RegValue,RegKey};
+use winapi::um::winreg as winapi_reg;
 use std::os::windows::ffi::OsStrExt;
 
 use super::{debug_trace};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
+//use super::loglib::{init_log};
 
 
 
@@ -82,6 +84,12 @@ fn main_to_utf16<P: AsRef<OsStr>>(s: P) -> Vec<u16> {
 
 fn main_v16_to_v8(v: &[u16]) -> Vec<u8> {
 	unsafe { slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 2).to_vec() }
+}
+
+fn open_reg_key_inner(ktype :&str,kpath :&str, perms :winapi_reg::REGSAM) -> Result<RegKey,Box<dyn Error>> {
+	let (regk,_) =  get_regk(ktype);
+	let ckey :RegKey = regk.open_subkey_with_flags(kpath,perms)?;
+	return Ok(ckey);
 }
 
 fn get_reg_value(v :Vec<String>) -> RegValue {
@@ -202,14 +210,24 @@ fn get_reg_value(v :Vec<String>) -> RegValue {
 		bytes : main_v16_to_v8(&main_to_utf16("\0")),
 		vtype : REG_SZ,
 	};
+}
 
+
+fn open_reg_key(sarr :Vec<String>,perms :winapi_reg::REGSAM) -> Result<(RegKey,usize),Box<dyn Error>> {
+	let mut step :usize;
+	let regk :RegKey;
+	let mut idx :usize = 0;
+
+	(regk,step) = get_regk(&sarr[idx]);
+	idx += step;
+	let ckey :RegKey = regk.open_subkey_with_flags(&sarr[idx],perms)?;
+	step += 1;
+	return Ok((ckey,step));
 }
 
 #[allow(unused_assignments)]
 fn regread_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
-	let regk :RegKey;
-	let step :usize;
 	let mut idx :usize = 0;
 	let kpath :&str;
 	let mut cv :&str = "";
@@ -220,19 +238,10 @@ fn regread_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 		extargs_new_error!{NParseError,"need 1 args"}
 	}
 
-	(regk, step) = get_regk(&sarr[idx]);
+	let (ckey,step) = open_reg_key(sarr.clone(),KEY_READ)?;
+	kpath = &sarr[(step-1)];
 	idx = idx + step;
-
-	if sarr.len() <= idx {
-		extargs_new_error!{NParseError,"need path value"}
-	}
-
-	kpath = &sarr[idx];
-	idx = idx + 1;
-
-	let ckey = regk.open_subkey(kpath)?;
 	let val :RegValue ;
-
 	if sarr.len() > idx {
 		cv = &sarr[idx];
 		idx = idx + 1;
@@ -246,61 +255,42 @@ fn regread_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 
 fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
-	let regk :RegKey;
-	let step :usize;
 	let mut idx :usize = 0;
-	let kpath :&str;
 	let mut cv :&str = "";
 	let mut typesarr :Vec<String> = Vec::new();
 
 	init_log(ns.clone())?;
 
-	debug_trace!(" ");
 
 	sarr = ns.get_array("subnargs");
 	if sarr.len() < 2 {
 		extargs_new_error!{NParseError,"need 1 args"}
 	}
 
-	debug_trace!(" ");
 
-	(regk, step) = get_regk(&sarr[idx]);
+	let (ckey,step) = open_reg_key(sarr.clone(),KEY_WRITE)?;
 	idx = idx + step;
-
-	debug_trace!(" ");
 
 	if sarr.len() <= idx {
 		extargs_new_error!{NParseError,"need path value"}
 	}
 
-	debug_trace!(" ");
 
-	kpath = &sarr[idx];
-	idx = idx + 1;
-
-	let ckey = regk.open_subkey_with_flags(kpath,KEY_WRITE)?;
 	let val :RegValue ;
 
-	debug_trace!(" ");
 
 	if idx < sarr.len() {
 		cv = &sarr[idx];
 		idx += 1;
 	}
 
-	debug_trace!(" ");
-
 	while idx < sarr.len() {
 		typesarr.push(format!("{}",sarr[idx]));
 		idx += 1;
 	}
 
-	debug_trace!("typesarr {:?}",typesarr);
 	val = get_reg_value(typesarr.clone());
-	debug_trace!("cv {} val {:?}",cv,val);
 	ckey.set_raw_value(cv,&val)?;
-
-	debug_trace!(" ");
 
 	println!("{:?} succ", sarr);
 
@@ -332,27 +322,17 @@ fn get_values(k :&RegKey) -> HashMap<String,RegValue> {
 #[allow(unused_assignments)]
 fn regenum_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
-	let regk :RegKey;
-	let step :usize;
-	let mut idx :usize = 0;
 	let kpath :&str;
 
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
-
 	if sarr.len() < 1 {
 		extargs_new_error!{NParseError,"need at least path"}
 	}
 
-	(regk, step) = get_regk(&sarr[idx]);
-	idx += step;
-	if sarr.len() <= idx {
-		extargs_new_error!{NParseError, "need path to input"}
-	}
+	let (ckey,step) = open_reg_key(sarr.clone(),KEY_READ)?;
+	kpath = &(sarr[(step-1)]);
 
-	kpath = &sarr[idx];
-	idx = idx + 1;
-	let ckey :RegKey = regk.open_subkey_with_flags(kpath,KEY_READ)?;
 	let ks = get_keys(&ckey);
 	let vs = get_values(&ckey);
 	let mut i :usize = 0;
@@ -372,8 +352,50 @@ fn regenum_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	Ok(())
 }
 
+fn expand_environ_val(kp :&str) -> String {
+	let mut retv :String = format!("{}",kp);
 
-#[extargs_map_function(regread_handler,regwrite_handler,regenum_handler)]
+	for (k,v) in std::env::vars() {
+		let re :Regex = Regex::new(&format!("%{}%",k)).unwrap();
+	}
+}
+
+fn listabandoncom_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+
+	init_log(ns.clone())?;
+	let ckey :RegKey = open_reg_key_inner(KEYWORD_HKCR,"CLSID",KEY_READ)?;
+	let subkeys :Vec<String> = get_keys(&ckey);
+	let mut abondans :HashMap<String,String> = HashMap::new();
+
+	init_log(ns.clone())?;
+
+	for k in subkeys.iter() {
+		debug_trace!("k [{}]",k);
+		let cpath = format!("CLSID\\{}\\InprocServer32",k);
+		let ores = open_reg_key_inner(KEYWORD_HKCR,&cpath,KEY_READ);
+		if ores.is_ok() {
+			let bkey = ores.unwrap();
+			let vs = get_values(&bkey);
+			let mut bmatch : bool = false;
+			for (kk,kv) in vs.iter() {
+				if kk == "" {
+					bmatch = true;
+					let kpath = format!("{}",kv);
+
+					break;
+				}
+			}
+		}
+	}
+
+	for (k,v) in abondans.iter() {
+		println!("[{}]=[{}]",k,v);
+	}
+
+	Ok(())
+}
+
+#[extargs_map_function(regread_handler,regwrite_handler,regenum_handler,listabandoncom_handler)]
 pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -385,6 +407,9 @@ pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"regenum<regenum_handler>## [HKLM|HCU|HKCR|HKCC|HKU] path to enum keyname ##" : {
 			"$" : "+"
+		},
+		"listabandoncom<listabandoncom_handler>## to list abondan class id##" : {
+			"$" : 0
 		}
 	}
 	"#;

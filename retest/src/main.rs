@@ -67,6 +67,23 @@ fn split_regex(restr :&str, instr :&str) -> bool {
 	return true;
 }
 
+fn replace_regex(restr :&str, instr :&str, replaced :&str,ball :bool) -> bool {
+	let re;
+
+	match Regex::new(restr) {
+		Err(e) => {eprintln!("{} not compile {:?}",restr,e ); return false;}
+		Ok(v) => {re = v;}
+	}
+	let v;
+	if ball {
+		v = re.replace_all(instr,replaced);
+	} else {
+		v = re.replace(instr,replaced);
+	}
+	println!("restr[{}] instr [{}] replaced[{}] [{:?}] => [{}]",restr,instr,replaced,ball,v);
+	return true;
+}
+
 fn usage(ec :i32,_fmtstr :String) {
 	let mut outstr :String = String::from("");
 	if _fmtstr.len() > 0 {
@@ -75,6 +92,8 @@ fn usage(ec :i32,_fmtstr :String) {
 	outstr.push_str(&(format!("retest [SUBCOMMANDS]\n[SUBCOMMANDS]\n")[..]));
 	outstr.push_str(&(format!("\tcapture restr instr...              to find all matches\n")[..]));
 	outstr.push_str(&(format!("\tmatch   restr instr...              to match string\n")[..]));
+	outstr.push_str(&(format!("\tsplit   restr instr...              to split string\n")[..]));
+	outstr.push_str(&(format!("\treplace restr instr [replaced]      to replace string with restr => replaced \n")[..]));
 	if ec == 0 {
 		print!("{}",outstr);
 	} else {
@@ -119,7 +138,29 @@ fn main() {
 			split_regex(&(argv[2][..]),&(argv[i][..]));
 			i = i + 1;
 		}
-	}else {
+	} else if argv[1] == "replace" {
+		if argv.len() < 4 {
+			usage(3,format!("replace need 3 args"));
+		}
+		let mut replaced :&str = "";
+		let restr :&str = &argv[2];
+		let instr :&str = &argv[3];
+		if argv.len() >= 5 {
+			replaced = &argv[4];
+		}
+		replace_regex(restr,instr,replaced,false);
+	}  else if argv[1] == "replaceall" {
+		if argv.len() < 4 {
+			usage(3,format!("replace need 3 args"));
+		}
+		let mut replaced :&str = "";
+		let restr :&str = &argv[2];
+		let instr :&str = &argv[3];
+		if argv.len() >= 5 {
+			replaced = &argv[4];
+		}
+		replace_regex(restr,instr,replaced,true);
+	} else {
 		usage(3,format!("not support {}", argv[1]));
 	}
 	return
