@@ -307,17 +307,37 @@ fn regwrite_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	return Ok(());
 }
 
+fn get_keys(k :&RegKey) -> Vec<String> {
+	let mut retv :Vec<String> = Vec::new();
+	for kv in k.enum_keys() {
+		retv.push(format!("{}",kv.unwrap()));
+	}
+	retv
+}
+
+fn get_values(k :&RegKey) -> HashMap<String,RegValue> {
+	let mut retv :HashMap<String,RegValue> = HashMap::new();
+	for kp in k.enum_values() {
+		let (kn,kv) = kp.unwrap();
+		let nk :String = format!("{}",kn);
+		let nv :RegValue = RegValue {
+			bytes : kv.bytes.clone(),
+			vtype : kv.vtype,
+		};
+		retv.insert(nk,nv);
+	}	
+	retv
+}
+
+#[allow(unused_assignments)]
 fn regenum_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
 	let regk :RegKey;
 	let step :usize;
 	let mut idx :usize = 0;
 	let kpath :&str;
-	let mut cv :&str = "";
 
-
-	init_log(ns)?;
-
+	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
 
 	if sarr.len() < 1 {
@@ -330,11 +350,30 @@ fn regenum_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 		extargs_new_error!{NParseError, "need path to input"}
 	}
 
+	kpath = &sarr[idx];
+	idx = idx + 1;
+	let ckey :RegKey = regk.open_subkey_with_flags(kpath,KEY_READ)?;
+	let ks = get_keys(&ckey);
+	let vs = get_values(&ckey);
+	let mut i :usize = 0;
+	println!("subkeys[{}]", kpath);
+	for k in ks.iter() {
+		println!("[{}]=[{}]",i,k);
+		i += 1;
+	}
+
+	i = 0;
+	println!("values[{}]", kpath);
+	for (kk,kv) in vs.iter() {
+		println!("[{}].[{}]=[{:?}]",i,kk,kv);
+		i += 1;
+	}
+
 	Ok(())
 }
 
 
-#[extargs_map_function(regread_handler,regwrite_handler)]
+#[extargs_map_function(regread_handler,regwrite_handler,regenum_handler)]
 pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
