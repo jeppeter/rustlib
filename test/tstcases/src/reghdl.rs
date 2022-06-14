@@ -293,8 +293,108 @@ fn regcreatekey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
 	return reg_create_key(&sarr[0],&sarr[1],&sarr[2]);
 }
 
+const REG_COM_LOCALSERVER32 :&str = "LocalServer32";
+const REG_COM_INPROC :&str = "InProcServer32";
+const REG_COM_KEYH_LOCAL :&str="localserver";
+const REG_COM_KEY_PROC :&str = "inproc";
 
-#[extargs_map_function(regread_handler,regwrite_handler,regenum_handler,abandonedcomkeys_handler,regdelval_handler,regdelkey_handler,regcreatekey_handler)]
+fn get_com_types(types :&str) -> Result<HashMap<String,String>,Box<dyn Error>> {
+	let mut retv :HashMap<String,String> = HashMap::new();
+	let regk :RegKey = open_reg_key(REG_HKCR,"CLSID",KEY_READ)?;
+	let keys :Vec<String> = get_reg_keys(&regk);
+	let mut envpaths :Vec<String> = Vec::new();
+
+	for k in keys.iter() {
+		let curpath = format!("CLSID\\{}\\{}",k,types);
+		let cores = open_reg_key(REG_HKCR,&curpath,KEY_READ);
+		if cores.is_ok() {
+			let ckey = cores.unwrap();
+			let oval = ckey.get_raw_value("");			
+			if oval.is_ok()  {
+				let val :String = ckey.get_value("").unwrap();
+				let kpath = val.to_lowercase();
+				let kpath = expand_environ_val(&kpath);
+				let kpath = kpath.trim_start_matches("\\");
+				let kpath = kpath.trim_end_matches("\\");
+				let kpath = kpath.trim_start_matches("\"");
+				let kpath = kpath.trim_end_matches("\"");
+				let kpath = kpath.trim_start_matches("\\");
+				let kpath = kpath.trim_end_matches("\\");
+				let npath  = Path::new(&kpath);
+				if npath.is_absolute() {
+					let ometadata = fs::metadata(npath);
+					if ometadata.is_ok() {
+						let metad = ometadata.unwrap();
+						if metad.is_file() {
+							retv.insert(format!("{}",k),format!("{}",kpath));	
+						}						
+					}
+				} else {
+					if envpaths.len() == 0 {
+						envpaths = get_environ_paths();
+					}
+					for k in envpaths.iter() {
+						let cpath = Path::new(k).join(&kpath);
+						let ometadata = fs::metadata(cpath);
+						if ometadata.is_ok() {
+							let metadata = ometadata.unwrap();
+							if metadata.is_file() {
+								let cpath = Path::new(k).join(&kpath);
+								retv.insert(format!("{}",k),format!("{}",cpath.display()));	
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return Ok(retv);
+}
+
+fn comhunter_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	let mut localsrv :HashMap<String,String>;
+	let mut inproc :HashMap<String,String>;
+	init_log(ns.clone())?;
+	sarr= ns.get_array("subnargs");
+
+	if sarr.len() > 0 {
+		for kv in sarr.iter() {
+			let kl = kv.to_lowercase();
+			let kproc = REG_COM_KEY_PROC.to_lowercase();
+			let ksvr = REG_COM_KEYH_LOCAL.to_lowercase();
+			if kl == kproc {
+				inproc = get_com_types(REG_COM_INPROC)?;
+				for (k,v) in inproc.iter() {
+					println!("{} {} ({})", k,v,REG_COM_INPROC);	
+				}
+			} else if kl == ksvr {
+				localsrv = get_com_types(REG_COM_LOCALSERVER32)?;
+				for (k,v) in localsrv.iter() {
+					println!("{} {} ({})", k,v,REG_COM_LOCALSERVER32);
+				}				
+			} else {
+				extargs_new_error!{NParseError,"not support type [{}]", kv}
+			}
+		}
+	} else {
+		inproc = get_com_types(REG_COM_INPROC)?;
+		for (k,v) in inproc.iter() {
+			println!("{} {} ({})", k,v,REG_COM_INPROC);	
+		}
+		localsrv = get_com_types(REG_COM_LOCALSERVER32)?;
+		for (k,v) in localsrv.iter() {
+			println!("{} {} ({})", k,v,REG_COM_LOCALSERVER32);
+		}
+	}
+
+	return Ok(());
+}
+
+
+#[extargs_map_function(regread_handler,regwrite_handler,regenum_handler,abandonedcomkeys_handler,regdelval_handler,regdelkey_handler,regcreatekey_handler,comhunter_handler)]
 pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -318,6 +418,9 @@ pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"regcreatekey<regcreatekey_handler>## HKLM|HCU|HKCR|HKCC|HKU path key ##" : {
 			"$" : "+"
+		},
+		"comhunter<comhunter_handler>## [localserver|inproc]... to list type ##" : {
+			"$" : "*"
 		}
 	}
 	"#;
