@@ -21,4 +21,4 @@ winreg = "^0.10"
 [dependencies.winapi]
 version = "0.3"
 features = ["winbase", "debugapi", "stringapiset", "winnls", "datetimeapi",
-	"sysinfoapi", "wincred","combaseapi"]
+	"sysinfoapi", "wincred","combaseapi","errhandlingapi"]

