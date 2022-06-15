@@ -35,6 +35,7 @@ mod loglib;
 mod reglib;
 mod reghdl;
 mod logtst;
+mod credlib;
 mod credhdl;
 
 
