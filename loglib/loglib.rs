@@ -164,10 +164,10 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 				tfiles = times;
 			}
 			let logfile = RollingFileAppender::builder().append(false).encoder(Box::new(PatternEncoder::new(DEFAULT_MSG_FMT))).build(&fname,
-					Box::new(CompoundPolicy::new(
-						Box::new(SizeTrigger::new(fsize)),
-						Box::new(FixedWindowRoller::builder().build(&fpattern,tfiles).unwrap())
-						)))?;
+				Box::new(CompoundPolicy::new(
+					Box::new(SizeTrigger::new(fsize)),
+					Box::new(FixedWindowRoller::builder().build(&fpattern,tfiles).unwrap())
+					)))?;
 			cbuild = cbuild.appender(Appender::builder().build(&fname, Box::new(logfile)));
 			rbuiler = rbuiler.appender(&fname);
 		}
@@ -188,10 +188,10 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 				tfiles = times;
 			}
 			let logfile = RollingFileAppender::builder().append(true).encoder(Box::new(PatternEncoder::new(DEFAULT_MSG_FMT))).build(&fname,
-					Box::new(CompoundPolicy::new(
-						Box::new(SizeTrigger::new(fsize)),
-						Box::new(FixedWindowRoller::builder().build(&fpattern,tfiles).unwrap())
-						)))?;
+				Box::new(CompoundPolicy::new(
+					Box::new(SizeTrigger::new(fsize)),
+					Box::new(FixedWindowRoller::builder().build(&fpattern,tfiles).unwrap())
+					)))?;
 			cbuild = cbuild.appender(Appender::builder().build(&fname, Box::new(logfile)));
 			rbuiler = rbuiler.appender(&fname);
 		}
@@ -208,10 +208,10 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 #[extargs_map_function()]
 pub fn prepare_log(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"{
-			"verbose|v" : "+",
-			"log-files##fname[,fsize,numfiles] set write rotate files##" : [],
-			"log-appends##fname[,fsize,numfiles] set append files##" : [],
-			"log-nostderr##specified no stderr output##" : false
+		"verbose|v" : "+",
+		"log-files##fname[,fsize,numfiles] set write rotate files##" : [],
+		"log-appends##fname[,fsize,numfiles] set append files##" : [],
+		"log-nostderr##specified no stderr output##" : false
 	}"#;
 	extargs_load_commandline!(parser,cmdline)?;
 	Ok(())	
@@ -245,28 +245,29 @@ pub fn log_output_function(level :i64, outs :&str) {
 }
 
 #[macro_export]
-macro_rules! debug_error {
-	($($arg:tt)+) => {
+macro_rules! format_str_log {
+	($info:tt,$iv:expr,$($arg:tt)+) => {
 		let mut c :String= format!("[{}:{}]",file!(),line!());
-		c.push_str("<ERROR> ");
+		c.push_str(&format!("{} ",$info));
 		c.push_str(&log_get_timestamp());
 		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
 		c.push_str("\n");
-		log_output_function(0, &c);
+		log_output_function($iv, &c);		
+	}
+}
+
+#[macro_export]
+macro_rules! debug_error {
+	($($arg:tt)+) => {
+		format_str_log!("<ERROR>",0,$($arg)+);
 	}
 }
 
 #[macro_export]
 macro_rules! debug_warn {
 	($($arg:tt)+) => {
-		let mut c :String= format!("[{}:{}]",file!(),line!());
-		c.push_str("<WARN> ");
-		c.push_str(&log_get_timestamp());
-		c.push_str(": ");
-		c.push_str(&(format!($($arg)+)[..]));
-		c.push_str("\n");
-		log_output_function(1, &c);
+		format_str_log!("<WARN>",1,$($arg)+);
 	}
 }
 
@@ -274,26 +275,14 @@ macro_rules! debug_warn {
 #[macro_export]
 macro_rules! debug_info {
 	($($arg:tt)+) => {
-		let mut c :String= format!("[{}:{}]",file!(),line!());
-		c.push_str("<INFO> ");
-		c.push_str(&log_get_timestamp());
-		c.push_str(": ");
-		c.push_str(&(format!($($arg)+)[..]));
-		c.push_str("\n");
-		log_output_function(2, &c);
+		format_str_log!("<INFO>",2,$($arg)+);
 	}
 }
 
 #[macro_export]
 macro_rules! debug_debug {
 	($($arg:tt)+) => {
-		let mut c :String= format!("[{}:{}]",file!(),line!());
-		c.push_str("<DEBUG> ");
-		c.push_str(&log_get_timestamp());
-		c.push_str(": ");
-		c.push_str(&(format!($($arg)+)[..]));
-		c.push_str("\n");
-		log_output_function(3, &c);
+		format_str_log!("<DEBUG>",3,$($arg)+);
 	}
 }
 
@@ -301,12 +290,101 @@ macro_rules! debug_debug {
 #[macro_export]
 macro_rules! debug_trace {
 	($($arg:tt)+) => {
-		let mut c :String= format!("[{}:{}]",file!(),line!());
-		c.push_str("<TRACE> ");
+		format_str_log!("<TRACE>",4,$($arg)+);
+	}
+}
+
+#[macro_export]
+macro_rules! format_buffer_log {
+	($buf:expr,$len:expr,$info:tt,$iv:expr,$($arg:tt)+) => {
+		let mut c :String = format!("[{}:{}]",file!(),line!());
+		c.push_str(&format!("{} ",$info));
 		c.push_str(&log_get_timestamp());
 		c.push_str(": ");
 		c.push_str(&(format!($($arg)+)[..]));
-		c.push_str("\n");
-		log_output_function(4, &c);
+		let _ptr :*const u8 = $buf as *const u8;
+		let  mut _ci :usize;
+		let _totallen: usize = $len as usize;
+		let mut _lasti :usize = 0;
+		let mut _nb :u8;
+		c.push_str(&format!(" buffer [{:?}][{}]",_ptr,_totallen));
+		_ci = 0;
+		while _ci < _totallen {
+			if (_ci % 16) == 0 {
+				if _ci > 0 {
+					c.push_str("    ");
+					while _lasti < _ci {
+						unsafe{
+							_nb = *_ptr.offset(_lasti as isize);	
+						}
+						
+						if _nb >= 0x20 && _nb <= 0x7e {
+							c.push(_nb as char);
+						} else {
+							c.push_str(".");
+						}
+						_lasti += 1;
+					}
+				}
+				c.push_str(&format!("\n0x{:08x}:", _ci));
+			}
+			unsafe {_nb = *_ptr.offset(_ci as isize);}			
+			c.push_str(&format!(" 0x{:02x}",_nb));
+			_ci += 1;
+		}
+
+		if _lasti < _ci {
+			while (_ci % 16) != 0 {
+				c.push_str("     ");
+				_ci += 1;
+			}
+
+			while _lasti < _totallen {
+				unsafe {_nb = *_ptr.offset(_lasti as isize);}				
+				if _nb >= 0x20 && _nb <= 0x7e {
+					c.push(_nb as char);
+				} else {
+					c.push_str(".");
+				}
+				_lasti += 1;
+			}
+			c.push_str("\n");
+		}
+		log_output_function($iv,&c);
+	}
+}
+
+#[macro_export]
+macro_rules! debug_buffer_error {
+	($buf:expr,$len:expr,$($arg:tt)+) => {
+		format_buffer_log!($buf,$len,"<ERROR>",0,$($arg)+);
+	}
+}
+
+#[macro_export]
+macro_rules! debug_buffer_warn {
+	($buf:expr,$len:expr,$($arg:tt)+) => {
+		format_buffer_log!($buf,$len,"<WARN>",1,$($arg)+);
+	}
+}
+
+#[macro_export]
+macro_rules! debug_buffer_info {
+	($buf:expr,$len:expr,$($arg:tt)+) => {
+		format_buffer_log!($buf,$len,"<INFO>",2,$($arg)+);
+	}
+}
+
+#[macro_export]
+macro_rules! debug_buffer_debug {
+	($buf:expr,$len:expr,$($arg:tt)+) => {
+		format_buffer_log!($buf,$len,"<DEBUG>",3,$($arg)+);
+	}
+}
+
+#[macro_export]
+macro_rules! debug_buffer_trace {
+	($buf:expr,$len:expr,$($arg:tt)+) => {
+		format_buffer_log!($buf,$len,"<TRACE>",4,$($arg)+);
 	}
 }
