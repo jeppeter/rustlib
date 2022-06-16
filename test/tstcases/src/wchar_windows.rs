@@ -32,7 +32,7 @@ pub fn str_to_c_wstr(s: &str) -> Option<Box<[u16]>> {
             if out_num_wchars != num_wchars {
                 return None;
             }
-            //out.as_mut_ptr().offset(len as isize - 1).write(0); // null termination
+            out.as_mut_ptr().offset(len as isize - 1).write(0); // null termination
             out.set_len(len);
 
             Some(out.into())

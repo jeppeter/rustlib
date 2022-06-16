@@ -18,7 +18,7 @@ use std::any::Any;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-use super::{debug_trace,debug_warn,debug_error,debug_info,debug_debug};
+use super::{debug_trace,debug_warn,debug_error,debug_info,debug_debug,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 
