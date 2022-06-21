@@ -23,26 +23,47 @@ use lazy_static::lazy_static;
 use std::collections::HashMap;
 
 #[allow(unused_imports)]
-use super::{debug_trace};
+use super::{debug_trace,debug_buffer_trace,format_buffer_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 use super::pelib::{get_securtiy_buffer,SecData};
+use super::fileop::{write_file};
 
 
 
 fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let mut secdata :SecData;
 	let sarr :Vec<String>;
-	let mut lastidx :usize;
-	let mut idx :usize;
+	//let mut lastidx :usize;
+	let mut idx :usize = 0;
+	let fname :String;
+
 
 	init_log(ns.clone())?;
 
 	sarr = ns.get_array("subnargs");
+	fname = ns.get_string("peoutfile");
 	for f in sarr.iter() {
 		secdata = get_securtiy_buffer(f)?;
+		let dlen :usize;
+		let curname :String;
 
+		if (secdata.buf.len() as u32) < secdata.size {
+			dlen = secdata.buf.len() ;
+		} else {
+			dlen = secdata.size as usize;
+		}
+
+		if fname.len() == 0 {
+			curname = "".to_string();
+		} else {
+			curname = format!("{}.{}",fname,idx);
+		}
+
+		debug_buffer_trace!(secdata.buf.as_ptr(), dlen, "{} security data [0x{:08x}].[0x{:08x}][0x{:08x}]:",f,secdata.virtaddr,secdata.size,secdata.buf.len());
+		write_file(&curname,&(secdata.buf[..dlen]))?;
+		/*
 		print!("{} security data [0x{:08x}].[0x{:08x}][0x{:08x}]:",f,secdata.virtaddr,secdata.size,secdata.buf.len());
 		lastidx = 0;
 		idx = 0;
@@ -84,7 +105,8 @@ fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 				lastidx += 1;				
 			}
 			print!("\n");
-		}
+		}*/
+		idx += 1;
 	}
 
 
@@ -96,6 +118,7 @@ fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 pub fn load_pe_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
+		"peoutfile" : null,
 		"pesecdata<pesecdata_handler>##file ... to display pe security data##" : {
 			"$" : "+"
 		}

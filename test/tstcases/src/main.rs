@@ -32,6 +32,7 @@ use std::collections::HashMap;
 mod wchar_windows;
 mod loglib_windows;
 mod loglib;
+mod fileop;
 mod reglib;
 mod reghdl;
 mod logtst;

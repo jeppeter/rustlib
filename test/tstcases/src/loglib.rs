@@ -339,6 +339,8 @@ macro_rules! format_buffer_log {
 				_ci += 1;
 			}
 
+			c.push_str("    ");
+
 			while _lasti < _totallen {
 				unsafe {_nb = *_ptr.offset(_lasti as isize);}				
 				if _nb >= 0x20 && _nb <= 0x7e {
