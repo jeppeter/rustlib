@@ -37,6 +37,8 @@ mod reghdl;
 mod logtst;
 mod credlib;
 mod credhdl;
+mod pelib;
+mod pehdl;
 
 
 #[extargs_map_function()]
@@ -46,6 +48,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	loglib::prepare_log(parser.clone())?;
 	logtst::load_log_handler(parser.clone())?;
 	credhdl::load_cred_handler(parser.clone())?;
+	pehdl::load_pe_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
