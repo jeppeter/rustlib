@@ -30,7 +30,7 @@ pub fn get_securtiy_buffer(fname :&str) -> Result<SecData,Box<dyn Error>> {
 	let mut retv :Vec<u8> = Vec::new();
 	let sdata :SecData;
 	let virtaddr :u32;
-	let vsize :u32;
+	let mut vsize :u32;
 	if fomap.is_err() {
 		let err = fomap.err().unwrap();
 		extargs_new_error!{PeLibError,"can not load [{}] error [{:?}]", fname,err}
@@ -77,13 +77,20 @@ pub fn get_securtiy_buffer(fname :&str) -> Result<SecData,Box<dyn Error>> {
 			}
 
 			let data = odata.unwrap();
-			debug_trace!("[0x{:08x}] data [{}]", i, data.len());
 			for b in data {
-				debug_trace!("[0x{:08x}][0x{:02x}]",i,*b);
 				retv.push(*b);
 				i += 1;
 			}
-			debug_trace!("i [0x{:08x}]",i);
+		}
+
+		let sections = file.section_headers().as_slice();
+		for s in sections.iter() {
+			if s.VirtualAddress < virtaddr && virtaddr < (s.VirtualAddress + s.VirtualSize) {
+				if vsize > (s.VirtualAddress + s.VirtualSize - virtaddr) {
+					vsize = s.VirtualAddress + s.VirtualSize - virtaddr;
+				}
+				break;
+			}
 		}
 	}
 		

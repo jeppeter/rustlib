@@ -34,8 +34,8 @@ use super::pelib::{get_securtiy_buffer,SecData};
 fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let mut secdata :SecData;
 	let sarr :Vec<String>;
-	let mut lastidx :usize = 0;
-	let mut idx :usize = 0;
+	let mut lastidx :usize;
+	let mut idx :usize;
 
 	init_log(ns.clone())?;
 
@@ -47,6 +47,9 @@ fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 		lastidx = 0;
 		idx = 0;
 		for b in secdata.buf.iter() {
+			if idx >= secdata.size as usize {
+				break;
+			}
 			if (idx % 16) == 0 {
 				if idx > 0 {
 					print!("    ");
@@ -72,7 +75,7 @@ fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 			}
 
 			print!("    ");
-			while lastidx < secdata.buf.len() {
+			while lastidx < secdata.buf.len() && lastidx < secdata.size as usize {
 				if secdata.buf[lastidx] >= 0x20 && secdata.buf[lastidx] <= 0x7e {
 					print!("{}", secdata.buf[lastidx] as char );
 				} else {
