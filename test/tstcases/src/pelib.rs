@@ -71,7 +71,12 @@ pub fn get_securtiy_buffer(fname :&str) -> Result<SecData,Box<dyn Error>> {
 		vsize = secdata.Size;
 		let mut i :u32 =0;
 		while i < vsize {
-			let data = file.slice_bytes(secdata.VirtualAddress + i)?;
+			let odata = file.slice_bytes(secdata.VirtualAddress + i);
+			if odata.is_err() {
+				break;
+			}
+
+			let data = odata.unwrap();
 			debug_trace!("[0x{:08x}] data [{}]", i, data.len());
 			for b in data {
 				debug_trace!("[0x{:08x}][0x{:02x}]",i,*b);
