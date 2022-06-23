@@ -399,28 +399,28 @@ fn comhunter_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 pub fn load_reg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
-		"regread<regread_handler>## HKLM|HCU|HKCR|HKCC|HKU path [key] ##" : {
+		"regread<regread_handler>##HKLM|HCU|HKCR|HKCC|HKU path [key] ##" : {
 			"$" : "+"
 		},
-		"regwrite<regwrite_handler>## HKLM|HCU|HKCR|HKCC|HKU path key [type] [value] ##" : {
+		"regwrite<regwrite_handler>##HKLM|HCU|HKCR|HKCC|HKU path key [type] [value] ##" : {
 			"$" : "+"
 		},
-		"regenum<regenum_handler>## HKLM|HCU|HKCR|HKCC|HKU path to enum keyname ##" : {
+		"regenum<regenum_handler>##HKLM|HCU|HKCR|HKCC|HKU path to enum keyname ##" : {
 			"$" : "+"
 		},
-		"abandonedcomkeys<abandonedcomkeys_handler>## to list abondan class id##" : {
+		"abandonedcomkeys<abandonedcomkeys_handler>##to list abondan class id##" : {
 			"$" : 0
 		},
-		"regdelval<regdelval_handler>## HKLM|HCU|HKCR|HKCC|HKU path [key] ##" : {
+		"regdelval<regdelval_handler>##HKLM|HCU|HKCR|HKCC|HKU path [key] ##" : {
 			"$" : "+"
 		},
-		"regdelkey<regdelkey_handler>## HKLM|HCU|HKCR|HKCC|HKU path ##" : {
+		"regdelkey<regdelkey_handler>##HKLM|HCU|HKCR|HKCC|HKU path ##" : {
 			"$" : "+"
 		},
-		"regcreatekey<regcreatekey_handler>## HKLM|HCU|HKCR|HKCC|HKU path key ##" : {
+		"regcreatekey<regcreatekey_handler>##HKLM|HCU|HKCR|HKCC|HKU path key ##" : {
 			"$" : "+"
 		},
-		"comhunter<comhunter_handler>## [localserver|inproc]... to list type ##" : {
+		"comhunter<comhunter_handler>##[localserver|inproc]... to list type ##" : {
 			"$" : "*"
 		}
 	}

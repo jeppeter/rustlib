@@ -38,7 +38,7 @@ fn fileencbase64_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	init_log(ns.clone())?;
 
 	sarr = ns.get_array("subnargs");
-	output = ns.get_string("fileoutput");
+	output = ns.get_string("output");
 
 	for f in sarr.iter() {
 		let data = read_file_bytes(f)?;
@@ -53,7 +53,6 @@ fn fileencbase64_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 pub fn load_file_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
-		"fileoutput" : null,
 		"fileencbase64<fileencbase64_handler>##fname ... to encode base64##" : {
 			"$" : "+"
 		}

@@ -43,7 +43,7 @@ fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	init_log(ns.clone())?;
 
 	sarr = ns.get_array("subnargs");
-	fname = ns.get_string("peoutfile");
+	fname = ns.get_string("output");
 	for f in sarr.iter() {
 		secdata = get_securtiy_buffer(f)?;
 		let dlen :usize;
@@ -119,7 +119,6 @@ fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 pub fn load_pe_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
-		"peoutfile" : null,
 		"pesecdata<pesecdata_handler>##file ... to display pe security data##" : {
 			"$" : "+"
 		}

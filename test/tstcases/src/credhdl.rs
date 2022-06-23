@@ -52,7 +52,7 @@ fn credphisher_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 pub fn load_cred_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
-		"credphisher<credphisher_handler>## message to display credphisher message ##" : {
+		"credphisher<credphisher_handler>##message to display credphisher message ##" : {
 			"$" : "+"
 		}
 	}

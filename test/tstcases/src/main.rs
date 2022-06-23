@@ -47,6 +47,13 @@ mod pehdl;
 #[extargs_map_function()]
 fn main() -> Result<(),Box<dyn Error>> {
 	let parser :ExtArgsParser = ExtArgsParser::new(None,None)?;
+	let commandline = r#"
+	{
+		"output|o" : null,
+		"input|i" : null
+	}
+	"#;
+	extargs_load_commandline!(parser,commandline)?;
 	reghdl::load_reg_handler(parser.clone())?;
 	loglib::prepare_log(parser.clone())?;
 	logtst::load_log_handler(parser.clone())?;
