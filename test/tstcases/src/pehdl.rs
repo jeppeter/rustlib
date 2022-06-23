@@ -23,7 +23,7 @@ use lazy_static::lazy_static;
 use std::collections::HashMap;
 
 #[allow(unused_imports)]
-use super::{debug_trace,debug_buffer_trace,format_buffer_log};
+use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
@@ -62,6 +62,7 @@ fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 		}
 
 		debug_buffer_trace!(secdata.buf.as_ptr(), dlen, "{} security data [0x{:08x}].[0x{:08x}][0x{:08x}]:",f,secdata.virtaddr,secdata.size,secdata.buf.len());
+		debug_trace!("write curname [{}]",curname);
 		write_file(&curname,&(secdata.buf[..dlen]))?;
 		/*
 		print!("{} security data [0x{:08x}].[0x{:08x}][0x{:08x}]:",f,secdata.virtaddr,secdata.size,secdata.buf.len());

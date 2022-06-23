@@ -54,11 +54,26 @@ pub fn get_securtiy_buffer(fname :&str) -> Result<SecData,Box<dyn Error>> {
 		vsize = secdata.Size;
 		let mut i :u32 =0;
 		while i < vsize {
-			let data = file.slice_bytes(secdata.VirtualAddress + i);
-			for b in data {
-				retv.push(b[0]);
+			let odata = file.slice_bytes(secdata.VirtualAddress + i);
+			if odata.is_err() {
+				break;
 			}
-			i += 1;
+
+			let data = odata.unwrap();
+			for b in data {
+				retv.push(*b);
+				i += 1;
+			}
+		}
+
+		let sections = file.section_headers().as_slice();
+		for s in sections.iter() {
+			if s.VirtualAddress < virtaddr && virtaddr < (s.VirtualAddress + s.VirtualSize) {
+				if vsize > (s.VirtualAddress + s.VirtualSize - virtaddr) {
+					vsize = s.VirtualAddress + s.VirtualSize - virtaddr;
+				}
+				break;
+			}
 		}
 	} else {
 		let file = fo64.unwrap();

@@ -32,7 +32,9 @@ use std::collections::HashMap;
 mod wchar_windows;
 mod loglib_windows;
 mod loglib;
+mod strop;
 mod fileop;
+mod filehdl;
 mod reglib;
 mod reghdl;
 mod logtst;
@@ -50,6 +52,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	logtst::load_log_handler(parser.clone())?;
 	credhdl::load_cred_handler(parser.clone())?;
 	pehdl::load_pe_handler(parser.clone())?;
+	filehdl::load_file_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();

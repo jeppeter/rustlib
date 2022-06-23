@@ -9,6 +9,7 @@ use extargsparse_worker::{extargs_error_class,extargs_new_error};
 use std::io;
 use std::fs;
 use std::io::prelude::*;
+use std::io::BufReader;
 
 
 use std::error::Error;
@@ -37,4 +38,41 @@ pub fn write_file(fname :&str, byts :&[u8]) -> Result<(),Box<dyn Error>> {
 		}
 	}
 	Ok(())
+}
+
+
+pub fn read_file_bytes(fname :&str) -> Result<Vec<u8>,Box<dyn Error>> {
+	let fo = fs::File::open(fname);
+	if fo.is_err() {
+		let err = fo.err().unwrap();
+		extargs_new_error!{FileOpError,"can not open [{}] error[{:?}]", fname, err}
+	}
+	let f = fo.unwrap();
+	let mut reader = BufReader::new(f);
+	let mut buf :Vec<u8> = Vec::new();
+	let res = reader.read_to_end(&mut buf);
+	if res.is_err() {
+		let err = res.err().unwrap();
+		extargs_new_error!{FileOpError,"read [{}] error [{:?}]", fname,err}
+	}
+
+	Ok(buf)
+}
+
+pub fn read_file(fname :&str) -> Result<String,Box<dyn Error>> {
+	let fo = fs::File::open(fname);
+	if fo.is_err() {
+		let err = fo.err().unwrap();
+		extargs_new_error!{FileOpError,"can not open [{}] error[{:?}]", fname, err}
+	}
+	let f = fo.unwrap();
+	let mut reader = BufReader::new(f);
+	let mut retv :String = String::new();
+	let res = reader.read_to_string(&mut retv);
+	if res.is_err() {
+		let err = res.err().unwrap();
+		extargs_new_error!{FileOpError,"read [{}] error [{:?}]", fname,err}
+	}
+
+	Ok(retv)
 }
