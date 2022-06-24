@@ -30,7 +30,7 @@ pub fn get_securtiy_buffer(fname :&str) -> Result<SecData,Box<dyn Error>> {
 	let mut retv :Vec<u8> = Vec::new();
 	let sdata :SecData;
 	let virtaddr :u32;
-	let mut vsize :u32;
+	let vsize :u32;
 	if fomap.is_err() {
 		let err = fomap.err().unwrap();
 		extargs_new_error!{PeLibError,"can not load [{}] error [{:?}]", fname,err}
@@ -52,28 +52,14 @@ pub fn get_securtiy_buffer(fname :&str) -> Result<SecData,Box<dyn Error>> {
 		let secdata = sodata.unwrap();
 		virtaddr = secdata.VirtualAddress;
 		vsize = secdata.Size;
-		let mut i :u32 =0;
-		while i < vsize {
-			let odata = file.slice_bytes(secdata.VirtualAddress + i);
-			if odata.is_err() {
-				break;
-			}
-
-			let data = odata.unwrap();
-			for b in data {
-				retv.push(*b);
-				i += 1;
-			}
+		retv = Vec::new();
+		let bb :&[u8] = fmap.as_ref();
+		if (virtaddr + vsize) > (bb.len() as u32 )  {
+			extargs_new_error!{PeLibError,"[{}] not valid for virtaddr [0x{:08x}] vsize [0x{:08x}]", fname,virtaddr,vsize}
 		}
 
-		let sections = file.section_headers().as_slice();
-		for s in sections.iter() {
-			if s.VirtualAddress < virtaddr && virtaddr < (s.VirtualAddress + s.VirtualSize) {
-				if vsize > (s.VirtualAddress + s.VirtualSize - virtaddr) {
-					vsize = s.VirtualAddress + s.VirtualSize - virtaddr;
-				}
-				break;
-			}
+		for i in 8..vsize {
+			retv.push(bb[(virtaddr + i) as usize]);
 		}
 	} else {
 		let file = fo64.unwrap();
@@ -84,35 +70,21 @@ pub fn get_securtiy_buffer(fname :&str) -> Result<SecData,Box<dyn Error>> {
 		let secdata = sodata.unwrap();
 		virtaddr = secdata.VirtualAddress;
 		vsize = secdata.Size;
-		let mut i :u32 =0;
-		while i < vsize {
-			let odata = file.slice_bytes(secdata.VirtualAddress + i);
-			if odata.is_err() {
-				break;
-			}
-
-			let data = odata.unwrap();
-			for b in data {
-				retv.push(*b);
-				i += 1;
-			}
+		retv = Vec::new();
+		let bb :&[u8] = fmap.as_ref();
+		if (virtaddr + vsize) > (bb.len() as u32 )  {
+			extargs_new_error!{PeLibError,"[{}] not valid for virtaddr [0x{:08x}] vsize [0x{:08x}]", fname,virtaddr,vsize}
 		}
 
-		let sections = file.section_headers().as_slice();
-		for s in sections.iter() {
-			if s.VirtualAddress < virtaddr && virtaddr < (s.VirtualAddress + s.VirtualSize) {
-				if vsize > (s.VirtualAddress + s.VirtualSize - virtaddr) {
-					vsize = s.VirtualAddress + s.VirtualSize - virtaddr;
-				}
-				break;
-			}
+		for i in 8..vsize {
+			retv.push(bb[(virtaddr + i) as usize]);
 		}
 	}
 		
 	sdata = SecData {
-		virtaddr : virtaddr,
-		size :vsize,
-		buf :retv.clone(),
+		virtaddr : (virtaddr + 8),
+		size : vsize,
+		buf : retv.clone(),
 	};
 	Ok(sdata)
 }
