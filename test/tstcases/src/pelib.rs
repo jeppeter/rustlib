@@ -27,7 +27,7 @@ pub struct SecData {
 
 pub fn get_securtiy_buffer(fname :&str) -> Result<SecData,Box<dyn Error>> {
 	let fomap = FileMap::open(fname);
-	let mut retv :Vec<u8> = Vec::new();
+	let mut retv :Vec<u8> ;
 	let sdata :SecData;
 	let virtaddr :u32;
 	let vsize :u32;

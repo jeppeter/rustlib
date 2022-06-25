@@ -17,6 +17,9 @@ log = "^0.4.8"
 pelite = "^0.9.1"
 base64 = "^0.13.0"
 
+pkcs7 = { path = "../../../formats/pkcs7" }
+der = {path = "../../../formats/der"}
+
 [target.'cfg(windows)'.dependencies]
 winreg = "^0.10"
 

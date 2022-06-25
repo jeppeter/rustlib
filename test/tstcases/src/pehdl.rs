@@ -21,6 +21,8 @@ use std::any::Any;
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use pkcs7::{ContentInfo};
+use der::{Decode};
 
 #[allow(unused_imports)]
 use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
@@ -28,9 +30,10 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 use super::pelib::{get_securtiy_buffer,SecData};
-use super::fileop::{write_file};
+use super::fileop::{write_file,read_file_bytes};
 
 
+extargs_error_class!{PeHdlError}
 
 fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let mut secdata :SecData;
@@ -115,11 +118,35 @@ fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 }
 
 
-#[extargs_map_function(pesecdata_handler)]
+fn signdump_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let bs = read_file_bytes(f)?;
+		let ocon = ContentInfo::from_der(&bs);
+		if ocon.is_err() {
+			let err = ocon.err().unwrap();
+			extargs_new_error!{PeHdlError,"can not parse [{}] error[{:?}]", f,err}
+		}
+		let _content = ocon.unwrap();
+		//println!("content [{:?}]",content);
+		println!("get content");
+	}
+
+	Ok(())
+}
+
+#[extargs_map_function(pesecdata_handler,signdump_handler)]
 pub fn load_pe_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"pesecdata<pesecdata_handler>##file ... to display pe security data##" : {
+			"$" : "+"
+		},
+		"signdump<signdump_handler>##file ... to dump handler##" : {
 			"$" : "+"
 		}
 	}
