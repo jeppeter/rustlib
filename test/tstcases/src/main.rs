@@ -42,6 +42,8 @@ mod credlib;
 mod credhdl;
 mod pelib;
 mod pehdl;
+mod ssllib;
+mod sslhdl;
 
 
 #[extargs_map_function()]
@@ -60,6 +62,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	credhdl::load_cred_handler(parser.clone())?;
 	pehdl::load_pe_handler(parser.clone())?;
 	filehdl::load_file_handler(parser.clone())?;
+	sslhdl::load_ssl_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
