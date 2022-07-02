@@ -37,16 +37,31 @@ fn asn1objdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
 	sarr = ns.get_array("subnargs");
 	let v8 = vec_str_to_u8(sarr.clone())?;
 	let vs = asn1_to_object(&v8)?;
-	let vb = str_to_asn1obj(&vs)?;
-	println!("{:?} => {} => {:?}", v8, vs, vb);
+	println!("{:?} => {} ", v8, vs);
 	Ok(())
 }
 
-#[extargs_map_function(asn1objdec_handler)]
+fn asn1objenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+	for c in sarr.iter() {
+		let v8 = str_to_asn1obj(c)?;
+		println!("{} => {:?}",c,v8);
+	}
+	Ok(())
+}
+
+#[extargs_map_function(asn1objdec_handler,asn1objenc_handler)]
 pub fn load_ssl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"asn1objdec<asn1objdec_handler>##byte ... to byte to decode object##" : {
+			"$" : "+"
+		},
+		"asn1objenc<asn1objenc_handler>##objname ... to encode objname with byte##" : {
 			"$" : "+"
 		}
 	}
