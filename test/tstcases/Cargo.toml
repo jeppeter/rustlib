@@ -16,6 +16,8 @@ log4rs = "^0.8.3"
 log = "^0.4.8"
 pelite = "^0.9.1"
 base64 = "^0.13.0"
+num-bigint = "^0.4.3"
+num-traits = "^0.2.5"
 
 pkcs7 = { path = "../../../formats/pkcs7" }
 der = {path = "../../../formats/der"}
