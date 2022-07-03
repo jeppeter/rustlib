@@ -154,9 +154,6 @@ pub fn load_pe_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"signdump<signdump_handler>##file ... to dump handler##" : {
 			"$" : "+"
-		},
-		"asn1objdec<asn1objdec_handler>##byte ... to byte to decode object##" : {
-			"$" : "+"
 		}
 	}
 	"#;
