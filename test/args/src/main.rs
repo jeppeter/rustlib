@@ -3,6 +3,46 @@ use std::i64;
 use std::io::{Write,BufWriter};
 use std::borrow::Cow;
 
+#[derive(Clone)]
+pub struct Asn1Integer {
+	pub ival :i64,
+}
+
+impl Asn1Integer {
+	pub fn init_asn1() ->Self {
+		Asn1Integer{
+			ival : 0,
+		}
+	}
+}
+
+#[derive(Clone)]
+pub struct Asn1Ndef<T: Clone,const TAG :u8=0> {
+	pub data :Vec<T>,
+	tag :u8,
+}
+
+impl<T: Clone,const TAG :u8> Asn1Ndef<T,TAG> {
+	pub fn init_asn1() -> Self {
+		Asn1Ndef {
+			data :Vec::new(),
+			tag :TAG,
+		}
+	}
+}
+
+#[derive(Clone)]
+pub struct Asn1Obj {
+	pub mname :Asn1Ndef<Asn1Integer,5>,
+}
+
+impl Asn1Obj {
+	pub fn init_asn1() ->Self {
+		Asn1Obj {
+			mname : Asn1Ndef::init_asn1(),
+		}
+	}
+}
 
 pub fn basename<'a>(path: &'a str) -> Cow<'a, str> {
 	let splc :char;
@@ -31,6 +71,9 @@ fn main() {
 	let mut base :u32;
 	let mut cparse :String;
 	let b = format!(r#"get {{ {} }}"#,"ccs");
+	let mut av :Asn1Obj = Asn1Obj::init_asn1();
+	let mut va :Asn1Ndef<Asn1Integer> = Asn1Ndef::init_asn1();
+	
 
 	//let mut wstr :String = String::new();
 	let mut buf = vec![];
@@ -42,11 +85,12 @@ fn main() {
 		cstr = format!("OS={}",env::consts::OS);
 		write_fmts(&mut wstr,&cstr).unwrap();
 		write_fmts(&mut wstr,&b).unwrap();
+		write_fmts(&mut wstr,&format!("tag {} va {}", av.mname.tag,va.tag)).unwrap();
 
 	    for arg in env::args() {
 	    	if i == 0 {
 	    		cstr = format!("prog={}",basename(&arg));
-	    		write_fmts(&mut wstr,&cstr);
+	    		write_fmts(&mut wstr,&cstr).unwrap();
 	    	}
 	    	cstr = format!("[{}]=[{}]", i, arg);
 	    	write_fmts(&mut wstr,&cstr).unwrap();	    	
