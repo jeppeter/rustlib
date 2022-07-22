@@ -44,6 +44,13 @@ impl Asn1Obj {
 	}
 }
 
+
+
+
+
+
+
+
 pub fn basename<'a>(path: &'a str) -> Cow<'a, str> {
 	let splc :char;
 	if env::consts::OS == "windows" {
@@ -73,7 +80,7 @@ fn main() {
 	let b = format!(r#"get {{ {} }}"#,"ccs");
 	let mut av :Asn1Obj = Asn1Obj::init_asn1();
 	let mut va :Asn1Ndef<Asn1Integer> = Asn1Ndef::init_asn1();
-	
+		
 
 	//let mut wstr :String = String::new();
 	let mut buf = vec![];
