@@ -1,5 +1,5 @@
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector};
-use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String};
+use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String,Asn1Any};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
@@ -8,7 +8,7 @@ use std::error::Error;
 use std::io::{Write};
 
 
-#[asn1_obj_selector(ci="1.2.3",co="1.2.5",cs="1.2.4")]
+#[asn1_obj_selector(ci="1.2.3",co="1.2.5",cs="1.2.4",cs="1.2.21",ca=default)]
 struct Asn1ObjSelector {
 	pub val :Asn1Object,
 }
@@ -23,6 +23,7 @@ struct Asn1BB {
 	pub ci :Asn1Integer,
 	pub co :Asn1Object,
 	pub cs :Asn1String,
+	pub ca :Asn1Any,
 }
 
 
@@ -38,6 +39,16 @@ fn main() {
 	println!("{:?}", code);
 	let _ = av.selector.val.set_value("1.2.4").unwrap();
 	av.cs.val = format!("ccss222");
+	let code :Vec<u8> = av.encode_asn1().unwrap();
+	println!("{:?}", code);
+	let _ = av.selector.val.set_value("1.2.21").unwrap();
+	av.ca.tag = 0x12;
+	av.ca.content = vec![0x44,0x22,0x43];
+	let code :Vec<u8> = av.encode_asn1().unwrap();
+	println!("{:?}", code);
+	let _ = av.selector.val.set_value("1.2.27").unwrap();
+	av.ca.tag = 0x12;
+	av.ca.content = vec![0x44,0x22,0x43];
 	let code :Vec<u8> = av.encode_asn1().unwrap();
 	println!("{:?}", code);
 }
