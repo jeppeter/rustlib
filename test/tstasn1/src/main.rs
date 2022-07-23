@@ -1,4 +1,4 @@
-use asn1obj_codegen::{asn1_choice,asn1_obj_selector};
+use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
 use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String,Asn1Any};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
@@ -13,10 +13,6 @@ struct Asn1ObjSelector {
 	pub val :Asn1Object,
 }
 
-
-
-
-
 #[asn1_choice()]
 struct Asn1BB {
 	pub selector : Asn1ObjSelector,
@@ -24,6 +20,13 @@ struct Asn1BB {
 	pub co :Asn1Object,
 	pub cs :Asn1String,
 	pub ca :Asn1Any,
+}
+
+#[asn1_sequence()]
+struct Asn1Seqcc {
+	pub v :Asn1Integer,
+	pub s :Asn1String,
+	pub o :Asn1Object,
 }
 
 
