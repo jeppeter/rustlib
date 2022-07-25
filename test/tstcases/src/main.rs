@@ -64,6 +64,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	pehdl::load_pe_handler(parser.clone())?;
 	filehdl::load_file_handler(parser.clone())?;
 	sslhdl::load_ssl_handler(parser.clone())?;
+	asn1tst::load_asn1_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
