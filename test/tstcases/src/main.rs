@@ -44,6 +44,7 @@ mod pelib;
 mod pehdl;
 mod ssllib;
 mod sslhdl;
+mod asn1tst;
 
 
 #[extargs_map_function()]

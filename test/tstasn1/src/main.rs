@@ -1,5 +1,5 @@
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
-use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String,Asn1Any,Asn1ImpInteger};
+use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String,Asn1Any,Asn1ImpInteger,Asn1PrintableString};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
@@ -63,4 +63,5 @@ fn main() {
 	let code :Vec<u8> = va.encode_asn1().unwrap();
 	println!("va code");
 	println!("{:?}", code);
+	
 }

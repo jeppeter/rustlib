@@ -19,6 +19,9 @@ base64 = "^0.13.0"
 num-bigint = "^0.4.3"
 num-traits = "^0.2.5"
 
+asn1obj = { path = "../../../asn1obj/asn1obj"}
+asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
+
 pkcs7 = { path = "../../../formats/pkcs7" }
 der = {path = "../../../formats/der"}
 
