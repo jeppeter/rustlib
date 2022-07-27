@@ -3,6 +3,12 @@ use asn1obj::base::{Asn1Object,Asn1Integer};
 
 
 #[asn1_sequence()]
+struct Asn1X509Val {
+	pub notBefore : Asn1Time,
+	pub notAfter : Asn1Time,
+}
+
+#[asn1_sequence()]
 struct Asn1X509Algor {
 	pub algorithm : Asn1Object,
 	pub parameters : Asn1Opt<Asn1Any>,
@@ -19,6 +25,9 @@ struct Asn1X509Cinf {
 	pub version : Asn1Opt<Asn1ImpEncap<Asn1Integer,0>>,
 	pub serial_number :Asn1Integer,
 	pub signature : Asn1X509Algor,
+	pub issuer : Asn1X509Name,
+	pub validity : Asn1X509Val,
+	pub subject :Asn1X509Name,
 }
 
 #[asn1_sequence()]
