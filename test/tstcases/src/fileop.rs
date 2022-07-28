@@ -59,6 +59,7 @@ pub fn read_file_bytes(fname :&str) -> Result<Vec<u8>,Box<dyn Error>> {
 	Ok(buf)
 }
 
+#[allow(dead_code)]
 pub fn read_file(fname :&str) -> Result<String,Box<dyn Error>> {
 	let fo = fs::File::open(fname);
 	if fo.is_err() {

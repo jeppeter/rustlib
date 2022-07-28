@@ -34,6 +34,7 @@ use asn1obj::base::{Asn1PrintableString,Asn1Object};
 use asn1obj::complex::{Asn1Seq,Asn1Set};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op};
+#[allow(unused_imports)]
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
 

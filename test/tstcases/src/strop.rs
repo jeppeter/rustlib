@@ -16,6 +16,7 @@ pub fn encode_base64(bb :&[u8]) -> String {
 	return base64::encode(bb);
 }
 
+#[allow(dead_code)]
 pub fn decode_base64(instr :&str) -> Result<Vec<u8>,Box<dyn Error>> {
 	let res = base64::decode(instr);
 	if res.is_err() {

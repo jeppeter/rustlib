@@ -44,6 +44,7 @@ mod pelib;
 mod pehdl;
 mod ssllib;
 mod sslhdl;
+mod pkcs7;
 mod asn1tst;
 
 
