@@ -1,5 +1,6 @@
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
-use asn1obj::base::{Asn1Object,Asn1Integer};
+use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum};
+use asn1obj::complex::{Asn1Set,Asn1SetOf,Asn1Seq};
 
 
 #[asn1_sequence()]
@@ -18,6 +19,25 @@ struct Asn1X509Algor {
 struct Asn1Pkcs7Content {
 	pub objval : Asn1Object,
 	pub data :Asn1Any,	
+}
+
+
+#[asn1_sequence()]
+struct Asn1RsaPubkey {
+	pub n :Asn1BigNum,
+	pub e :Asn1BigNum,
+}
+
+#[asn1_obj_selector(any=default,rsa="1.2.840.113549.1.1.1")]
+struct Asn1X509PubkeySelector {
+	pub val : Asn1Object,
+}
+
+#[asn1_choice(selector=valid)]
+struct Asn1X509Pubkey {
+	pub valid : Asn1X509PubkeySelector,
+	pub rsa : Asn1Seq<Asn1RsaPubkey>,
+	pub any : Asn1Any,
 }
 
 #[asn1_sequence()]
