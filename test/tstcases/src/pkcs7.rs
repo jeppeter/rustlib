@@ -48,6 +48,9 @@ struct Asn1X509Cinf {
 	pub issuer : Asn1X509Name,
 	pub validity : Asn1X509Val,
 	pub subject :Asn1X509Name,
+	pub key : Asn1X509Pubkey,
+	pub issuerUID : Asn1Opt<Asn1Imp<Asn1BitString,1>>,
+	pub subjectUID : Asn1Opt<Asn1Imp<Asn1BitString,2>>,
 }
 
 #[asn1_sequence()]
