@@ -18,6 +18,7 @@ struct Asn1ObjSelector {
 	pub val :Asn1Object,
 }
 
+
 #[asn1_choice(asn1seq=enable,debug=enable)]
 struct Asn1BB {
 	pub selector : Asn1ObjSelector,
@@ -26,6 +27,7 @@ struct Asn1BB {
 	pub cs :Asn1String,
 	pub ca :Asn1Any,
 }
+
 
 
 #[asn1_sequence(asn1seq=enable,debug=enable)]
@@ -42,6 +44,7 @@ fn main() {
 	let _ = av.co.set_value("2.5.7").unwrap();
 	let code :Vec<u8> = av.encode_asn1().unwrap();
 	println!("{:?}", code);
+	let _ = av.decode_asn1(&code).unwrap();
 	let _ = av.selector.val.set_value("1.2.3").unwrap();
 	av.ci.val = -20;
 	let code :Vec<u8> = av.encode_asn1().unwrap();
@@ -67,5 +70,5 @@ fn main() {
 	let code :Vec<u8> = va.encode_asn1().unwrap();
 	println!("va code");
 	println!("{:?}", code);
-	
+	let _ = va.decode_asn1(&code).unwrap();
 }

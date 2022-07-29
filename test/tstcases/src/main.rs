@@ -45,7 +45,7 @@ mod pehdl;
 mod ssllib;
 mod sslhdl;
 mod pkcs7;
-mod asn1tst;
+//mod asn1tst;
 
 
 #[extargs_map_function()]
@@ -65,7 +65,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	pehdl::load_pe_handler(parser.clone())?;
 	filehdl::load_file_handler(parser.clone())?;
 	sslhdl::load_ssl_handler(parser.clone())?;
-	asn1tst::load_asn1_handler(parser.clone())?;
+	//asn1tst::load_asn1_handler(parser.clone())?;
 	pkcs7::load_pkcs7_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
