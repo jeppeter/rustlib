@@ -1,6 +1,10 @@
+#[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
-use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String,Asn1Any,Asn1ImpInteger,Asn1PrintableString};
+#[allow(unused_imports)]
+use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String,Asn1Any,Asn1PrintableString,asn1obj_extract_header,asn1obj_format_header};
+use asn1obj::complex::{Asn1Imp};
 use asn1obj::strop::{asn1_format_line};
+use asn1obj::consts::{ASN1_SEQ_MASK};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
@@ -14,7 +18,7 @@ struct Asn1ObjSelector {
 	pub val :Asn1Object,
 }
 
-#[asn1_choice()]
+#[asn1_choice(asn1seq=enable,debug=enable)]
 struct Asn1BB {
 	pub selector : Asn1ObjSelector,
 	pub ci :Asn1Integer,
@@ -23,13 +27,13 @@ struct Asn1BB {
 	pub ca :Asn1Any,
 }
 
+
 #[asn1_sequence()]
 struct Asn1Seqcc {
-	pub v :Asn1ImpInteger<5>,
+	pub v :Asn1Imp<Asn1Integer,5>,
 	pub s :Asn1String,
 	pub o :Asn1Object,
 }
-
 
 
 fn main() {
@@ -57,7 +61,7 @@ fn main() {
 	let code :Vec<u8> = av.encode_asn1().unwrap();
 	println!("{:?}", code);
 	let mut va :Asn1Seqcc = Asn1Seqcc::init_asn1();
-	va.v.val = 50;
+	va.v.val.val = 50;
 	va.s.val = "value formed".to_string();
 	let _ = va.o.set_value("1.2.55").unwrap();
 	let code :Vec<u8> = va.encode_asn1().unwrap();
