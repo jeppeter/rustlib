@@ -12,7 +12,7 @@ use extargsparse_worker::funccall::{ExtArgsParseFunc};
 
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
 use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1OctString,Asn1PrintableString,Asn1BitString,asn1obj_extract_header,asn1obj_format_header};
-use asn1obj::complex::{Asn1Set,Asn1SetOf,Asn1Seq,Asn1Opt,Asn1ImpVec,Asn1Imp};
+use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1ImpVec,Asn1Imp,Asn1Ndef};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::consts::{ASN1_SEQ_MASK};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
@@ -191,7 +191,7 @@ struct Asn1Pkcs7Signed {
 	pub version :Asn1Integer,
 	pub md_algs : Asn1Set<Asn1X509Algor>,
 	pub contents : Asn1Pkcs7Content,
-	pub cert :Asn1Opt<Asn1SetOf<Asn1X509,0>>,
+	pub cert :Asn1Opt<Asn1ImpSet<Asn1X509,0>>,
 	pub signer_info : Asn1Set<Asn1Pkcs7SignerInfo>,
 }
 
@@ -206,7 +206,7 @@ struct Asn1Pkcs7Selector {
 #[derive(Clone)]
 struct Asn1Pkcs7 {
 	pub selector :Asn1Pkcs7Selector,
-	pub signed :Asn1Pkcs7Signed,
+	pub signed : Asn1Ndef<Asn1Pkcs7Signed,0>,
 	pub anyobj :Asn1Any,
 }
 

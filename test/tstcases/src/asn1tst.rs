@@ -30,7 +30,8 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 use asn1obj_codegen::{asn1_sequence};
-use asn1obj::base::{Asn1PrintableString,Asn1Object};
+use asn1obj::base::{Asn1PrintableString,Asn1Object,asn1obj_extract_header,asn1obj_format_header};
+use asn1obj::consts::{ASN1_SEQ_MASK};
 use asn1obj::complex::{Asn1Seq,Asn1Set};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op};
@@ -39,20 +40,20 @@ use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
 
 
-#[asn1_sequence()]
+#[asn1_sequence(asn1seq=disable)]
 struct Asn1X509NameElement {
 	pub obj :Asn1Object,
 	pub name :Asn1PrintableString,
 }
 
-#[asn1_sequence()]
+#[asn1_sequence(asn1seq=disable)]
 struct Asn1X509NameEntry {
 	pub names : Asn1Set<Asn1Seq<Asn1X509NameElement>>,
 }
 
 #[asn1_sequence()]
 struct Asn1X509Name {
-	pub entries :Asn1Seq<Asn1X509NameEntry>,
+	pub entries : Asn1X509NameEntry,
 }
 
 
