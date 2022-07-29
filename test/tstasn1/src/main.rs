@@ -28,7 +28,7 @@ struct Asn1BB {
 }
 
 
-#[asn1_sequence()]
+#[asn1_sequence(asn1seq=enable,debug=enable)]
 struct Asn1Seqcc {
 	pub v :Asn1Imp<Asn1Integer,5>,
 	pub s :Asn1String,
