@@ -39,7 +39,7 @@ use super::loglib::{init_log};
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
 struct Asn1X509NameElement {
-	pub obj :Asn1Object,
+	pub obj : Asn1Object,
 	pub name :Asn1PrintableString,
 }
 
@@ -49,10 +49,10 @@ struct Asn1X509NameEntry {
 	pub names : Asn1Set<Asn1Seq<Asn1X509NameElement>>,
 }
 
-#[asn1_sequence(debug=enable,asn1seq=enable)]
+#[asn1_sequence(debug=enable)]
 #[derive(Clone)]
 struct Asn1X509Name {
-	pub entries : Asn1X509NameEntry,
+	pub entries : Asn1Seq<Asn1X509NameEntry>,
 }
 
 
@@ -118,9 +118,9 @@ struct Asn1X509Extension {
 #[derive(Clone)]
 struct Asn1X509Cinf {
 	pub version : Asn1Opt<Asn1ImpVec<Asn1Integer,0>>,
-	pub serial_number :Asn1Integer,
+	pub serial_number :Asn1BigNum,
 	pub signature : Asn1X509Algor,
-	pub issuer : Asn1X509Name,
+	pub issuer : Asn1Seq<Asn1X509Name>,
 	pub validity : Asn1X509Val,
 	pub subject :Asn1X509Name,
 	pub key : Asn1X509Pubkey,
@@ -203,7 +203,7 @@ struct Asn1Pkcs7Selector {
 	pub val :Asn1Object,
 }
 
-#[asn1_choice(selector=selector,asn1seq=enable,debug=enable)]
+#[asn1_choice(selector=selector,debug=enable)]
 #[derive(Clone)]
 struct Asn1Pkcs7 {
 	pub selector :Asn1Pkcs7Selector,
@@ -229,12 +229,31 @@ fn pkcs7dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	Ok(())
 }
 
+fn x509namedec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
 
-#[extargs_map_function(pkcs7dec_handler)]
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = Asn1X509Name::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("xname",0,&mut f)?;
+	}
+
+	Ok(())
+}
+
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"pkcs7dec<pkcs7dec_handler>##derfile ... to decode file##" : {
+			"$" : "+"
+		},
+		"x509namedec<x509namedec_handler>##derfile ... to decode file##" : {
 			"$" : "+"
 		}
 	}

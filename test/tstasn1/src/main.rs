@@ -4,7 +4,6 @@ use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
 use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String,Asn1Any,Asn1PrintableString,asn1obj_extract_header,asn1obj_format_header};
 use asn1obj::complex::{Asn1Imp};
 use asn1obj::strop::{asn1_format_line};
-use asn1obj::consts::{ASN1_SEQ_MASK};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
@@ -18,8 +17,7 @@ struct Asn1ObjSelector {
 	pub val :Asn1Object,
 }
 
-
-#[asn1_choice(asn1seq=enable,debug=enable)]
+#[asn1_choice()]
 struct Asn1BB {
 	pub selector : Asn1ObjSelector,
 	pub ci :Asn1Integer,
@@ -28,9 +26,7 @@ struct Asn1BB {
 	pub ca :Asn1Any,
 }
 
-
-
-#[asn1_sequence(asn1seq=enable,debug=enable)]
+#[asn1_sequence()]
 struct Asn1Seqcc {
 	pub v :Asn1Imp<Asn1Integer,5>,
 	pub s :Asn1String,

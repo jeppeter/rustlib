@@ -40,13 +40,13 @@ use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
 
 
-#[asn1_sequence(asn1seq=disable)]
+#[asn1_sequence()]
 struct Asn1X509NameElement {
 	pub obj :Asn1Object,
 	pub name :Asn1PrintableString,
 }
 
-#[asn1_sequence(asn1seq=disable)]
+#[asn1_sequence()]
 struct Asn1X509NameEntry {
 	pub names : Asn1Set<Asn1Seq<Asn1X509NameElement>>,
 }
