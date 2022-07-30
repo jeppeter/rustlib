@@ -32,8 +32,13 @@ use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::io::{Write};
 
+#[allow(unused_imports)]
+use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
+#[allow(unused_imports)]
+use super::loglib::{log_get_timestamp,log_output_function,init_log};
+
+
 use super::fileop::{read_file_bytes};
-use super::loglib::{init_log};
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
@@ -133,10 +138,16 @@ struct Asn1X509Pubkey {
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-struct Asn1X509Extension {
+struct Asn1X509ExtensionElem {
 	pub object :Asn1Object,
 	pub critical : Asn1Opt<Asn1Boolean>,
 	pub value : Asn1OctString,
+}
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1X509Extension {
+	pub elem :Asn1Seq<Asn1X509ExtensionElem>,
 }
 
 #[asn1_sequence(debug=enable)]
@@ -151,7 +162,7 @@ struct Asn1X509CinfElem {
 	pub key : Asn1X509Pubkey,
 	pub issuerUID : Asn1Opt<Asn1Imp<Asn1BitString,1>>,
 	pub subjectUID : Asn1Opt<Asn1Imp<Asn1BitString,2>>,
-	pub extensions : Asn1Opt<Asn1Seq<Asn1X509Extension>>,
+	pub extensions : Asn1Opt<Asn1ImpSet<Asn1Seq<Asn1X509Extension>,3>>,
 }
 
 #[asn1_sequence(debug=enable)]
@@ -296,7 +307,23 @@ fn x509namedec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 }
 
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler)]
+fn objenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	let mut objd :Asn1Object = Asn1Object::init_asn1();
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let _ = objd.set_value(f)?;
+		let vcode = objd.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(), vcode.len(), "encode {} object", f);
+	}
+
+	Ok(())
+}
+
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -304,6 +331,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"x509namedec<x509namedec_handler>##derfile ... to decode file##" : {
+			"$" : "+"
+		},
+		"objenc<objenc_handler>##objid ... to encode object##" : {
 			"$" : "+"
 		}
 	}
