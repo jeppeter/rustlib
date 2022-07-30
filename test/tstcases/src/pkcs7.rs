@@ -13,7 +13,7 @@ use extargsparse_worker::funccall::{ExtArgsParseFunc};
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
 use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1OctString,Asn1PrintableString,Asn1BitString,Asn1Null};
-use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1ImpVec,Asn1Imp,Asn1Ndef,Asn1SeqSelector};
+use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1ImpVec,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 #[allow(unused_imports)]
@@ -120,7 +120,7 @@ struct Asn1X509PubkeySelector {
 #[derive(Clone)]
 struct Asn1X509PubkeyElem {
 	pub valid : Asn1SeqSelector<Asn1X509PubkeySelector>,
-	pub rsa : Asn1Seq<Asn1RsaPubkey>,
+	pub rsa : Asn1BitSeq<Asn1Seq<Asn1RsaPubkey>>,
 	pub any : Asn1Any,
 }
 
