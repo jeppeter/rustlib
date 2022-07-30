@@ -12,10 +12,9 @@ use extargsparse_worker::funccall::{ExtArgsParseFunc};
 
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
-use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1OctString,Asn1PrintableString,Asn1BitString,asn1obj_extract_header,asn1obj_format_header};
+use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1OctString,Asn1PrintableString,Asn1BitString};
 use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1ImpVec,Asn1Imp,Asn1Ndef};
 use asn1obj::strop::{asn1_format_line};
-use asn1obj::consts::{ASN1_SEQ_MASK};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 #[allow(unused_imports)]
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
@@ -65,25 +64,43 @@ struct Asn1X509Attribute {
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-struct Asn1X509Val {
+struct Asn1X509ValElem {
 	pub notBefore : Asn1Time,
 	pub notAfter : Asn1Time,
 }
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-struct Asn1X509Algor {
+struct Asn1X509Val {
+	pub elem : Asn1Seq<Asn1X509ValElem>,
+}
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1X509AlgorElem {
 	pub algorithm : Asn1Object,
 	pub parameters : Asn1Opt<Asn1Any>,
 }
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-struct Asn1Pkcs7Content {
+struct Asn1X509Algor {
+	pub elem : Asn1Seq<Asn1X509AlgorElem>,
+}
+
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1Pkcs7ContentElem {
 	pub objval : Asn1Object,
 	pub data :Asn1Any,	
 }
 
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1Pkcs7Content {
+	pub elem :Asn1Seq<Asn1Pkcs7ContentElem>,
+}
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
@@ -116,17 +133,23 @@ struct Asn1X509Extension {
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-struct Asn1X509Cinf {
+struct Asn1X509CinfElem {
 	pub version : Asn1Opt<Asn1ImpVec<Asn1Integer,0>>,
 	pub serial_number :Asn1BigNum,
 	pub signature : Asn1X509Algor,
-	pub issuer : Asn1Seq<Asn1X509Name>,
+	pub issuer : Asn1X509Name,
 	pub validity : Asn1X509Val,
 	pub subject :Asn1X509Name,
 	pub key : Asn1X509Pubkey,
 	pub issuerUID : Asn1Opt<Asn1Imp<Asn1BitString,1>>,
 	pub subjectUID : Asn1Opt<Asn1Imp<Asn1BitString,2>>,
 	pub extensions : Asn1Opt<Asn1Seq<Asn1X509Extension>>,
+}
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1X509Cinf {
+	pub elem : Asn1Seq<Asn1X509CinfElem>,
 }
 
 #[asn1_sequence(debug=enable)]
@@ -159,12 +182,17 @@ struct Asn1X509Crl {
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-struct Asn1X509 {
+struct Asn1X509Elem {
 	pub certinfo : Asn1X509Cinf,
 	pub sig_alg : Asn1X509Algor,
 	pub signature : Asn1BitString,
 }
 
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1X509 {
+	pub elem : Asn1Seq<Asn1X509Elem>,
+}
 
 
 #[asn1_sequence(debug=enable)]
@@ -188,12 +216,18 @@ struct Asn1Pkcs7SignerInfo {
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-struct Asn1Pkcs7Signed {
+struct Asn1Pkcs7SignedElem {
 	pub version :Asn1Integer,
 	pub md_algs : Asn1Set<Asn1X509Algor>,
 	pub contents : Asn1Pkcs7Content,
 	pub cert :Asn1Opt<Asn1ImpSet<Asn1X509,0>>,
 	pub signer_info : Asn1Set<Asn1Pkcs7SignerInfo>,
+}
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1Pkcs7Signed {
+	pub elem : Asn1Seq<Asn1Pkcs7SignedElem>,
 }
 
 
@@ -205,11 +239,19 @@ struct Asn1Pkcs7Selector {
 
 #[asn1_choice(selector=selector,debug=enable)]
 #[derive(Clone)]
-struct Asn1Pkcs7 {
+struct Asn1Pkcs7Elem {
 	pub selector :Asn1Pkcs7Selector,
 	pub signed : Asn1Ndef<Asn1Pkcs7Signed,0>,
 	pub anyobj :Asn1Any,
 }
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1Pkcs7 {
+	pub elem :Asn1Seq<Asn1Pkcs7Elem>,
+}
+
+
 
 
 
