@@ -12,8 +12,8 @@ use extargsparse_worker::funccall::{ExtArgsParseFunc};
 
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
-use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1OctString,Asn1PrintableString,Asn1BitString};
-use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1ImpVec,Asn1Imp,Asn1Ndef};
+use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1OctString,Asn1PrintableString,Asn1BitString,Asn1Null};
+use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1ImpVec,Asn1Imp,Asn1Ndef,Asn1SeqSelector};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 #[allow(unused_imports)]
@@ -109,16 +109,17 @@ struct Asn1RsaPubkey {
 	pub e :Asn1BigNum,
 }
 
-#[asn1_obj_selector(any=default,rsa="1.2.840.113549.1.1.1")]
+#[asn1_obj_selector(selector=val,any=default,rsa="1.2.840.113549.1.1.1",debug=enable)]
 #[derive(Clone)]
 struct Asn1X509PubkeySelector {
 	pub val : Asn1Object,
+	pub padded : Asn1Null,
 }
 
 #[asn1_choice(selector=valid,debug=enable)]
 #[derive(Clone)]
 struct Asn1X509PubkeyElem {
-	pub valid : Asn1X509PubkeySelector,
+	pub valid : Asn1SeqSelector<Asn1X509PubkeySelector>,
 	pub rsa : Asn1Seq<Asn1RsaPubkey>,
 	pub any : Asn1Any,
 }
