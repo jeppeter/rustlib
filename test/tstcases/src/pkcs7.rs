@@ -117,11 +117,18 @@ struct Asn1X509PubkeySelector {
 
 #[asn1_choice(selector=valid,debug=enable)]
 #[derive(Clone)]
-struct Asn1X509Pubkey {
+struct Asn1X509PubkeyElem {
 	pub valid : Asn1X509PubkeySelector,
 	pub rsa : Asn1Seq<Asn1RsaPubkey>,
 	pub any : Asn1Any,
 }
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1X509Pubkey {
+	pub elem :Asn1Seq<Asn1X509PubkeyElem>,
+}
+
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]

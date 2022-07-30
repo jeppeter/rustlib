@@ -1,8 +1,8 @@
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
 #[allow(unused_imports)]
-use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String,Asn1Any,Asn1PrintableString,asn1obj_extract_header,asn1obj_format_header};
-use asn1obj::complex::{Asn1Imp};
+use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String,Asn1Any,Asn1PrintableString,Asn1Null};
+use asn1obj::complex::{Asn1Imp,Asn1SeqSelector};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
@@ -12,14 +12,17 @@ use std::error::Error;
 use std::io::{Write};
 
 
-#[asn1_obj_selector(ci="1.2.3",co="1.2.5",cs="1.2.4",cs="1.2.21",ca=default)]
+#[asn1_obj_selector(selector=val,ci="1.2.3",co="1.2.5",cs="1.2.4",cs="1.2.21",ca=default,debug=enable)]
+#[derive(Clone)]
 struct Asn1ObjSelector {
 	pub val :Asn1Object,
+	pub vs :Asn1Null,
 }
+
 
 #[asn1_choice()]
 struct Asn1BB {
-	pub selector : Asn1ObjSelector,
+	pub selector : Asn1SeqSelector<Asn1ObjSelector>,
 	pub ci :Asn1Integer,
 	pub co :Asn1Object,
 	pub cs :Asn1String,
@@ -36,25 +39,25 @@ struct Asn1Seqcc {
 
 fn main() {
 	let mut av :Asn1BB = Asn1BB::init_asn1();
-	let _ = av.selector.val.set_value("1.2.5").unwrap();
+	let _ = av.selector.val.val.set_value("1.2.5").unwrap();
 	let _ = av.co.set_value("2.5.7").unwrap();
 	let code :Vec<u8> = av.encode_asn1().unwrap();
 	println!("{:?}", code);
 	let _ = av.decode_asn1(&code).unwrap();
-	let _ = av.selector.val.set_value("1.2.3").unwrap();
+	let _ = av.selector.val.val.set_value("1.2.3").unwrap();
 	av.ci.val = -20;
 	let code :Vec<u8> = av.encode_asn1().unwrap();
 	println!("{:?}", code);
-	let _ = av.selector.val.set_value("1.2.4").unwrap();
+	let _ = av.selector.val.val.set_value("1.2.4").unwrap();
 	av.cs.val = format!("ccss222");
 	let code :Vec<u8> = av.encode_asn1().unwrap();
 	println!("{:?}", code);
-	let _ = av.selector.val.set_value("1.2.21").unwrap();
+	let _ = av.selector.val.val.set_value("1.2.21").unwrap();
 	av.ca.tag = 0x12;
 	av.ca.content = vec![0x44,0x22,0x43];
 	let code :Vec<u8> = av.encode_asn1().unwrap();
 	println!("{:?}", code);
-	let _ = av.selector.val.set_value("1.2.27").unwrap();
+	let _ = av.selector.val.val.set_value("1.2.27").unwrap();
 	av.ca.tag = 0x12;
 	av.ca.content = vec![0x44,0x22,0x43];
 	let code :Vec<u8> = av.encode_asn1().unwrap();
