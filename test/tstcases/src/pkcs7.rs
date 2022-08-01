@@ -12,7 +12,7 @@ use extargsparse_worker::funccall::{ExtArgsParseFunc};
 
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
-use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1OctString,Asn1PrintableString,Asn1BitString,Asn1Null};
+use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1OctString,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData};
 use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1ImpVec,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
@@ -141,7 +141,7 @@ struct Asn1X509Pubkey {
 struct Asn1X509ExtensionElem {
 	pub object :Asn1Object,
 	pub critical : Asn1Opt<Asn1Boolean>,
-	pub value : Asn1OctString,
+	pub value : Asn1OctData,
 }
 
 #[asn1_sequence(debug=enable)]
@@ -204,7 +204,7 @@ struct Asn1X509Crl {
 struct Asn1X509Elem {
 	pub certinfo : Asn1X509Cinf,
 	pub sig_alg : Asn1X509Algor,
-	pub signature : Asn1BitString,
+	pub signature : Asn1BitData,
 }
 
 #[asn1_sequence(debug=enable)]
