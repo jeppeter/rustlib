@@ -12,7 +12,7 @@ use extargsparse_worker::funccall::{ExtArgsParseFunc};
 
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
-use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1OctString,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData};
+use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData};
 use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1ImpVec,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
@@ -62,9 +62,15 @@ struct Asn1X509Name {
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-struct Asn1X509Attribute {
+struct Asn1X509AttributeElem {
 	pub object :Asn1Object,
 	pub set :Asn1Any,
+}
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1X509Attribute {
+	pub elem : Asn1Seq<Asn1X509AttributeElem>,
 }
 
 #[asn1_sequence(debug=enable)]
@@ -216,21 +222,34 @@ struct Asn1X509 {
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-struct Asn1Pkcs7IssuerAndSerial {
+struct Asn1Pkcs7IssuerAndSerialElem {
 	pub issuer : Asn1X509Name,
-	pub serial : Asn1Integer,
+	pub serial : Asn1BigNum,
 }
 
 #[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-struct Asn1Pkcs7SignerInfo {
+struct Asn1Pkcs7IssuerAndSerial {
+	pub elem :Asn1Seq<Asn1Pkcs7IssuerAndSerialElem>,
+}
+
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1Pkcs7SignerInfoElem {
 	pub version : Asn1Integer,
 	pub issuer_and_serial : Asn1Pkcs7IssuerAndSerial,
 	pub digest_algo : Asn1X509Algor,
 	pub auth_attr : Asn1Opt<Asn1ImpVec<Asn1X509Attribute,0>>,
 	pub digest_enc_algo : Asn1X509Algor,
-	pub enc_digest : Asn1OctString,
+	pub enc_digest : Asn1OctData,
 	pub unauth_attr : Asn1Opt<Asn1ImpVec<Asn1X509Attribute,1>>,
+}
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1Pkcs7SignerInfo {
+	pub elem : Asn1Seq<Asn1Pkcs7SignerInfoElem>,
 }
 
 #[asn1_sequence(debug=enable)]
