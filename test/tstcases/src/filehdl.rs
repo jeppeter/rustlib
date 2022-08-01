@@ -27,7 +27,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
-use super::fileop::{read_file_bytes,write_file};
+use super::fileop::{read_file_bytes,write_file_bytes};
 use super::strop::{encode_base64};
 
 
@@ -43,7 +43,7 @@ fn fileencbase64_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	for f in sarr.iter() {
 		let data = read_file_bytes(f)?;
 		let outs = encode_base64(&data);
-		write_file(&output,outs.as_bytes())?;
+		write_file_bytes(&output,outs.as_bytes())?;
 	}
 
 	Ok(())

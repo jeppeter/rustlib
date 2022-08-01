@@ -28,7 +28,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 use super::pelib::{get_securtiy_buffer,SecData};
-use super::fileop::{write_file};
+use super::fileop::{write_file_bytes};
 
 
 
@@ -65,7 +65,7 @@ fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 
 		debug_buffer_trace!(secdata.buf.as_ptr(), dlen, "{} security data [0x{:08x}].[0x{:08x}][0x{:08x}]:",f,secdata.virtaddr,secdata.size,secdata.buf.len());
 		debug_trace!("write curname [{}]",curname);
-		write_file(&curname,&(secdata.buf[..dlen]))?;
+		write_file_bytes(&curname,&(secdata.buf[..dlen]))?;
 		/*
 		print!("{} security data [0x{:08x}].[0x{:08x}][0x{:08x}]:",f,secdata.virtaddr,secdata.size,secdata.buf.len());
 		lastidx = 0;

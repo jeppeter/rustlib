@@ -17,7 +17,7 @@ use std::error::Error;
 extargs_error_class!{FileOpError}
 
 
-pub fn write_file(fname :&str, byts :&[u8]) -> Result<(),Box<dyn Error>> {
+pub fn write_file_bytes(fname :&str, byts :&[u8]) -> Result<(),Box<dyn Error>> {
 	if fname.len() == 0 {
 		let res = io::stdout().write_all(byts);
 		if res.is_err() {
@@ -42,38 +42,62 @@ pub fn write_file(fname :&str, byts :&[u8]) -> Result<(),Box<dyn Error>> {
 
 
 pub fn read_file_bytes(fname :&str) -> Result<Vec<u8>,Box<dyn Error>> {
-	let fo = fs::File::open(fname);
-	if fo.is_err() {
-		let err = fo.err().unwrap();
-		extargs_new_error!{FileOpError,"can not open [{}] error[{:?}]", fname, err}
-	}
-	let f = fo.unwrap();
-	let mut reader = BufReader::new(f);
-	let mut buf :Vec<u8> = Vec::new();
-	let res = reader.read_to_end(&mut buf);
-	if res.is_err() {
-		let err = res.err().unwrap();
-		extargs_new_error!{FileOpError,"read [{}] error [{:?}]", fname,err}
-	}
+	if fname.len() == 0 {
+		let f = io::stdin();
+		let mut reader = BufReader::new(f);
+		let mut buf :Vec<u8> = Vec::new();
+		let res = reader.read_to_end(&mut buf);
+		if res.is_err() {
+			let err = res.err().unwrap();
+			extargs_new_error!{FileOpError,"read [{}] error [{:?}]", fname,err}
+		}
+		Ok(buf)
+	} else {
+		let fo = fs::File::open(fname);
+		if fo.is_err() {
+			let err = fo.err().unwrap();
+			extargs_new_error!{FileOpError,"can not open [{}] error[{:?}]", fname, err}
+		}
+		let f = fo.unwrap();
+		let mut reader = BufReader::new(f);
+		let mut buf :Vec<u8> = Vec::new();
+		let res = reader.read_to_end(&mut buf);
+		if res.is_err() {
+			let err = res.err().unwrap();
+			extargs_new_error!{FileOpError,"read [{}] error [{:?}]", fname,err}
+		}
 
-	Ok(buf)
+		Ok(buf)		
+	}
 }
 
-#[allow(dead_code)]
 pub fn read_file(fname :&str) -> Result<String,Box<dyn Error>> {
-	let fo = fs::File::open(fname);
-	if fo.is_err() {
-		let err = fo.err().unwrap();
-		extargs_new_error!{FileOpError,"can not open [{}] error[{:?}]", fname, err}
-	}
-	let f = fo.unwrap();
-	let mut reader = BufReader::new(f);
-	let mut retv :String = String::new();
-	let res = reader.read_to_string(&mut retv);
-	if res.is_err() {
-		let err = res.err().unwrap();
-		extargs_new_error!{FileOpError,"read [{}] error [{:?}]", fname,err}
-	}
+	if fname.len() == 0 {
+		let f = io::stdin();
+		let mut reader = BufReader::new(f);
+		let mut retv :String = String::new();
+		let res = reader.read_to_string(&mut retv);
+		if res.is_err() {
+			let err = res.err().unwrap();
+			extargs_new_error!{FileOpError,"read [{}] error [{:?}]", fname,err}
+		}
+		Ok(retv)
+	} else {
+		let fo = fs::File::open(fname);
+		if fo.is_err() {
+			let err = fo.err().unwrap();
+			extargs_new_error!{FileOpError,"can not open [{}] error[{:?}]", fname, err}
+		}
+		let f = fo.unwrap();
+		let mut reader = BufReader::new(f);
+		let mut retv :String = String::new();
+		let res = reader.read_to_string(&mut retv);
+		if res.is_err() {
+			let err = res.err().unwrap();
+			extargs_new_error!{FileOpError,"read [{}] error [{:?}]", fname,err}
+		}
 
-	Ok(retv)
+		Ok(retv)		
+	}
 }
+

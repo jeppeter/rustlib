@@ -38,7 +38,8 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 
-use super::fileop::{read_file_bytes};
+use super::fileop::{read_file,read_file_bytes,write_file_bytes};
+use super::pemlib::{pem_to_der,der_to_pem};
 
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
@@ -322,9 +323,6 @@ struct Asn1Pkcs7 {
 }
 
 
-
-
-
 fn pkcs7dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
 
@@ -374,7 +372,47 @@ fn objenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 }
 
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler)]
+fn pemtoder_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let inf :String;
+	let outf :String;
+
+	init_log(ns.clone())?;
+	inf = ns.get_string("input");
+	outf = ns.get_string("output");
+
+	let s = read_file(&inf)?;
+
+	let (bb,notice) = pem_to_der(&s)?;
+	debug_trace!("notice {}",notice);
+	let _ = write_file_bytes(&outf,&bb)?;
+	Ok(())
+}
+
+fn dertopem_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let inf :String;
+	let outf :String;
+	let sarr :Vec<String>;
+	let mut notice :String = "NOTE".to_string();
+
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+	if sarr.len() > 0 {
+		notice = format!("{}",sarr[0]);
+	}
+
+	inf = ns.get_string("input");
+	outf = ns.get_string("output");
+
+	let inb = read_file_bytes(&inf)?;
+
+	let outs = der_to_pem(&inb,&notice)?;
+	let _ = write_file_bytes(&outf,outs.as_bytes())?;
+	Ok(())
+}
+
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -386,6 +424,12 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"objenc<objenc_handler>##objid ... to encode object##" : {
 			"$" : "+"
+		},
+		"pemtoder<pemtoder_handler>##to tranform input to output from pem to der##" : {
+			"$" : 0
+		},
+		"dertopem<dertopem_handler>##[NOTICE] to tranform input to output from der to pem##" : {
+			"$" : "?"
 		}
 	}
 	"#;
