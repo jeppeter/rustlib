@@ -411,8 +411,71 @@ fn dertopem_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	Ok(())
 }
 
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1Pkcs8PrivKeyInfoElem {
+	pub version :Asn1Integer,
+	pub pkeyalg : Asn1X509Algor,
+	pub pkey : Asn1OctData,
+	pub attributes : Asn1Opt<Asn1ImpVec<Asn1X509Attribute,0>>,
+}
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler)]
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+struct Asn1Pkcs8PrivKeyInfo {
+	pub elem : Asn1Seq<Asn1Pkcs8PrivKeyInfoElem>,
+}
+
+
+fn privinfodec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = Asn1Pkcs8PrivKeyInfo::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("privinfo",0,&mut f)?;		
+	}
+
+	Ok(())
+}
+
+
+#[asn1_sequence()]
+#[derive(Clone)]
+struct Asn1X509SigElem {
+	pub algor : Asn1X509Algor,
+	pub digest : Asn1OctData,
+}
+
+
+#[asn1_sequence()]
+#[derive(Clone)]
+struct Asn1X509Sig {
+	pub elem : Asn1Seq<Asn1X509SigElem>,
+}
+
+
+fn encryptprivdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = Asn1X509Sig::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("x509sig",0,&mut f)?;		
+	}
+
+	Ok(())
+}
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -430,6 +493,12 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"dertopem<dertopem_handler>##[NOTICE] to tranform input to output from der to pem##" : {
 			"$" : "?"
+		},
+		"encryptprivdec<encryptprivdec_handler>##derfile ... to decode file##" : {
+			"$" : "+"
+		},
+		"privinfodec<privinfodec_handler>##derfile ... to decode file##" : {
+			"$" : "+"
 		}
 	}
 	"#;
