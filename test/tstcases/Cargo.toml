@@ -21,6 +21,8 @@ num-traits = "^0.2.5"
 hmac = "^0.12.1"
 sha2 = "^0.10.2"
 hex = "^0.4.3"
+rand = "^0.8.5"
+rust-crypto = "^0.2.36"
 
 asn1obj = { path = "../../../asn1obj/asn1obj"}
 asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
