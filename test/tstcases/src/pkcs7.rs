@@ -545,20 +545,69 @@ fn pbkdf2dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 
 type HmacSha256 = Hmac<Sha256>;
 
+fn get_hmac_sha256_key(passv8 :&[u8], saltv8 :&[u8], itertimes : usize) -> Vec<u8> {
+	let omac = HmacSha256::new_from_slice(&passv8).unwrap();
+	let mut nmac ;
+	let mut tkeylen : usize = 32;
+	let cplen :usize = 32;
+	let mut i :usize = 1;
+	let mut p :Vec<u8> = Vec::new();
+	let mut plen :usize = 0;
+
+	while tkeylen > 0 {
+		let mut itmp :Vec<u8> = Vec::new();
+		let mut curv :u8;
+		nmac = omac.clone();
+		curv = ((i >> 24) & 0xff) as u8;
+		itmp.push(curv);
+		curv = ((i >> 16) & 0xff) as u8;
+		itmp.push(curv);
+		curv = ((i >> 8) & 0xff) as u8;
+		itmp.push(curv);
+		curv = ((i >> 0) & 0xff) as u8;
+		itmp.push(curv);
+		nmac.update(&saltv8);
+		nmac.update(&itmp);
+		let mut resdigtmp = nmac.finalize();
+		let mut digtmp = resdigtmp.into_bytes();
+		for i in 0..digtmp.len() {
+			if (p.len()-plen) <= i {
+				p.push(digtmp[i]);
+			} else {
+				p[i+plen] = digtmp[i];
+			}
+		}
+
+
+		for _ in 1..itertimes {
+			nmac = omac.clone();
+			nmac.update(&digtmp);
+			resdigtmp = nmac.finalize();
+			digtmp = resdigtmp.into_bytes();
+			for k in 0..cplen {
+				p[k+plen] ^= digtmp[k];
+			}
+		}
+
+		tkeylen -= cplen;
+		i += 1;
+		plen += cplen;
+	}
+	return p;	
+}
+
 fn hmacsha256_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
 	let sarr :Vec<String>;
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
 	if sarr.len() < 2 {
-		asn1obj_new_error!{Pkcs7Error,"need password salt"}
+		asn1obj_new_error!{Pkcs7Error,"need password salt "}
 	}
 	let passv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
 	let saltv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
 	debug_trace!("passv8 {:?} saltv8 {:?}", passv8,saltv8);
-	let mut mac = HmacSha256::new_from_slice(&passv8).unwrap();
-	mac.update(&saltv8);
-	let result = mac.finalize();
-	debug_trace!("result {:?}", result.into_bytes());
+	let p = get_hmac_sha256_key(&passv8,&saltv8,2048);
+	debug_buffer_trace!(p.as_ptr(),p.len(),"final p");
 	Ok(())
 }
 
