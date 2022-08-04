@@ -41,6 +41,12 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file,read_file_bytes,write_file_bytes};
 use super::pemlib::{pem_to_der,der_to_pem};
 
+use sha2::Sha256;
+use hmac::{Hmac,Mac};
+use hex::FromHex;
+
+asn1obj_error_class!{Pkcs7Error}
+
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
@@ -537,8 +543,26 @@ fn pbkdf2dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	Ok(())
 }
 
+type HmacSha256 = Hmac<Sha256>;
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler)]
+fn hmacsha256_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 2 {
+		asn1obj_new_error!{Pkcs7Error,"need password salt"}
+	}
+	let passv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
+	let saltv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
+	debug_trace!("passv8 {:?} saltv8 {:?}", passv8,saltv8);
+	let mut mac = HmacSha256::new_from_slice(&passv8).unwrap();
+	mac.update(&saltv8);
+	let result = mac.finalize();
+	debug_trace!("result {:?}", result.into_bytes());
+	Ok(())
+}
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -568,6 +592,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"pbkdf2dec<pbkdf2dec_handler>##derfile ... to decode PBKDF2PARAM##" : {
 			"$" : "+"
+		},
+		"hmacsha256<hmacsha256_handler>##password salt to encode##" : {
+			"$" : 2
 		}
 	}
 	"#;
