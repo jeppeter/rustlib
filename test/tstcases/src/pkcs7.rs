@@ -506,8 +506,39 @@ fn pbe2dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	Ok(())
 }
 
+#[asn1_sequence()]
+#[derive(Clone)]
+struct Asn1Pbkdf2ParamElem {
+	pub salt : Asn1Any,
+	pub iter : Asn1Integer,
+	pub keylength :Asn1Opt<Asn1Integer>,
+	pub prf : Asn1Opt<Asn1X509Algor>,
+}
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler)]
+#[asn1_sequence()]
+#[derive(Clone)]
+struct Asn1Pbkdf2Param {
+	pub elem : Asn1Seq<Asn1Pbkdf2ParamElem>,
+}
+
+fn pbkdf2dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = Asn1Pbkdf2ParamElem::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("pbkdf2param",0,&mut f)?;		
+	}
+
+	Ok(())
+}
+
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -533,6 +564,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"pbe2dec<pbe2dec_handler>##derfile ... to decode PBE2PARAM##" : {
+			"$" : "+"
+		},
+		"pbkdf2dec<pbkdf2dec_handler>##derfile ... to decode PBKDF2PARAM##" : {
 			"$" : "+"
 		}
 	}
