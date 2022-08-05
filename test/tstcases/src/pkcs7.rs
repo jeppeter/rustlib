@@ -40,6 +40,7 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 use super::fileop::{read_file,read_file_bytes,write_file_bytes};
 use super::pemlib::{pem_to_der,der_to_pem};
+use super::cryptlib::{aes256_cbc_decrypt};
 
 use sha2::Sha256;
 use hmac::{Hmac,Mac};
@@ -661,17 +662,59 @@ struct Asn1RsaPrivateKey {
 	pub elem : Asn1Seq<Asn1RsaPrivateKeyElem>,
 }
 
+const OID_PBES2 :&str = "1.2.840.113549.1.5.13";
+const OID_PBKDF2 :&str = "1.2.840.113549.1.5.12";
+const OID_AES_256_CBC :&str = "2.16.840.1.101.3.4.1.42";
+const OID_RSA_ENCRYPTION :&str = "1.2.840.113549.1.1.1";
+
+fn get_private_key(x509bytes :&[u8],passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
+	let mut x509sig = Asn1X509Sig::init_asn1();
+	let _ = x509sig.decode_asn1(x509bytes)?;
+	let types = x509sig.elem.val[0].algor.elem.val[0].algorithm.get_value();
+	if types == OID_PBES2 {
+		debug_trace!("debug {}", OID_PBES2);
+		let params :&Asn1Any = x509sig.elem.val[0].algor.elem.val[0].parameters.val.as_ref().unwrap();
+		let decdata :Vec<u8> = params.content.clone();
+		let mut pbe2 : Asn1Pbe2ParamElem = Asn1Pbe2ParamElem::init_asn1();
+		let _ = pbe2.decode_asn1(&decdata)?;
+		let pbe2types = pbe2.keyfunc.elem.val[0].algorithm.get_value();
+		if pbe2types == OID_PBKDF2 {
+			debug_trace!("debug {}", OID_PBKDF2);
+			let params :&Asn1Any = pbe2.keyfunc.elem.val[0].parameters.val.as_ref().unwrap();
+			let decdata :Vec<u8> = params.content.clone();
+			let mut pbkdf2 :Asn1Pbkdf2ParamElem = Asn1Pbkdf2ParamElem::init_asn1();
+			let _ = pbkdf2.decode_asn1(&decdata)?;
+			let aeskey :Vec<u8> = get_hmac_sha256_key(passin,&pbkdf2.salt.content,pbkdf2.iter.val as usize);
+			if pbe2.encryption.elem.val[0].algorithm.get_value() == OID_AES_256_CBC {
+				let params :Asn1Any = pbe2.encryption.elem.val[0].parameters.val.as_ref().unwrap().clone();
+				let ivkey :Vec<u8> = params.content.clone();
+				let encdata :Vec<u8> = x509sig.elem.val[0].digest.data.clone();
+				let decdata :Vec<u8> = aes256_cbc_decrypt(&encdata,&aeskey,&ivkey)?;
+				let mut netpkey :Asn1NetscapePkey = Asn1NetscapePkey::init_asn1();
+				let _ = netpkey.decode_asn1(&decdata)?;
+				if netpkey.elem.val[0].algor.elem.val[0].algorithm.get_value() == OID_RSA_ENCRYPTION {
+					let decdata :Vec<u8> = netpkey.elem.val[0].privdata.data.clone();
+					let mut privkey :Asn1RsaPrivateKey = Asn1RsaPrivateKey::init_asn1();
+					let _ = privkey.decode_asn1(&decdata)?;
+					return Ok(privkey);
+				}
+			}
+		}
+	}
+
+	asn1obj_new_error!{Pkcs7Error,"not private key"}
+}
+
 fn rsaprivdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
-
+	let passin :String = ns.get_string("passin");
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
 	for f in sarr.iter() {
 		let code = read_file_bytes(f)?;
-		let mut xname = Asn1RsaPrivateKey::init_asn1();
-		let _ = xname.decode_asn1(&code)?;
+		let privkey = get_private_key(&code,passin.as_bytes())?;
 		let mut f = std::io::stderr();
-		xname.print_asn1("rsapriv",0,&mut f)?;		
+		privkey.print_asn1("privkey",0,&mut f)?;
 	}
 
 	Ok(())
@@ -682,6 +725,7 @@ fn rsaprivdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
+		"passin" : null,
 		"pkcs7dec<pkcs7dec_handler>##derfile ... to decode file##" : {
 			"$" : "+"
 		},
