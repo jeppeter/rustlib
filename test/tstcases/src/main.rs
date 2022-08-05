@@ -45,7 +45,7 @@ mod pehdl;
 mod ssllib;
 mod sslhdl;
 mod pemlib;
-mod aeslib;
+mod cryptlib;
 mod crypthdl;
 mod pkcs7;
 

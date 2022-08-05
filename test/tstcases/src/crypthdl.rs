@@ -28,8 +28,9 @@ use std::collections::HashMap;
 use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
+use super::fileop::{read_file_bytes,write_file_bytes};
 
-use super::aeslib::{aes256_cbc_encrypt,aes256_cbc_decrypt};
+use super::cryptlib::{aes256_cbc_encrypt,aes256_cbc_decrypt};
 
 use hex::{FromHex};
 use hex;
@@ -40,17 +41,18 @@ fn aescbcenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	let sarr :Vec<String>;
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
-	if sarr.len() < 3 {
-		asn1obj_new_error!{CryptHdlError,"need data key iv"}
+	if sarr.len() < 2 {
+		asn1obj_new_error!{CryptHdlError,"need key iv"}
 	}
-	let datav8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
-	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
-	let ivv8 :Vec<u8> = Vec::from_hex(&sarr[2]).unwrap();
+	let f = ns.get_string("input");
+	let datav8 :Vec<u8> = read_file_bytes(&f)?;
+	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
+	let ivv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
 	let encdata :Vec<u8> = aes256_cbc_encrypt(&datav8,&keyv8,&ivv8)?;
-	debug_buffer_trace!(encdata.as_ptr(),encdata.len(), "enc data");
-	println!("encrypt [{}] from key [{}] iv[{}]", sarr[0],sarr[1],sarr[2]);
-	let s = format!("{}",hex::encode(&encdata));
-	println!("{}",s);
+	debug_buffer_trace!(datav8.as_ptr(),datav8.len(),"read [{}]", f);
+	debug_buffer_trace!(encdata.as_ptr(),encdata.len(), "enc data with key [{}] iv[{}]",sarr[0],sarr[1]);
+	let outf = ns.get_string("output");
+	let _ = write_file_bytes(&outf,&encdata)?;
 	Ok(())
 }
 
@@ -58,17 +60,18 @@ fn aescbcdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	let sarr :Vec<String>;
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
-	if sarr.len() < 3 {
-		asn1obj_new_error!{CryptHdlError,"need encdata key iv"}
+	if sarr.len() < 2 {
+		asn1obj_new_error!{CryptHdlError,"need key iv"}
 	}
-	let encdatav8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
-	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
-	let ivv8 :Vec<u8> = Vec::from_hex(&sarr[2]).unwrap();
+	let f = ns.get_string("input");
+	let encdatav8 :Vec<u8> = read_file_bytes(&f)?;
+	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
+	let ivv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
 	let data :Vec<u8> = aes256_cbc_decrypt(&encdatav8,&keyv8,&ivv8)?;
-	debug_buffer_trace!(data.as_ptr(),data.len(), "enc data");
-	println!("decrypt [{}] from key [{}] iv[{}]", sarr[0],sarr[1],sarr[2]);
-	let s = format!("{}",hex::encode(&data));
-	println!("{}",s);
+	debug_buffer_trace!(encdatav8.as_ptr(),encdatav8.len(),"read [{}]",f);
+	debug_buffer_trace!(data.as_ptr(),data.len(), "decrypt with [{}] [{}]",sarr[0],sarr[1]);
+	let outf = ns.get_string("output");
+	let _ = write_file_bytes(&outf,&data)?;
 	Ok(())
 }
 
@@ -77,11 +80,11 @@ fn aescbcdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 pub fn load_crypto_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
-		"aescbcenc<aescbcenc_handler>##data key iv to encrypt##" : {
-			"$" : 3
+		"aescbcenc<aescbcenc_handler>##key iv to encrypt data from input encdata to output##" : {
+			"$" : 2
 		},
-		"aescbcdec<aescbcdec_handler>##encdata key iv to decrypt##" : {
-			"$" : 3
+		"aescbcdec<aescbcdec_handler>##key iv to decrypt encdata from input data to output##" : {
+			"$" : 2
 		}
 
 	}
