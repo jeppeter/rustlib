@@ -611,10 +611,74 @@ fn hmacsha256_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
 	Ok(())
 }
 
+#[asn1_sequence()]
+#[derive(Clone)]
+struct Asn1NetscapePkeyElem {
+	pub version :Asn1Integer,
+	pub algor : Asn1X509Algor,
+	pub privdata :Asn1OctData,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+struct Asn1NetscapePkey {
+	pub elem : Asn1Seq<Asn1NetscapePkeyElem>,
+}
+
+fn netpkeydec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = Asn1NetscapePkey::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("netpkey",0,&mut f)?;		
+	}
+
+	Ok(())
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+struct Asn1RsaPrivateKeyElem {
+	pub version :Asn1Integer,
+	pub modulus : Asn1BigNum,
+	pub pubexp : Asn1BigNum,
+	pub privexp : Asn1BigNum,
+	pub prime1 :Asn1BigNum,
+	pub prime2 :Asn1BigNum,
+	pub exp1 : Asn1BigNum,
+	pub exp2 :Asn1BigNum,
+	pub coeff : Asn1BigNum,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+struct Asn1RsaPrivateKey {
+	pub elem : Asn1Seq<Asn1RsaPrivateKeyElem>,
+}
+
+fn rsaprivdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = Asn1RsaPrivateKey::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("rsapriv",0,&mut f)?;		
+	}
+
+	Ok(())
+}
 
 
-
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler)]
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -647,6 +711,12 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"hmacsha256<hmacsha256_handler>##password salt to encode##" : {
 			"$" : 2
+		},
+		"netpkeydec<netpkeydec_handler>##derfile ... to decode NETSCAPEPKEY##" : {
+			"$" : "+"
+		},
+		"rsaprivdec<rsaprivdec_handler>##derfile ... to decode RSAPRIVATEKEY##" : {
+			"$" : "+"
 		}
 	}
 	"#;
