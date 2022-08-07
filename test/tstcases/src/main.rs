@@ -47,6 +47,7 @@ mod sslhdl;
 mod pemlib;
 mod cryptlib;
 mod crypthdl;
+mod asn1def;
 mod pkcs7;
 
 
