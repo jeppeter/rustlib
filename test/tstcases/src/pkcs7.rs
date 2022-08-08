@@ -40,11 +40,10 @@ use asn1obj::base::{Asn1Object,Asn1Any};
 use sha2::{Sha256,Digest};
 use hmac::{Hmac,Mac};
 use hex::FromHex;
-use rsa::{RsaPublicKey,RsaPrivateKey};
+use rsa::{RsaPublicKey,RsaPrivateKey,PublicKey};
 use rsa::BigUint as rsaBigUint;
 use rsa::hash::{Hash};
 use rsa::padding::{PaddingScheme};
-use rsa::pkcs1v15::*;
 
 asn1obj_error_class!{Pkcs7Error}
 
@@ -365,30 +364,6 @@ fn rsaprivdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
     Ok(())
 }
 
-fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> { 
-    let sarr :Vec<String>;
-
-    init_log(ns.clone())?;
-    sarr = ns.get_array("subnargs");
-    for f in sarr.iter() {
-        let code = read_file_bytes(f)?;
-        let mut xname = Asn1X509::init_asn1();
-        let _ = xname.decode_asn1(&code)?;
-        let mut f = std::io::stderr();
-        xname.print_asn1("x509",0,&mut f)?;
-        let v8 = xname.elem.val[0].certinfo.encode_asn1()?;
-        debug_buffer_trace!(v8.as_ptr(),v8.len(),"encode certinfo");
-        let certinfoelem = xname.elem.val[0].certinfo.elem.val[0].clone();
-        if certinfoelem.signature.elem.val[0].algorithm.get_value() == OID_SHA256_WITH_RSA_ENCRYPTION {
-            /*now get the public key*/
-            let pubn = certinfoelem.key.elem.val[0].rsa.val.val[0].n.val.to_bytes_be();
-            let pube = certinfoelem.key.elem.val[0].rsa.val.val[0].e.val.to_bytes_be();
-            let _rsapubk = RsaPublicKey::new(rsaBigUint::from_bytes_be(&pubn),rsaBigUint::from_bytes_be(&pube))?;
-        }
-    }
-
-    Ok(())
-}
 
 fn get_sha256_data(ind :&[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
@@ -433,7 +408,7 @@ fn rsaverify_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     let digest = get_sha256_data(&ind);
     let ro = pubkey.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,&hashd);
     match ro {
-        Ok(v) => {
+        Ok(_v) => {
             println!("verify [{}] with [{}] ok", sarr[0],sarr[1]);
         },
         Err(e) => {
@@ -442,6 +417,50 @@ fn rsaverify_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     }
     Ok(())
 }
+
+fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> { 
+    let sarr :Vec<String>;
+
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    for f in sarr.iter() {
+        let code = read_file_bytes(f)?;
+        let fname = format!("{}",f);
+        let mut xname = Asn1X509::init_asn1();
+        let _ = xname.decode_asn1(&code)?;
+        let mut f = std::io::stderr();
+        xname.print_asn1("x509",0,&mut f)?;
+        let v8 = xname.elem.val[0].certinfo.encode_asn1()?;
+        debug_buffer_trace!(v8.as_ptr(),v8.len(),"encode certinfo");
+        let certinfoelem = xname.elem.val[0].certinfo.elem.val[0].clone();
+        if certinfoelem.signature.elem.val[0].algorithm.get_value() == OID_SHA256_WITH_RSA_ENCRYPTION {
+            /*now get the public key*/
+            let pubn = certinfoelem.key.elem.val[0].rsa.val.val[0].n.val.to_bytes_be();
+            let pube = certinfoelem.key.elem.val[0].rsa.val.val[0].e.val.to_bytes_be();
+            let rsapubk = RsaPublicKey::new(rsaBigUint::from_bytes_be(&pubn),rsaBigUint::from_bytes_be(&pube))?;
+            let digest = get_sha256_data(&v8);
+            let hmactype = xname.elem.val[0].sig_alg.elem.val[0].algorithm.get_value();
+
+            debug_trace!("sig_alg value [{}]", hmactype);
+            if hmactype == OID_SHA256_WITH_RSA_ENCRYPTION {
+                let hashd = xname.elem.val[0].signature.data.clone();
+                let ro = rsapubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,&hashd);
+                match ro {
+                    Ok(_) => {
+                        println!("{} is ok", fname);
+                    },
+                    Err(_e) => {                    
+                        eprintln!("{} not ok {:?}",fname,_e);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+
 
 #[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
