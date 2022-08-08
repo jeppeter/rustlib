@@ -37,7 +37,7 @@ use asn1obj::asn1impl::{Asn1Op};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 use asn1obj::base::{Asn1Object,Asn1Any};
 
-use sha2::Sha256;
+use sha2::{Sha256,Digest};
 use hmac::{Hmac,Mac};
 use hex::FromHex;
 use rsa::{RsaPublicKey};
@@ -369,8 +369,23 @@ fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	Ok(())
 }
 
+fn sha256_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler)]
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let data = read_file_bytes(f)?;
+		let mut hasher = Sha256::new();
+		hasher.update(&data);
+		let res = hasher.finalize();
+		debug_buffer_trace!(res.as_ptr(),res.len(),"file [{}] sha256", f);
+	}
+	Ok(())
+}
+
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -412,6 +427,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"x509dec<x509dec_handler>##derfile ... to decode X509##" : {
+			"$" : "+"
+		},
+		"sha256<sha256_handler>##infile ... to sha256 file##" : {
 			"$" : "+"
 		}
 	}
