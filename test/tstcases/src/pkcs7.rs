@@ -342,8 +342,24 @@ fn rsaprivdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
 	Ok(())
 }
 
+fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler)]
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = Asn1X509::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("x509",0,&mut f)?;		
+	}
+
+	Ok(())
+}
+
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -382,6 +398,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"rsaprivdec<rsaprivdec_handler>##derfile ... to decode RSAPRIVATEKEY##" : {
+			"$" : "+"
+		},
+		"x509dec<x509dec_handler>##derfile ... to decode X509##" : {
 			"$" : "+"
 		}
 	}
