@@ -15,6 +15,7 @@ pub const OID_PBES2 :&str = "1.2.840.113549.1.5.13";
 pub const OID_PBKDF2 :&str = "1.2.840.113549.1.5.12";
 pub const OID_AES_256_CBC :&str = "2.16.840.1.101.3.4.1.42";
 pub const OID_RSA_ENCRYPTION :&str = "1.2.840.113549.1.1.1";
+pub const OID_SHA256_WITH_RSA_ENCRYPTION :&str = "1.2.840.113549.1.1.11";
 
 
 //#[asn1_sequence(debug=enable)]

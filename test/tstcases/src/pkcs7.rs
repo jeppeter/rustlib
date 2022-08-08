@@ -40,6 +40,8 @@ use asn1obj::base::{Asn1Object,Asn1Any};
 use sha2::Sha256;
 use hmac::{Hmac,Mac};
 use hex::FromHex;
+use rsa::{RsaPublicKey};
+use rsa::BigUint as rsaBigUint;
 
 asn1obj_error_class!{Pkcs7Error}
 
@@ -352,7 +354,16 @@ fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 		let mut xname = Asn1X509::init_asn1();
 		let _ = xname.decode_asn1(&code)?;
 		let mut f = std::io::stderr();
-		xname.print_asn1("x509",0,&mut f)?;		
+		xname.print_asn1("x509",0,&mut f)?;
+		let v8 = xname.elem.val[0].certinfo.encode_asn1()?;
+		debug_buffer_trace!(v8.as_ptr(),v8.len(),"encode certinfo");
+		let certinfoelem = xname.elem.val[0].certinfo.elem.val[0].clone();
+		if certinfoelem.signature.elem.val[0].algorithm.get_value() == OID_SHA256_WITH_RSA_ENCRYPTION {
+			/*now get the public key*/
+			let pubn = certinfoelem.key.elem.val[0].rsa.val.val[0].n.val.to_bytes_be();
+			let pube = certinfoelem.key.elem.val[0].rsa.val.val[0].e.val.to_bytes_be();
+			let _rsapubk = RsaPublicKey::new(rsaBigUint::from_bytes_be(&pubn),rsaBigUint::from_bytes_be(&pube))?;
+		}
 	}
 
 	Ok(())

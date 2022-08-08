@@ -23,6 +23,7 @@ sha2 = "^0.10.2"
 hex = "^0.4.3"
 rand = "^0.8.5"
 rust-crypto = "^0.2.36"
+rsa = "^0.6.1"
 
 asn1obj = { path = "../../../asn1obj/asn1obj"}
 asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
