@@ -461,8 +461,51 @@ fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 }
 
 
+fn csrdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler)]
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    for f in sarr.iter() {
+        let fname = format!("{}",f);
+        let code = read_file_bytes(f)?;
+        let mut xname = Asn1X509Req::init_asn1();
+        let _ = xname.decode_asn1(&code)?;
+        let mut f = std::io::stderr();
+        xname.print_asn1("x509req",0,&mut f)?;      
+        let v8 = xname.elem.val[0].req_info.encode_asn1()?;
+        debug_buffer_trace!(v8.as_ptr(),v8.len(),"encode certinfo");
+        let reqinfoelem = xname.elem.val[0].req_info.elem.val[0].clone();
+        if reqinfoelem.pubkey.elem.val[0].valid.val.val.get_value() == OID_RSA_ENCRYPTION {
+            /*now get the public key*/
+            let pubkey : Asn1RsaPubkey = reqinfoelem.pubkey.elem.val[0].rsa.val.val[0].clone();
+            let pubn = pubkey.n.val.to_bytes_be();
+            let pube = pubkey.e.val.to_bytes_be();
+            let rsapubk = RsaPublicKey::new(rsaBigUint::from_bytes_be(&pubn),rsaBigUint::from_bytes_be(&pube))?;
+            let digest = get_sha256_data(&v8);
+            let hmactype = xname.elem.val[0].sig_alg.elem.val[0].algorithm.get_value();
+
+            debug_trace!("sig_alg value [{}]", hmactype);
+            if hmactype == OID_SHA256_WITH_RSA_ENCRYPTION {
+                let hashd = xname.elem.val[0].signature.data.clone();
+                let ro = rsapubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,&hashd);
+                match ro {
+                    Ok(_) => {
+                        println!("{} is ok", fname);
+                    },
+                    Err(_e) => {                    
+                        eprintln!("{} not ok {:?}",fname,_e);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -512,6 +555,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "rsaverify<rsaverify_handler>##infile rsasignval to verify file to get the file##" : {
             "$" : 2
+        },
+        "csrdec<csrdec_handler>##derfile ... to decode X509_REQ##" : {
+            "$" : "+"
         }
     }
     "#;

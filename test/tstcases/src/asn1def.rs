@@ -390,3 +390,31 @@ pub struct Asn1RsaPrivateKey {
 	pub elem : Asn1Seq<Asn1RsaPrivateKeyElem>,
 }
 
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1X509ReqInfoElem {
+	pub version : Asn1Integer,
+	pub subject : Asn1X509Name,
+	pub pubkey : Asn1X509Pubkey,
+	pub attributes : Asn1Opt<Asn1ImpVec<Asn1X509Attribute,0>>,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1X509ReqInfo {
+	pub elem : Asn1Seq<Asn1X509ReqInfoElem>,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1X509ReqElem {
+	pub req_info : Asn1X509ReqInfo,
+	pub sig_alg : Asn1X509Algor,
+	pub signature : Asn1BitData,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1X509Req {
+	pub elem : Asn1Seq<Asn1X509ReqElem>,
+}
