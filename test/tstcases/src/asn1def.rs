@@ -418,3 +418,31 @@ pub struct Asn1X509ReqElem {
 pub struct Asn1X509Req {
 	pub elem : Asn1Seq<Asn1X509ReqElem>,
 }
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1Pkcs12MacDataElem {
+	pub dinfo : Asn1X509Sig,
+	pub salt : Asn1OctData,
+	pub iternum : Asn1Integer,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1Pkcs12MacData {
+	pub elem : Asn1Seq<Asn1Pkcs12MacDataElem>,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1Pkcs12Elem {
+	pub version : Asn1Integer,
+	pub authsafes : Asn1Pkcs7,
+	pub mac : Asn1Opt<Asn1Pkcs12MacData>,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1Pkcs12 {
+	pub elem : Asn1Seq<Asn1Pkcs12Elem>,
+}
