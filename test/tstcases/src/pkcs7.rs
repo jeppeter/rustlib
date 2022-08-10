@@ -307,14 +307,12 @@ fn netpkeydec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
     Ok(())
 }
 
-
-fn get_private_key(x509bytes :&[u8],passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
-    let mut x509sig = Asn1X509Sig::init_asn1();
-    let _ = x509sig.decode_asn1(x509bytes)?;
-    let types = x509sig.elem.val[0].algor.elem.val[0].algorithm.get_value();
+fn get_algor_pbkdf2_private_data(x509algorbytes :&[u8],encdata :&[u8],passin :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    let mut algor :Asn1X509Algor = Asn1X509Algor::init_asn1();
+    let _ = algor.decode_asn1(x509algorbytes)?;
+    let types = algor.elem.val[0].algorithm.get_value();
     if types == OID_PBES2 {
-        debug_trace!("debug {}", OID_PBES2);
-        let params :&Asn1Any = x509sig.elem.val[0].algor.elem.val[0].parameters.val.as_ref().unwrap();
+        let params :&Asn1Any = algor.elem.val[0].parameters.val.as_ref().unwrap();
         let decdata :Vec<u8> = params.content.clone();
         let mut pbe2 : Asn1Pbe2ParamElem = Asn1Pbe2ParamElem::init_asn1();
         let _ = pbe2.decode_asn1(&decdata)?;
@@ -326,24 +324,36 @@ fn get_private_key(x509bytes :&[u8],passin :&[u8]) -> Result<Asn1RsaPrivateKey,B
             let mut pbkdf2 :Asn1Pbkdf2ParamElem = Asn1Pbkdf2ParamElem::init_asn1();
             let _ = pbkdf2.decode_asn1(&decdata)?;
             let aeskey :Vec<u8> = get_hmac_sha256_key(passin,&pbkdf2.salt.content,pbkdf2.iter.val as usize);
-            if pbe2.encryption.elem.val[0].algorithm.get_value() == OID_AES_256_CBC {
+            let types = pbe2.encryption.elem.val[0].algorithm.get_value();
+            if types  == OID_AES_256_CBC {
                 let params :Asn1Any = pbe2.encryption.elem.val[0].parameters.val.as_ref().unwrap().clone();
                 let ivkey :Vec<u8> = params.content.clone();
-                let encdata :Vec<u8> = x509sig.elem.val[0].digest.data.clone();
-                let decdata :Vec<u8> = aes256_cbc_decrypt(&encdata,&aeskey,&ivkey)?;
-                let mut netpkey :Asn1NetscapePkey = Asn1NetscapePkey::init_asn1();
-                let _ = netpkey.decode_asn1(&decdata)?;
-                if netpkey.elem.val[0].algor.elem.val[0].algorithm.get_value() == OID_RSA_ENCRYPTION {
-                    let decdata :Vec<u8> = netpkey.elem.val[0].privdata.data.clone();
-                    let mut privkey :Asn1RsaPrivateKey = Asn1RsaPrivateKey::init_asn1();
-                    let _ = privkey.decode_asn1(&decdata)?;
-                    return Ok(privkey);
-                }
+                let decdata :Vec<u8> = aes256_cbc_decrypt(encdata,&aeskey,&ivkey)?;
+                return Ok(decdata);
             }
+            asn1obj_new_error!{Pkcs7Error,"not support OID_PBKDF2 types [{}]", types}
         }
+        asn1obj_new_error!{Pkcs7Error,"not support OID_PBES2 types [{}]",pbe2types}
     }
+    asn1obj_new_error!{Pkcs7Error,"can not support types [{}]", types}
+}
 
-    asn1obj_new_error!{Pkcs7Error,"not private key"}
+fn get_private_key(x509sigbytes :&[u8],passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
+    let mut x509sig = Asn1X509Sig::init_asn1();
+    let _ = x509sig.decode_asn1(x509sigbytes)?;
+    let algordata = x509sig.elem.val[0].algor.encode_asn1()?;
+    let encdata = x509sig.elem.val[0].digest.data.clone();
+    let decdata = get_algor_pbkdf2_private_data(&algordata,&encdata,passin)?;
+    let mut netpkey :Asn1NetscapePkey = Asn1NetscapePkey::init_asn1();
+    let _ = netpkey.decode_asn1(&decdata)?;
+    let types = netpkey.elem.val[0].algor.elem.val[0].algorithm.get_value();
+    if types == OID_RSA_ENCRYPTION {
+        let decdata :Vec<u8> = netpkey.elem.val[0].privdata.data.clone();
+        let mut privkey :Asn1RsaPrivateKey = Asn1RsaPrivateKey::init_asn1();
+        let _ = privkey.decode_asn1(&decdata)?;
+        return Ok(privkey);
+    }
+    asn1obj_new_error!{Pkcs7Error,"not support [{}]",types}
 }
 
 fn get_private_key_file(pemfile :&str,passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
@@ -538,6 +548,7 @@ fn pkcs12dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 
 fn authsafesdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
+    let passin = ns.get_string("passin");
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
     for f in sarr.iter() {
@@ -551,6 +562,22 @@ fn authsafesdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
         let rlen = safes.decode_asn1(&v8)?;
         debug_trace!("rlen [{}:0x{:x}]", rlen,rlen);
         let _ = safes.print_asn1("safes", 0, &mut f)?;
+
+        /**/
+        for idx in 0..safes.safes.val.len() {            
+            let types = safes.safes.val[idx].elem.val[0].selector.val.get_value();
+            if types == OID_PKCS7_ENCRYPTED_DATA {
+                let pk7encdata :&Asn1Pkcs7Encrypt = safes.safes.val[idx].elem.val[0].encryptdata.val.as_ref().unwrap();
+                let encdata = pk7encdata.elem.val[0].enc_data.elem.val[0].enc_data.val.data.clone();
+                let algordata = pk7encdata.elem.val[0].enc_data.elem.val[0].algorithm.encode_asn1()?;
+                debug_buffer_trace!(algordata.as_ptr(),algordata.len(),"algordata");
+                debug_buffer_trace!(encdata.as_ptr(),encdata.len(),"encdata get");
+                let decdata = get_algor_pbkdf2_private_data(&algordata,&encdata,passin.as_bytes())?;
+                debug_buffer_trace!(decdata.as_ptr(),decdata.len(),"decdata get");
+
+            }
+        }
+
     }
     Ok(())
 }
