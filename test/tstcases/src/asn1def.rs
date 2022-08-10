@@ -276,7 +276,33 @@ pub struct Asn1Pkcs7Signed {
 }
 
 
-#[asn1_obj_selector(anyobj=default,signed="1.2.840.113549.1.7.2")]
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1Pkcs7EncContentElem {
+	pub content_type : Asn1Object,
+	pub algorithm : Asn1X509Algor,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1Pkcs7EncContent {
+	pub elem :Asn1Seq<Asn1Pkcs7EncContentElem>,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1Pkcs7EncryptElem {
+	pub version : Asn1Integer,
+	pub enc_data : Asn1Pkcs7EncContent,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1Pkcs7Encrypt {
+	pub elem : Asn1Seq<Asn1Pkcs7EncryptElem>,
+}
+
+#[asn1_obj_selector(anyobj=default,signed="1.2.840.113549.1.7.2",encryptdata="1.2.840.113549.1.7.6")]
 #[derive(Clone)]
 pub struct Asn1Pkcs7Selector {
 	pub val :Asn1Object,
@@ -288,6 +314,7 @@ pub struct Asn1Pkcs7Selector {
 pub struct Asn1Pkcs7Elem {
 	pub selector :Asn1Pkcs7Selector,
 	pub signed : Asn1Ndef<Asn1Pkcs7Signed,0>,
+	pub encryptdata : Asn1Ndef<Asn1Pkcs7Encrypt,0>,
 	pub anyobj :Asn1Any,
 }
 
