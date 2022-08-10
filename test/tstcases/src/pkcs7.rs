@@ -33,9 +33,9 @@ use super::fileop::{read_file,read_file_bytes,write_file_bytes};
 use super::pemlib::{pem_to_der,der_to_pem};
 use super::cryptlib::{aes256_cbc_decrypt};
 use super::asn1def::*;
+use asn1obj::base::{Asn1OctData,Asn1Any,Asn1Object};
 use asn1obj::asn1impl::{Asn1Op};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
-use asn1obj::base::{Asn1Object,Asn1Any};
 
 use sha2::{Sha256,Digest};
 use hmac::{Hmac,Mac};
@@ -535,7 +535,36 @@ fn pkcs12dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     Ok(())
 }
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler)]
+fn authsafesdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    for f in sarr.iter() {
+        let code = read_file_bytes(f)?;
+        let mut octdata :Asn1OctData = Asn1OctData::init_asn1();
+        let size = octdata.decode_asn1(&code)?;
+        debug_trace!("size [0x{:x}:{}]", size,size);
+        let mut anydata :Asn1Any = Asn1Any::init_asn1();
+        let v8 = octdata.data.clone();
+        let size = anydata.decode_asn1(&v8)?;
+        debug_trace!("size [0x{:x}:{}]", size,size);
+        let mut retv :usize = 0;
+        let mut idx : usize = 0;
+        let mut f = std::io::stderr();
+        while retv < anydata.content.len() {
+            let mut p7 : Asn1Pkcs7 = Asn1Pkcs7::init_asn1();
+            let rlen = p7.decode_asn1(&(anydata.content[retv..]))?;
+            let name = format!("pkcs7[{}]", idx);
+            let _ = p7.print_asn1(&name,0,&mut f)?;
+            retv += rlen;
+            idx += 1;
+        }
+    }
+    Ok(())
+}
+
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -593,6 +622,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : "+"
         },
         "objdec<objdec_handler>##hexstr ... to decode in hexstr##" : {
+            "$" : "+"
+        },
+        "authsafesdec<authsafesdec_handler>##derfile .... to dec ASN1_OCT_DATA [PKCS7_ENCRYPT]##" : {
             "$" : "+"
         }
     }

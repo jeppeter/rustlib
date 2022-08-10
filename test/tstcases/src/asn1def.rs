@@ -16,7 +16,7 @@ pub const OID_PBKDF2 :&str = "1.2.840.113549.1.5.12";
 pub const OID_AES_256_CBC :&str = "2.16.840.1.101.3.4.1.42";
 pub const OID_RSA_ENCRYPTION :&str = "1.2.840.113549.1.1.1";
 pub const OID_SHA256_WITH_RSA_ENCRYPTION :&str = "1.2.840.113549.1.1.11";
-pub const OID_SHA256_DIGEST :&str = "2.16.840.1.101.3.4.2.1";
+//pub const OID_SHA256_DIGEST :&str = "2.16.840.1.101.3.4.2.1";
 
 
 //#[asn1_sequence(debug=enable)]
@@ -276,19 +276,23 @@ pub struct Asn1Pkcs7Signed {
 }
 
 
+//#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
 pub struct Asn1Pkcs7EncContentElem {
 	pub content_type : Asn1Object,
 	pub algorithm : Asn1X509Algor,
+	pub enc_data :Asn1Imp<Asn1OctData,0>,
 }
 
+//#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
 pub struct Asn1Pkcs7EncContent {
 	pub elem :Asn1Seq<Asn1Pkcs7EncContentElem>,
 }
 
+//#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
 pub struct Asn1Pkcs7EncryptElem {
@@ -296,13 +300,14 @@ pub struct Asn1Pkcs7EncryptElem {
 	pub enc_data : Asn1Pkcs7EncContent,
 }
 
+//#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
 pub struct Asn1Pkcs7Encrypt {
 	pub elem : Asn1Seq<Asn1Pkcs7EncryptElem>,
 }
 
-#[asn1_obj_selector(anyobj=default,signed="1.2.840.113549.1.7.2",encryptdata="1.2.840.113549.1.7.6")]
+#[asn1_obj_selector(anyobj=default,signed="1.2.840.113549.1.7.2",encryptdata="1.2.840.113549.1.7.6",data="1.2.840.113549.1.7.1")]
 #[derive(Clone)]
 pub struct Asn1Pkcs7Selector {
 	pub val :Asn1Object,
@@ -315,6 +320,7 @@ pub struct Asn1Pkcs7Elem {
 	pub selector :Asn1Pkcs7Selector,
 	pub signed : Asn1Ndef<Asn1Pkcs7Signed,0>,
 	pub encryptdata : Asn1Ndef<Asn1Pkcs7Encrypt,0>,
+	pub data : Asn1Ndef<Asn1OctData,0>,
 	pub anyobj :Asn1Any,
 }
 
@@ -325,7 +331,9 @@ pub struct Asn1Pkcs7 {
 	pub elem :Asn1Seq<Asn1Pkcs7Elem>,
 }
 
-#[asn1_sequence(debug=enable)]
+
+//#[asn1_sequence(debug=enable)]
+#[asn1_sequence()]
 #[derive(Clone)]
 pub struct Asn1Pkcs8PrivKeyInfoElem {
 	pub version :Asn1Integer,
@@ -334,7 +342,8 @@ pub struct Asn1Pkcs8PrivKeyInfoElem {
 	pub attributes : Asn1Opt<Asn1ImpVec<Asn1X509Attribute,0>>,
 }
 
-#[asn1_sequence(debug=enable)]
+//#[asn1_sequence(debug=enable)]
+#[asn1_sequence()]
 #[derive(Clone)]
 pub struct Asn1Pkcs8PrivKeyInfo {
 	pub elem : Asn1Seq<Asn1Pkcs8PrivKeyInfoElem>,
