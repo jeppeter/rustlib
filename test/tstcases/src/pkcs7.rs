@@ -34,6 +34,7 @@ use super::pemlib::{pem_to_der,der_to_pem};
 use super::cryptlib::{aes256_cbc_decrypt};
 use super::asn1def::*;
 use asn1obj::base::{Asn1OctData,Asn1Any,Asn1Object};
+use asn1obj::complex::{Asn1Seq};
 use asn1obj::asn1impl::{Asn1Op};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
@@ -544,27 +545,31 @@ fn authsafesdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
         let mut octdata :Asn1OctData = Asn1OctData::init_asn1();
         let size = octdata.decode_asn1(&code)?;
         debug_trace!("size [0x{:x}:{}]", size,size);
-        let mut anydata :Asn1Any = Asn1Any::init_asn1();
         let v8 = octdata.data.clone();
-        let size = anydata.decode_asn1(&v8)?;
-        debug_trace!("size [0x{:x}:{}]", size,size);
-        let mut retv :usize = 0;
-        let mut idx : usize = 0;
         let mut f = std::io::stderr();
-        while retv < anydata.content.len() {
-            let mut p7 : Asn1Pkcs7 = Asn1Pkcs7::init_asn1();
-            let rlen = p7.decode_asn1(&(anydata.content[retv..]))?;
-            let name = format!("pkcs7[{}]", idx);
-            let _ = p7.print_asn1(&name,0,&mut f)?;
-            retv += rlen;
-            idx += 1;
-        }
+        let mut safes :Asn1AuthSafes = Asn1AuthSafes::init_asn1();
+        let rlen = safes.decode_asn1(&v8)?;
+        debug_trace!("rlen [{}:0x{:x}]", rlen,rlen);
+        let _ = safes.print_asn1("safes", 0, &mut f)?;
     }
     Ok(())
 }
 
+fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    for f in sarr.iter() {
+        let code = read_file_bytes(f)?;
+        let mut octdata :Asn1Seq<Asn1Pkcs12SafeBag> = Asn1Seq::init_asn1();
+        let _ = octdata.decode_asn1(&code)?;
+        let mut f = std::io::stderr();
+        let _ = octdata.print_asn1("safebag", 0, &mut f)?;
+    }
+    Ok(())
+}
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler)]
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -625,6 +630,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : "+"
         },
         "authsafesdec<authsafesdec_handler>##derfile .... to dec ASN1_OCT_DATA [PKCS7_ENCRYPT]##" : {
+            "$" : "+"
+        },
+        "pkcs12safebagdec<pkcs12safebagdec_handler>##derfile .... to dec PKCS12_SAFEBAG##" : {
             "$" : "+"
         }
     }

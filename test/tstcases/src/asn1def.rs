@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
 use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData};
-use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1ImpVec,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
+use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 #[allow(unused_imports)]
@@ -154,7 +154,7 @@ pub struct Asn1X509Extension {
 #[asn1_sequence()]
 #[derive(Clone)]
 pub struct Asn1X509CinfElem {
-	pub version : Asn1Opt<Asn1ImpVec<Asn1Integer,0>>,
+	pub version : Asn1Opt<Asn1ImpSet<Asn1Integer,0>>,
 	pub serial_number :Asn1BigNum,
 	pub signature : Asn1X509Algor,
 	pub issuer : Asn1X509Name,
@@ -244,10 +244,10 @@ pub struct Asn1Pkcs7SignerInfoElem {
 	pub version : Asn1Integer,
 	pub issuer_and_serial : Asn1Pkcs7IssuerAndSerial,
 	pub digest_algo : Asn1X509Algor,
-	pub auth_attr : Asn1Opt<Asn1ImpVec<Asn1X509Attribute,0>>,
+	pub auth_attr : Asn1Opt<Asn1ImpSet<Asn1X509Attribute,0>>,
 	pub digest_enc_algo : Asn1X509Algor,
 	pub enc_digest : Asn1OctData,
-	pub unauth_attr : Asn1Opt<Asn1ImpVec<Asn1X509Attribute,1>>,
+	pub unauth_attr : Asn1Opt<Asn1ImpSet<Asn1X509Attribute,1>>,
 }
 
 //#[asn1_sequence(debug=enable)]
@@ -331,7 +331,11 @@ pub struct Asn1Pkcs7 {
 	pub elem :Asn1Seq<Asn1Pkcs7Elem>,
 }
 
-
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1AuthSafes {
+	pub safes :Asn1Seq<Asn1Pkcs7>,
+}
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
@@ -339,7 +343,7 @@ pub struct Asn1Pkcs8PrivKeyInfoElem {
 	pub version :Asn1Integer,
 	pub pkeyalg : Asn1X509Algor,
 	pub pkey : Asn1OctData,
-	pub attributes : Asn1Opt<Asn1ImpVec<Asn1X509Attribute,0>>,
+	pub attributes : Asn1Opt<Asn1ImpSet<Asn1X509Attribute,0>>,
 }
 
 //#[asn1_sequence(debug=enable)]
@@ -432,7 +436,7 @@ pub struct Asn1X509ReqInfoElem {
 	pub version : Asn1Integer,
 	pub subject : Asn1X509Name,
 	pub pubkey : Asn1X509Pubkey,
-	pub attributes : Asn1Opt<Asn1ImpVec<Asn1X509Attribute,0>>,
+	pub attributes : Asn1Opt<Asn1ImpSet<Asn1X509Attribute,0>>,
 }
 
 #[asn1_sequence()]
@@ -481,4 +485,31 @@ pub struct Asn1Pkcs12Elem {
 #[derive(Clone)]
 pub struct Asn1Pkcs12 {
 	pub elem : Asn1Seq<Asn1Pkcs12Elem>,
+}
+
+#[asn1_obj_selector(selector=val,any=default,shkeybag="1.2.840.113549.1.12.10.1.2")]
+#[derive(Clone)]
+pub struct Asn1Pkcs12SafeBagSelector {
+	pub val : Asn1Object,
+}
+
+#[asn1_choice(selector=valid)]
+#[derive(Clone)]
+pub struct Asn1Pkcs12SafeBagSelectElem {
+	pub valid : Asn1Pkcs12SafeBagSelector,
+	pub shkeybag : Asn1ImpSet<Asn1X509Sig,0>,
+	pub any :Asn1Any,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1Pkcs12SafeBagElem {
+	pub selecelem : Asn1Pkcs12SafeBagSelectElem,
+	pub attrib : Asn1Opt<Asn1Set<Asn1X509Attribute>>,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1Pkcs12SafeBag {
+	pub elem : Asn1Seq<Asn1Pkcs12SafeBagElem>,
 }
