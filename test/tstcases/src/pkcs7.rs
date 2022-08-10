@@ -557,6 +557,7 @@ fn authsafesdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
 
 fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
+    let passin = ns.get_string("passin");
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
     for f in sarr.iter() {
@@ -565,6 +566,12 @@ fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
         let _ = octdata.decode_asn1(&code)?;
         let mut f = std::io::stderr();
         let _ = octdata.print_asn1("safebag", 0, &mut f)?;
+        if octdata.val[0].elem.val[0].selectelem.valid.val.get_value() == OID_PKCS8_SHROUDED_KEY_BAG {
+            let x509sig :Asn1X509Sig = octdata.val[0].elem.val[0].selectelem.shkeybag.val[0].clone();
+            let v8 = x509sig.encode_asn1()?;
+            let pkey = get_private_key(&v8,passin.as_bytes())?;
+            let _ = pkey.print_asn1("pkey", 0, &mut f)?;
+        }
     }
     Ok(())
 }
