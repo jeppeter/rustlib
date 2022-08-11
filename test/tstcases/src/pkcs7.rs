@@ -19,6 +19,7 @@ use std::boxed::Box;
 use regex::Regex;
 #[allow(unused_imports)]
 use std::any::Any;
+use std::io::{Write};
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
@@ -318,7 +319,7 @@ fn get_algor_pbkdf2_private_data(x509algorbytes :&[u8],encdata :&[u8],passin :&[
         let _ = pbe2.decode_asn1(&decdata)?;
         let pbe2types = pbe2.keyfunc.elem.val[0].algorithm.get_value();
         if pbe2types == OID_PBKDF2 {
-            debug_trace!("debug {}", OID_PBKDF2);
+            //debug_trace!("debug {}", OID_PBKDF2);
             let params :&Asn1Any = pbe2.keyfunc.elem.val[0].parameters.val.as_ref().unwrap();
             let decdata :Vec<u8> = params.content.clone();
             let mut pbkdf2 :Asn1Pbkdf2ParamElem = Asn1Pbkdf2ParamElem::init_asn1();
@@ -733,14 +734,100 @@ fn pkcs12dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
                 checked = true;
             }
             if checked {
-                println!("{} Verify Ok", fname);
+                let c = format!("{} Verify Ok\n", fname);
+                let _ = f.write(c.as_bytes())?;
             } else {
-                eprintln!("{} Verify Failed", fname);
+                let c = format!("{} Verify Failed\n", fname);
+                let _ = f.write(c.as_bytes())?;
             }
         }
+
+        let types = xname.elem.val[0].authsafes.elem.val[0].selector.val.get_value();
+        if types == OID_PKCS7_DATA {
+            let p7data :&Asn1OctData = xname.elem.val[0].authsafes.elem.val[0].data.val.as_ref().unwrap();
+            let code = p7data.data.clone();
+            let mut safes :Asn1AuthSafes = Asn1AuthSafes::init_asn1();
+            let rlen = safes.decode_asn1(&code)?;
+            debug_trace!("rlen [{}:0x{:x}]", rlen,rlen);
+            let _ = safes.print_asn1("safes", 0, &mut f)?;
+            let mut safeidx :usize= 0;
+
+            /**/
+            for idx in 0..safes.safes.val.len() {            
+                let types = safes.safes.val[idx].elem.val[0].selector.val.get_value();
+            //debug_trace!("types [{}]",types);
+            if types == OID_PKCS7_ENCRYPTED_DATA {
+                let pk7encdata :&Asn1Pkcs7Encrypt = safes.safes.val[idx].elem.val[0].encryptdata.val.as_ref().unwrap();
+                let encdata = pk7encdata.elem.val[0].enc_data.elem.val[0].enc_data.val.data.clone();
+                let algordata = pk7encdata.elem.val[0].enc_data.elem.val[0].algorithm.encode_asn1()?;
+                //debug_buffer_trace!(algordata.as_ptr(),algordata.len(),"algordata");
+                //debug_buffer_trace!(encdata.as_ptr(),encdata.len(),"encdata get");
+                let decdata = get_algor_pbkdf2_private_data(&algordata,&encdata,passin.as_bytes())?;
+                //debug_buffer_trace!(decdata.as_ptr(),decdata.len(),"decdata get");
+                let mut octdata :Asn1Seq<Asn1Pkcs12SafeBag> = Asn1Seq::init_asn1();
+                let _ = octdata.decode_asn1(&decdata)?;
+                let _ = octdata.print_asn1("safebag encdata", 0, &mut f)?;
+                let mut certidx :usize = 0;
+                for certd in octdata.val.iter() {
+                    let objs = certd.elem.val[0].selectelem.valid.val.get_value();
+                    if objs == OID_PKCS12_CERT_BAG {
+                        let certtype = certd.elem.val[0].selectelem.bag.val[0].elem.val[0].valid.val.get_value();
+                        if certtype == OID_PKCS12_SAFE_BAG_X509_CERT {
+                            let certdata = certd.elem.val[0].selectelem.bag.val[0].elem.val[0].x509cert.val[0].data.clone();
+                            let mut certp :Asn1X509 = Asn1X509::init_asn1();
+                            let _ = certp.decode_asn1(&certdata)?;
+                            let tagn = format!("safebag[{}]x509cert[{}]",safeidx,certidx);
+                            let _ = certp.print_asn1(&tagn,0,&mut f)?;
+                        } 
+                    } else if objs == OID_PKCS8_SHROUDED_KEY_BAG {
+                        let x509sig :Asn1X509Sig = certd.elem.val[0].selectelem.shkeybag.val[0].clone();
+                        let v8 = x509sig.encode_asn1()?;
+                        let pkey = get_private_key(&v8,passin.as_bytes())?;
+                        let kname = format!("safebag[{}]shroudbag cert[{}]", safeidx,certidx);
+                        let _ = pkey.print_asn1(&kname, 0, &mut f)?;                        
+                    }
+                    certidx += 1;
+                }
+
+            } else if types ==  OID_PKCS7_DATA {
+                let pk7data :&Asn1OctData = safes.safes.val[idx].elem.val[0].data.val.as_ref().unwrap();
+                let decdata = pk7data.data.clone();
+                let mut octdata :Asn1Seq<Asn1Pkcs12SafeBag> = Asn1Seq::init_asn1();
+                let _ = octdata.decode_asn1(&decdata)?;
+                let _ = octdata.print_asn1("safebag data", 0, &mut f)?;
+                let mut bagidx :usize = 0;
+                for bag in octdata.val.iter() {
+                    let objs = bag.elem.val[0].selectelem.valid.val.get_value();
+                    if objs == OID_PKCS8_SHROUDED_KEY_BAG {
+                        let x509sig :Asn1X509Sig = bag.elem.val[0].selectelem.shkeybag.val[0].clone();
+                        let v8 = x509sig.encode_asn1()?;
+                        let pkey = get_private_key(&v8,passin.as_bytes())?;
+                        let kname = format!("safebag[{}]shroudbag[{}]", safeidx,bagidx);
+                        let _ = pkey.print_asn1(&kname, 0, &mut f)?;
+                    } else if objs == OID_PKCS12_CERT_BAG {
+                        let certtype = bag.elem.val[0].selectelem.bag.val[0].elem.val[0].valid.val.get_value();
+                        if certtype == OID_PKCS12_SAFE_BAG_X509_CERT {
+                            let certdata = bag.elem.val[0].selectelem.bag.val[0].elem.val[0].x509cert.val[0].data.clone();
+                            let mut certp :Asn1X509 = Asn1X509::init_asn1();
+                            let _ = certp.decode_asn1(&certdata)?;
+                            let tagn = format!("safebag[{}]x509cert bag[{}]",safeidx,bagidx);
+                            let _ = certp.print_asn1(&tagn,0,&mut f)?;
+                        }                        
+                    }
+
+                    bagidx += 1;
+                }
+            }
+            safeidx += 1;
+        }
+
     }
 
-    Ok(())
+
+
+}
+
+Ok(())
 }
 
 fn authsafesdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
@@ -759,21 +846,75 @@ fn authsafesdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
         let rlen = safes.decode_asn1(&code)?;
         debug_trace!("rlen [{}:0x{:x}]", rlen,rlen);
         let _ = safes.print_asn1("safes", 0, &mut f)?;
+        let mut safeidx :usize= 0;
 
         /**/
         for idx in 0..safes.safes.val.len() {            
             let types = safes.safes.val[idx].elem.val[0].selector.val.get_value();
-            debug_trace!("types [{}]",types);
+            //debug_trace!("types [{}]",types);
             if types == OID_PKCS7_ENCRYPTED_DATA {
                 let pk7encdata :&Asn1Pkcs7Encrypt = safes.safes.val[idx].elem.val[0].encryptdata.val.as_ref().unwrap();
                 let encdata = pk7encdata.elem.val[0].enc_data.elem.val[0].enc_data.val.data.clone();
                 let algordata = pk7encdata.elem.val[0].enc_data.elem.val[0].algorithm.encode_asn1()?;
-                debug_buffer_trace!(algordata.as_ptr(),algordata.len(),"algordata");
-                debug_buffer_trace!(encdata.as_ptr(),encdata.len(),"encdata get");
+                //debug_buffer_trace!(algordata.as_ptr(),algordata.len(),"algordata");
+                //debug_buffer_trace!(encdata.as_ptr(),encdata.len(),"encdata get");
                 let decdata = get_algor_pbkdf2_private_data(&algordata,&encdata,passin.as_bytes())?;
-                debug_buffer_trace!(decdata.as_ptr(),decdata.len(),"decdata get");
+                //debug_buffer_trace!(decdata.as_ptr(),decdata.len(),"decdata get");
+                let mut octdata :Asn1Seq<Asn1Pkcs12SafeBag> = Asn1Seq::init_asn1();
+                let _ = octdata.decode_asn1(&decdata)?;
+                let _ = octdata.print_asn1("safebag encdata", 0, &mut f)?;
+                let mut certidx :usize = 0;
+                for certd in octdata.val.iter() {
+                    let objs = certd.elem.val[0].selectelem.valid.val.get_value();
+                    if objs == OID_PKCS12_CERT_BAG {
+                        let certtype = certd.elem.val[0].selectelem.bag.val[0].elem.val[0].valid.val.get_value();
+                        if certtype == OID_PKCS12_SAFE_BAG_X509_CERT {
+                            let certdata = certd.elem.val[0].selectelem.bag.val[0].elem.val[0].x509cert.val[0].data.clone();
+                            let mut certp :Asn1X509 = Asn1X509::init_asn1();
+                            let _ = certp.decode_asn1(&certdata)?;
+                            let tagn = format!("safebag[{}]x509cert[{}]",safeidx,certidx);
+                            let _ = certp.print_asn1(&tagn,0,&mut f)?;
+                        } 
+                    } else if objs == OID_PKCS8_SHROUDED_KEY_BAG {
+                        let x509sig :Asn1X509Sig = certd.elem.val[0].selectelem.shkeybag.val[0].clone();
+                        let v8 = x509sig.encode_asn1()?;
+                        let pkey = get_private_key(&v8,passin.as_bytes())?;
+                        let kname = format!("safebag[{}]shroudbag cert[{}]", safeidx,certidx);
+                        let _ = pkey.print_asn1(&kname, 0, &mut f)?;                        
+                    }
+                    certidx += 1;
+                }
 
+            } else if types ==  OID_PKCS7_DATA {
+                let pk7data :&Asn1OctData = safes.safes.val[idx].elem.val[0].data.val.as_ref().unwrap();
+                let decdata = pk7data.data.clone();
+                let mut octdata :Asn1Seq<Asn1Pkcs12SafeBag> = Asn1Seq::init_asn1();
+                let _ = octdata.decode_asn1(&decdata)?;
+                let _ = octdata.print_asn1("safebag data", 0, &mut f)?;
+                let mut bagidx :usize = 0;
+                for bag in octdata.val.iter() {
+                    let objs = bag.elem.val[0].selectelem.valid.val.get_value();
+                    if objs == OID_PKCS8_SHROUDED_KEY_BAG {
+                        let x509sig :Asn1X509Sig = bag.elem.val[0].selectelem.shkeybag.val[0].clone();
+                        let v8 = x509sig.encode_asn1()?;
+                        let pkey = get_private_key(&v8,passin.as_bytes())?;
+                        let kname = format!("safebag[{}]shroudbag[{}]", safeidx,bagidx);
+                        let _ = pkey.print_asn1(&kname, 0, &mut f)?;
+                    } else if objs == OID_PKCS12_CERT_BAG {
+                        let certtype = bag.elem.val[0].selectelem.bag.val[0].elem.val[0].valid.val.get_value();
+                        if certtype == OID_PKCS12_SAFE_BAG_X509_CERT {
+                            let certdata = bag.elem.val[0].selectelem.bag.val[0].elem.val[0].x509cert.val[0].data.clone();
+                            let mut certp :Asn1X509 = Asn1X509::init_asn1();
+                            let _ = certp.decode_asn1(&certdata)?;
+                            let tagn = format!("safebag[{}]x509cert bag[{}]",safeidx,bagidx);
+                            let _ = certp.print_asn1(&tagn,0,&mut f)?;
+                        }                        
+                    }
+
+                    bagidx += 1;
+                }
             }
+            safeidx += 1;
         }
 
     }
