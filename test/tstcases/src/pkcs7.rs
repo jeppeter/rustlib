@@ -531,6 +531,7 @@ fn csrdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 
 fn pkcs12dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
+    let passin = ns.get_string("passin");
 
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
@@ -541,6 +542,15 @@ fn pkcs12dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
         let _ = xname.decode_asn1(&code)?;
         let mut f = std::io::stderr();
         xname.print_asn1("pkcs12",0,&mut f)?;
+        let macdata :&Asn1Pkcs12MacData = xname.elem.val[0].mac.val.as_ref().unwrap();
+        let dinfo :Asn1X509Sig = macdata.elem.val[0].dinfo.clone();
+        if dinfo.elem.val[0].algor.elem.val[0].algorithm.get_value() == OID_SHA256_DIGEST {
+            //let digest :Vec<u8> = dinfo.elem.val[0].digest.data.clone();
+            let salt : Vec<u8> = macdata.elem.val[0].salt.data.clone();
+            let iternum = macdata.elem.val[0].iternum.val;
+            let hmac = get_hmac_sha256_key(passin.as_bytes(),&salt,iternum as usize);
+            debug_buffer_trace!(hmac.as_ptr(),hmac.len(),"hmac");
+        }
     }
 
     Ok(())
@@ -605,6 +615,8 @@ fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
                 let mut cert :Asn1X509 = Asn1X509::init_asn1();
                 let _ = cert.decode_asn1(&certdata)?;
                 let _ = cert.print_asn1("cert", 0, &mut f)?;
+            } else {
+                eprintln!("types [{}]", types);
             }
 
         }
@@ -612,7 +624,161 @@ fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
     Ok(())
 }
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler)]
+const PKCS12_MAC_ID :u8 = 3;
+const SHA256_BLOCK_SIZE :usize = 64;
+const SHA256_DIGEST_SIZE :usize = 32;
+
+#[allow(non_snake_case)]
+fn get_pkcs12kdf_sha256(passin :&[u8],salt :&[u8], idval :u8, iterval :usize,totaln :usize) -> Vec<u8> {
+    let mut Darr :Vec<u8> = Vec::new();
+    let mut Aiarr :Vec<u8> = Vec::new();
+    let mut Barr :Vec<u8> = Vec::new();
+    let mut Iarr :Vec<u8> = Vec::new();
+    let mut retv :Vec<u8> = Vec::new();
+    let v :usize = SHA256_BLOCK_SIZE;
+    let u :usize = SHA256_DIGEST_SIZE;
+    let slen :usize = v * ((salt.len() + v - 1) / v);
+    let  plen :usize ;
+    if passin.len() != 0 {
+        plen = v * ((passin.len() + v - 1) / v);
+    } else {
+        plen = 0;
+    }
+    let ilen :usize = slen + plen;
+
+    for _ in 0..v {
+        Darr.push(idval);
+    }
+
+    for i in 0..slen {
+        Iarr.push(salt[ (i % salt.len()) ]);
+    }
+
+    for i in 0..plen {
+        Iarr.push(passin[(i % passin.len())]);
+    }
+
+    for  _ in 0..(v + 1) {
+        Barr.push(0);
+    }
+
+    for _ in 0..(u) {
+        Aiarr.push(0);
+    }
+
+    loop {
+        let mut hasher = Sha256::new();
+        hasher.update(&Darr[0..v]);
+        hasher.update(&Iarr[0..ilen]);
+        let res = hasher.finalize();
+        let rdata = res.to_vec();
+        for i in 0..rdata.len() {
+            Aiarr[i] = rdata[i];
+        }
+
+        debug_buffer_trace!(Darr.as_ptr(),u,"Darr Data");
+        debug_buffer_trace!(Iarr.as_ptr(),Iarr.len(), "Iarr Data");
+
+        debug_buffer_trace!(Aiarr.as_ptr(),Aiarr.len(),"Aiarr Data");
+        for _ in 1..iterval {
+            let mut hasher = Sha256::new();
+            hasher.update(&Aiarr[0..u]);
+            let res = hasher.finalize();
+            let rdata = res.to_vec();
+            for i in 0..rdata.len() {
+                Aiarr[i] = rdata[i];
+            }
+        }
+        debug_buffer_trace!(Aiarr.as_ptr(),Aiarr.len(),"Aiarr Data");
+
+        for i in 0..u {
+            if retv.len() >= totaln {
+                break;
+            }
+            retv.push(Aiarr[i]);
+        }
+
+        if retv.len() >= totaln {
+            break;
+        }
+
+        for j in 0..v {
+            Barr[j] = Aiarr[(j % u)];
+        }
+        let mut jdx :usize = 0;
+        while jdx < ilen {
+            let mut k :usize = v;
+            let mut c :u16 = 1;
+            while k > 0 {
+                k -= 1;
+                c += Iarr[(k+jdx)] as u16 + Barr[k] as u16;
+                Iarr[(k + jdx)] = c as u8;
+                c >>= 8;
+            }
+            jdx += v;
+        }
+    }
+
+    return retv;
+}
+
+fn calc_hmac_sha256(initkey :&[u8],data :&[u8]) -> Vec<u8> {
+    let mut hmac = HmacSha256::new_from_slice(initkey).unwrap();
+    hmac.update(data);
+    let res = hmac.finalize();
+    return res.into_bytes().to_vec();
+}
+
+fn expand_uni(passin :&[u8]) -> Vec<u8> {
+    let mut retv :Vec<u8> = Vec::new();
+    for i in 0..passin.len() {
+        retv.push(0);
+        retv.push(passin[i]);
+    }
+    /*at last one*/
+    retv.push(0);
+    retv.push(0);
+    return retv;
+}
+
+
+fn pkcs12sha256_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    let passin = ns.get_string("passin");
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 1 {
+        asn1obj_new_error!{Pkcs7Error,"need salt [datafile] [iterval] [defsize]"}
+    }
+    let salt :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
+    let  mut iterval :usize = 2048;
+    let  mut defsize :usize = 32;
+
+    if sarr.len() > 2 {
+        iterval = sarr[2].parse::<usize>().unwrap();
+    }
+    if sarr.len() > 3 {
+        defsize = sarr[3].parse::<usize>().unwrap();
+    }
+
+    let rdata = get_pkcs12kdf_sha256(passin.as_bytes(),&salt,PKCS12_MAC_ID,iterval,defsize);
+    debug_buffer_trace!(rdata.as_ptr(),rdata.len(),"rdata");
+    if sarr.len() > 1 {
+        let data = read_file_bytes(&sarr[1])?;
+        let digest = calc_hmac_sha256(&rdata,&data);
+        debug_buffer_trace!(digest.as_ptr(),digest.len(),"digest");        
+        let unidata = expand_uni(passin.as_bytes());
+        let rdata = get_pkcs12kdf_sha256(&unidata,&salt,PKCS12_MAC_ID,iterval,defsize);
+        debug_buffer_trace!(rdata.as_ptr(),rdata.len(),"uni rdata");
+        let digest = calc_hmac_sha256(&rdata,&data);
+        debug_buffer_trace!(digest.as_ptr(),digest.len(),"uni digest");        
+    }
+
+    Ok(())
+}
+
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler,pkcs12sha256_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -676,6 +842,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : "+"
         },
         "pkcs12safebagdec<pkcs12safebagdec_handler>##derfile .... to dec PKCS12_SAFEBAG##" : {
+            "$" : "+"
+        },
+        "pkcs12sha256<pkcs12sha256_handler>##salt  [datafile] [iterval] [retsize]  to format sha256 valid iterval default 2048 retsize default 32 ##" : {
             "$" : "+"
         }
     }

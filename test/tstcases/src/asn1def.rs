@@ -19,7 +19,7 @@ pub const OID_SHA256_WITH_RSA_ENCRYPTION :&str = "1.2.840.113549.1.1.11";
 pub const OID_PKCS8_SHROUDED_KEY_BAG :&str = "1.2.840.113549.1.12.10.1.2";
 pub const OID_PKCS12_CERT_BAG : &str = "1.2.840.113549.1.12.10.1.3";
 pub const OID_PKCS7_ENCRYPTED_DATA :&str = "1.2.840.113549.1.7.6";
-//pub const OID_SHA256_DIGEST :&str = "2.16.840.1.101.3.4.2.1";
+pub const OID_SHA256_DIGEST :&str = "2.16.840.1.101.3.4.2.1";
 
 
 //#[asn1_sequence(debug=enable)]
