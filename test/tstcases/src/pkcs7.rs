@@ -516,12 +516,15 @@ fn csrdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
             if hmactype == OID_SHA256_WITH_RSA_ENCRYPTION {
                 let hashd = xname.elem.val[0].signature.data.clone();
                 let ro = rsapubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,&hashd);
+
                 match ro {
                     Ok(_) => {
-                        println!("{} is ok", fname);
+                        let c = format!("{} is ok\n", fname);
+                        let _ = f.write(c.as_bytes())?;
                     },
                     Err(_e) => {                    
-                        eprintln!("{} not ok {:?}",fname,_e);
+                        let c = format!("{} not ok {:?}",fname,_e);
+                        let _ = f.write(c.as_bytes())?;
                     }
                 }
             }
