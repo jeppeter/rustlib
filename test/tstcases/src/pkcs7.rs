@@ -443,6 +443,7 @@ fn rsaverify_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     Ok(())
 }
 
+
 fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> { 
     let sarr :Vec<String>;
 
@@ -749,19 +750,20 @@ fn authsafesdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
     sarr = ns.get_array("subnargs");
     for f in sarr.iter() {
         let code = read_file_bytes(f)?;
-        let mut octdata :Asn1OctData = Asn1OctData::init_asn1();
-        let size = octdata.decode_asn1(&code)?;
-        debug_trace!("size [0x{:x}:{}]", size,size);
-        let v8 = octdata.data.clone();
+        //let mut octdata :Asn1OctData = Asn1OctData::init_asn1();
+        //let size = octdata.decode_asn1(&code)?;
+        //debug_trace!("size [0x{:x}:{}]", size,size);
+        //let v8 = octdata.data.clone();
         let mut f = std::io::stderr();
         let mut safes :Asn1AuthSafes = Asn1AuthSafes::init_asn1();
-        let rlen = safes.decode_asn1(&v8)?;
+        let rlen = safes.decode_asn1(&code)?;
         debug_trace!("rlen [{}:0x{:x}]", rlen,rlen);
         let _ = safes.print_asn1("safes", 0, &mut f)?;
 
         /**/
         for idx in 0..safes.safes.val.len() {            
             let types = safes.safes.val[idx].elem.val[0].selector.val.get_value();
+            debug_trace!("types [{}]",types);
             if types == OID_PKCS7_ENCRYPTED_DATA {
                 let pk7encdata :&Asn1Pkcs7Encrypt = safes.safes.val[idx].elem.val[0].encryptdata.val.as_ref().unwrap();
                 let encdata = pk7encdata.elem.val[0].enc_data.elem.val[0].enc_data.val.data.clone();
@@ -789,6 +791,7 @@ fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
         let _ = octdata.decode_asn1(&code)?;
         let mut f = std::io::stderr();
         let _ = octdata.print_asn1("safebag", 0, &mut f)?;
+        let mut idx :usize = 0;
         for bagv in octdata.val.iter() {
             let types = bagv.elem.val[0].selectelem.valid.val.get_value();
             if types == OID_PKCS8_SHROUDED_KEY_BAG {
@@ -800,11 +803,12 @@ fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
                 let certdata = bagv.elem.val[0].selectelem.bag.val[0].elem.val[0].x509cert.val[0].data.clone();
                 let mut cert :Asn1X509 = Asn1X509::init_asn1();
                 let _ = cert.decode_asn1(&certdata)?;
-                let _ = cert.print_asn1("cert", 0, &mut f)?;
+                let kname = format!("cert[{}]",idx);
+                let _ = cert.print_asn1(&kname, 0, &mut f)?;
             } else {
                 eprintln!("types [{}]", types);
             }
-
+            idx += 1;
         }
     }
     Ok(())
