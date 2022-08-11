@@ -529,101 +529,6 @@ fn csrdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
     Ok(())
 }
 
-fn pkcs12dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
-    let sarr :Vec<String>;
-    let passin = ns.get_string("passin");
-
-    init_log(ns.clone())?;
-    sarr = ns.get_array("subnargs");
-    for f in sarr.iter() {
-        //let fname = format!("{}",f);
-        let code = read_file_bytes(f)?;
-        let mut xname = Asn1Pkcs12::init_asn1();
-        let _ = xname.decode_asn1(&code)?;
-        let mut f = std::io::stderr();
-        xname.print_asn1("pkcs12",0,&mut f)?;
-        let macdata :&Asn1Pkcs12MacData = xname.elem.val[0].mac.val.as_ref().unwrap();
-        let dinfo :Asn1X509Sig = macdata.elem.val[0].dinfo.clone();
-        if dinfo.elem.val[0].algor.elem.val[0].algorithm.get_value() == OID_SHA256_DIGEST {
-            //let digest :Vec<u8> = dinfo.elem.val[0].digest.data.clone();
-            let salt : Vec<u8> = macdata.elem.val[0].salt.data.clone();
-            let iternum = macdata.elem.val[0].iternum.val;
-            let hmac = get_hmac_sha256_key(passin.as_bytes(),&salt,iternum as usize);
-            debug_buffer_trace!(hmac.as_ptr(),hmac.len(),"hmac");
-        }
-    }
-
-    Ok(())
-}
-
-fn authsafesdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
-    let sarr :Vec<String>;
-    let passin = ns.get_string("passin");
-    init_log(ns.clone())?;
-    sarr = ns.get_array("subnargs");
-    for f in sarr.iter() {
-        let code = read_file_bytes(f)?;
-        let mut octdata :Asn1OctData = Asn1OctData::init_asn1();
-        let size = octdata.decode_asn1(&code)?;
-        debug_trace!("size [0x{:x}:{}]", size,size);
-        let v8 = octdata.data.clone();
-        let mut f = std::io::stderr();
-        let mut safes :Asn1AuthSafes = Asn1AuthSafes::init_asn1();
-        let rlen = safes.decode_asn1(&v8)?;
-        debug_trace!("rlen [{}:0x{:x}]", rlen,rlen);
-        let _ = safes.print_asn1("safes", 0, &mut f)?;
-
-        /**/
-        for idx in 0..safes.safes.val.len() {            
-            let types = safes.safes.val[idx].elem.val[0].selector.val.get_value();
-            if types == OID_PKCS7_ENCRYPTED_DATA {
-                let pk7encdata :&Asn1Pkcs7Encrypt = safes.safes.val[idx].elem.val[0].encryptdata.val.as_ref().unwrap();
-                let encdata = pk7encdata.elem.val[0].enc_data.elem.val[0].enc_data.val.data.clone();
-                let algordata = pk7encdata.elem.val[0].enc_data.elem.val[0].algorithm.encode_asn1()?;
-                debug_buffer_trace!(algordata.as_ptr(),algordata.len(),"algordata");
-                debug_buffer_trace!(encdata.as_ptr(),encdata.len(),"encdata get");
-                let decdata = get_algor_pbkdf2_private_data(&algordata,&encdata,passin.as_bytes())?;
-                debug_buffer_trace!(decdata.as_ptr(),decdata.len(),"decdata get");
-
-            }
-        }
-
-    }
-    Ok(())
-}
-
-fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
-    let sarr :Vec<String>;
-    let passin = ns.get_string("passin");
-    init_log(ns.clone())?;
-    sarr = ns.get_array("subnargs");
-    for f in sarr.iter() {
-        let code = read_file_bytes(f)?;
-        let mut octdata :Asn1Seq<Asn1Pkcs12SafeBag> = Asn1Seq::init_asn1();
-        let _ = octdata.decode_asn1(&code)?;
-        let mut f = std::io::stderr();
-        let _ = octdata.print_asn1("safebag", 0, &mut f)?;
-        for bagv in octdata.val.iter() {
-            let types = bagv.elem.val[0].selectelem.valid.val.get_value();
-            if types == OID_PKCS8_SHROUDED_KEY_BAG {
-                let x509sig :Asn1X509Sig = bagv.elem.val[0].selectelem.shkeybag.val[0].clone();
-                let v8 = x509sig.encode_asn1()?;
-                let pkey = get_private_key(&v8,passin.as_bytes())?;
-                let _ = pkey.print_asn1("pkey", 0, &mut f)?;
-            } else if types == OID_PKCS12_CERT_BAG {
-                let certdata = bagv.elem.val[0].selectelem.bag.val[0].elem.val[0].x509cert.val[0].data.clone();
-                let mut cert :Asn1X509 = Asn1X509::init_asn1();
-                let _ = cert.decode_asn1(&certdata)?;
-                let _ = cert.print_asn1("cert", 0, &mut f)?;
-            } else {
-                eprintln!("types [{}]", types);
-            }
-
-        }
-    }
-    Ok(())
-}
-
 const PKCS12_MAC_ID :u8 = 3;
 const SHA256_BLOCK_SIZE :usize = 64;
 const SHA256_DIGEST_SIZE :usize = 32;
@@ -776,6 +681,135 @@ fn pkcs12sha256_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
 
     Ok(())
 }
+
+fn check_equal_u8(a :&[u8],b :&[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+
+
+    for i in 0..a.len() {
+        if a[i] != b[i] {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+fn pkcs12dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    let passin = ns.get_string("passin");
+
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    for f in sarr.iter() {
+        let fname = format!("{}",f);
+        let code = read_file_bytes(f)?;
+        let mut xname = Asn1Pkcs12::init_asn1();
+        let _ = xname.decode_asn1(&code)?;
+        let mut f = std::io::stderr();
+        xname.print_asn1("pkcs12",0,&mut f)?;
+        let macdata :&Asn1Pkcs12MacData = xname.elem.val[0].mac.val.as_ref().unwrap();
+        let dinfo :Asn1X509Sig = macdata.elem.val[0].dinfo.clone();
+        if dinfo.elem.val[0].algor.elem.val[0].algorithm.get_value() == OID_SHA256_DIGEST {
+            let digest :Vec<u8> = dinfo.elem.val[0].digest.data.clone();
+            let salt : Vec<u8> = macdata.elem.val[0].salt.data.clone();
+            let iternum = macdata.elem.val[0].iternum.val;
+            let hmac = get_pkcs12kdf_sha256(passin.as_bytes(),&salt,PKCS12_MAC_ID,iternum as usize,SHA256_DIGEST_SIZE);
+            let chkd :&Asn1OctData = xname.elem.val[0].authsafes.elem.val[0].data.val.as_ref().unwrap();
+            let chkdata = chkd.data.clone();
+            let calcdigest = calc_hmac_sha256(&hmac,&chkdata);
+            let mut checked :bool =false;
+            if ! check_equal_u8(&calcdigest,&digest) {
+                let unipass = expand_uni(passin.as_bytes());
+                let hmac = get_pkcs12kdf_sha256(&unipass,&salt,PKCS12_MAC_ID,iternum as usize,SHA256_DIGEST_SIZE);
+                let calcdigest = calc_hmac_sha256(&hmac,&chkdata);
+                if check_equal_u8(&calcdigest,&digest) {
+                    checked = true;
+                }
+            } else {
+                checked = true;
+            }
+            if checked {
+                println!("{} Verify Ok", fname);
+            } else {
+                eprintln!("{} Verify Failed", fname);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn authsafesdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    let passin = ns.get_string("passin");
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    for f in sarr.iter() {
+        let code = read_file_bytes(f)?;
+        let mut octdata :Asn1OctData = Asn1OctData::init_asn1();
+        let size = octdata.decode_asn1(&code)?;
+        debug_trace!("size [0x{:x}:{}]", size,size);
+        let v8 = octdata.data.clone();
+        let mut f = std::io::stderr();
+        let mut safes :Asn1AuthSafes = Asn1AuthSafes::init_asn1();
+        let rlen = safes.decode_asn1(&v8)?;
+        debug_trace!("rlen [{}:0x{:x}]", rlen,rlen);
+        let _ = safes.print_asn1("safes", 0, &mut f)?;
+
+        /**/
+        for idx in 0..safes.safes.val.len() {            
+            let types = safes.safes.val[idx].elem.val[0].selector.val.get_value();
+            if types == OID_PKCS7_ENCRYPTED_DATA {
+                let pk7encdata :&Asn1Pkcs7Encrypt = safes.safes.val[idx].elem.val[0].encryptdata.val.as_ref().unwrap();
+                let encdata = pk7encdata.elem.val[0].enc_data.elem.val[0].enc_data.val.data.clone();
+                let algordata = pk7encdata.elem.val[0].enc_data.elem.val[0].algorithm.encode_asn1()?;
+                debug_buffer_trace!(algordata.as_ptr(),algordata.len(),"algordata");
+                debug_buffer_trace!(encdata.as_ptr(),encdata.len(),"encdata get");
+                let decdata = get_algor_pbkdf2_private_data(&algordata,&encdata,passin.as_bytes())?;
+                debug_buffer_trace!(decdata.as_ptr(),decdata.len(),"decdata get");
+
+            }
+        }
+
+    }
+    Ok(())
+}
+
+fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    let passin = ns.get_string("passin");
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    for f in sarr.iter() {
+        let code = read_file_bytes(f)?;
+        let mut octdata :Asn1Seq<Asn1Pkcs12SafeBag> = Asn1Seq::init_asn1();
+        let _ = octdata.decode_asn1(&code)?;
+        let mut f = std::io::stderr();
+        let _ = octdata.print_asn1("safebag", 0, &mut f)?;
+        for bagv in octdata.val.iter() {
+            let types = bagv.elem.val[0].selectelem.valid.val.get_value();
+            if types == OID_PKCS8_SHROUDED_KEY_BAG {
+                let x509sig :Asn1X509Sig = bagv.elem.val[0].selectelem.shkeybag.val[0].clone();
+                let v8 = x509sig.encode_asn1()?;
+                let pkey = get_private_key(&v8,passin.as_bytes())?;
+                let _ = pkey.print_asn1("pkey", 0, &mut f)?;
+            } else if types == OID_PKCS12_CERT_BAG {
+                let certdata = bagv.elem.val[0].selectelem.bag.val[0].elem.val[0].x509cert.val[0].data.clone();
+                let mut cert :Asn1X509 = Asn1X509::init_asn1();
+                let _ = cert.decode_asn1(&certdata)?;
+                let _ = cert.print_asn1("cert", 0, &mut f)?;
+            } else {
+                eprintln!("types [{}]", types);
+            }
+
+        }
+    }
+    Ok(())
+}
+
 
 
 #[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler,pkcs12sha256_handler)]
