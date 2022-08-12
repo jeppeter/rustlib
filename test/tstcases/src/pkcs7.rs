@@ -521,8 +521,8 @@ fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 
             debug_trace!("sig_alg value [{}]", hmactype);
             if hmactype == OID_SHA256_WITH_RSA_ENCRYPTION {
-                let hashd = xname.elem.val[0].signature.data.clone();
-                let ro = rsapubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,&hashd);
+                //let hashd = xname.elem.val[0].signature.data.clone();
+                let ro = rsapubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,&xname.elem.val[0].signature.data);
                 match ro {
                     Ok(_) => {
                         println!("{} is ok", fname);
