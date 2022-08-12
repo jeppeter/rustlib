@@ -390,6 +390,45 @@ fn rsaprivdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
     Ok(())
 }
 
+fn get_pubk_value(code :&[u8]) -> Result<Asn1RsaPubkey,Box<dyn Error>> {
+    let mut pubkform = Asn1RsaPubkeyForm::init_asn1();
+    let _ = pubkform.decode_asn1(code)?;
+    let mut pubk = Asn1RsaPubkey::init_asn1();
+    let types = pubkform.elem.val[0].algor.elem.val[0].algorithm.get_value();
+    if types == OID_RSA_ENCRYPTION {
+        let _ = pubk.decode_asn1(&(pubkform.elem.val[0].data.data))?;
+    } else {
+        asn1obj_new_error!{Pkcs7Error,"not valid code for pubk"}
+    }
+    Ok(pubk)
+}
+
+fn get_pubk_from_file(f :&str) -> Result<Asn1RsaPubkey,Box<dyn Error>> {
+    let code = read_file_bytes(f)?;
+    let ro = get_pubk_value(&code);
+    if ro.is_ok() {
+        let pubk = ro.unwrap();
+        return Ok(pubk);
+    }
+
+    let cs = read_file(f)?;
+    let (code,_) = pem_to_der(&cs)?;
+    return get_pubk_value(&code);
+}
+
+fn rsapubdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    for f in sarr.iter() {
+        let code = read_file_bytes(f)?;
+        let pubk = get_pubk_value(&code)?;
+        let mut f = std::io::stderr();
+        let _ = pubk.print_asn1("pubk",0,&mut f);
+    }
+
+    Ok(())
+}
 
 fn get_sha256_data(ind :&[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
@@ -447,9 +486,11 @@ fn rsaverify_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 
 fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> { 
     let sarr :Vec<String>;
+    let capub :String;
 
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
+    capub = ns.get_string("capub");
     for f in sarr.iter() {
         let code = read_file_bytes(f)?;
         let fname = format!("{}",f);
@@ -462,8 +503,18 @@ fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
         let certinfoelem = xname.elem.val[0].certinfo.elem.val[0].clone();
         if certinfoelem.signature.elem.val[0].algorithm.get_value() == OID_SHA256_WITH_RSA_ENCRYPTION {
             /*now get the public key*/
-            let pubn = certinfoelem.key.elem.val[0].rsa.val.val[0].n.val.to_bytes_be();
-            let pube = certinfoelem.key.elem.val[0].rsa.val.val[0].e.val.to_bytes_be();
+            let pubn ;
+            let pube ;
+            if capub.len() == 0 {
+                debug_trace!("self signed key");
+                pubn = certinfoelem.key.elem.val[0].rsa.val.elem.val[0].n.val.to_bytes_be();
+                pube = certinfoelem.key.elem.val[0].rsa.val.elem.val[0].e.val.to_bytes_be();
+            } else {
+                let pubk = get_pubk_from_file(&capub)?;
+                debug_trace!("pubkey from [{}]",capub);
+                pubn = pubk.elem.val[0].n.val.to_bytes_be();
+                pube = pubk.elem.val[0].e.val.to_bytes_be();
+            }
             let rsapubk = RsaPublicKey::new(rsaBigUint::from_bytes_be(&pubn),rsaBigUint::from_bytes_be(&pube))?;
             let digest = get_sha256_data(&v8);
             let hmactype = xname.elem.val[0].sig_alg.elem.val[0].algorithm.get_value();
@@ -505,7 +556,7 @@ fn csrdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
         let reqinfoelem = xname.elem.val[0].req_info.elem.val[0].clone();
         if reqinfoelem.pubkey.elem.val[0].valid.val.val.get_value() == OID_RSA_ENCRYPTION {
             /*now get the public key*/
-            let pubkey : Asn1RsaPubkey = reqinfoelem.pubkey.elem.val[0].rsa.val.val[0].clone();
+            let pubkey : Asn1RsaPubkeyElem = reqinfoelem.pubkey.elem.val[0].rsa.val.elem.val[0].clone();
             let pubn = pubkey.n.val.to_bytes_be();
             let pube = pubkey.e.val.to_bytes_be();
             let rsapubk = RsaPublicKey::new(rsaBigUint::from_bytes_be(&pubn),rsaBigUint::from_bytes_be(&pube))?;
@@ -878,12 +929,13 @@ fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
 
 
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler,pkcs12sha256_handler)]
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler,pkcs12sha256_handler,rsapubdec_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
         "passin" : null,
         "rsapriv"  : null,
+        "capub" : null,
         "pkcs7dec<pkcs7dec_handler>##derfile ... to decode file##" : {
             "$" : "+"
         },
@@ -918,6 +970,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : "+"
         },
         "rsaprivdec<rsaprivdec_handler>##derfile ... to decode RSAPRIVATEKEY##" : {
+            "$" : "+"
+        },
+        "rsapubdec<rsapubdec_handler>##derfile ... to decode RSAPUBLICKEY##" : {
             "$" : "+"
         },
         "x509dec<x509dec_handler>##derfile ... to decode X509##" : {

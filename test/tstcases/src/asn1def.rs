@@ -111,9 +111,15 @@ pub struct Asn1Pkcs7Content {
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
-pub struct Asn1RsaPubkey {
+pub struct Asn1RsaPubkeyElem {
 	pub n :Asn1BigNum,
 	pub e :Asn1BigNum,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1RsaPubkey {
+	pub elem :Asn1Seq<Asn1RsaPubkeyElem>,
 }
 
 //#[asn1_obj_selector(selector=val,any=default,rsa="1.2.840.113549.1.1.1",debug=enable)]
@@ -129,7 +135,7 @@ pub struct Asn1X509PubkeySelector {
 #[derive(Clone)]
 pub struct Asn1X509PubkeyElem {
 	pub valid : Asn1SeqSelector<Asn1X509PubkeySelector>,
-	pub rsa : Asn1BitSeq<Asn1Seq<Asn1RsaPubkey>>,
+	pub rsa : Asn1BitSeq<Asn1RsaPubkey>,
 	pub any : Asn1Any,
 }
 
@@ -539,4 +545,17 @@ pub struct Asn1Pkcs12SafeBagElem {
 #[derive(Clone)]
 pub struct Asn1Pkcs12SafeBag {
 	pub elem : Asn1Seq<Asn1Pkcs12SafeBagElem>,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1RsaPubkeyFormElem {
+	pub algor : Asn1X509Algor,
+	pub data  : Asn1BitData,
+}
+
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1RsaPubkeyForm {
+	pub elem :Asn1Seq<Asn1RsaPubkeyFormElem>,
 }
