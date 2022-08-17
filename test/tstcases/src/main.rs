@@ -28,8 +28,9 @@ use std::any::Any;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-
+#[cfg(windows)]
 mod wchar_windows;
+#[cfg(windows)]
 mod loglib_windows;
 mod loglib;
 mod strop;

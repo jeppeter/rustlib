@@ -3,10 +3,10 @@ use extargsparse_codegen::{extargs_load_commandline,extargs_map_function};
 use extargsparse_worker::namespace::{NameSpaceEx};
 use extargsparse_worker::funccall::ExtArgsParseFunc;
 use extargsparse_worker::parser::ExtArgsParser;
-use extargsparse_worker::logger::{extargs_set_log_config};
 
-
+#[cfg(windows)]
 use super::loglib_windows::{win_output_debug};
+
 use lazy_static::lazy_static;
 use log::{LevelFilter};
 use log::{error, info, trace,warn,debug};
@@ -199,8 +199,7 @@ pub fn init_log(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 
 
 	let config = cbuild.build(rbuiler.build(level))?;
-	extargs_set_log_config(config);
-
+	let _ = log4rs::init_config(config)?;
 	Ok(())
 }
 
@@ -222,6 +221,7 @@ pub fn log_get_timestamp() -> String {
 	return format!("{}/{}/{} {}:{}:{}",now.year(),now.month(),now.day(),now.hour(),now.minute(),now.second());
 }
 
+#[cfg(windows)]
 fn log_output_function_inner(level :i64, outs :&str) {
 	if level <= get_logger_level() {
 		if level == 0 {
@@ -239,6 +239,26 @@ fn log_output_function_inner(level :i64, outs :&str) {
 	}
 	return;	
 }
+
+
+#[cfg(not(windows))]
+fn log_output_function_inner(level :i64, outs :&str) {
+	if level <= get_logger_level() {
+		if level == 0 {
+			error!("{}",outs);
+		} else if level == 1 {
+			warn!("{}",outs);
+		} else if level == 2 {
+			info!("{}",outs);
+		} else if level == 3 {
+			debug!("{}",outs);
+		} else if level >= 4 {
+			trace!("{}",outs);
+		}
+	}
+	return;	
+}
+
 
 pub fn log_output_function(level :i64, outs :&str) {
 	return log_output_function_inner(level,outs);
