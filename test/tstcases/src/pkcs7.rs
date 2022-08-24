@@ -961,6 +961,25 @@ fn decode_gpg_asc(s :&str) -> Result<(Vec<u8>,Vec<u8>), Box<dyn Error>> {
     return Ok((maind,bd));
 }
 
+fn decbase64_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    let input = ns.get_string("input");
+    if input.len() > 0 {
+        let s = read_file(&input)?;
+        let v8 = decode_base64(&s)?;
+        debug_buffer_trace!(v8.as_ptr(),v8.len(),"{} decode base64",input);
+    } else {
+        for f in sarr.iter() {
+            let v8 = decode_base64(f)?;
+            debug_buffer_trace!(v8.as_ptr(),v8.len(),"{} decode base64",f);
+        }
+    }
+    Ok(())
+}
+
+
 fn gpgascdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
     init_log(ns.clone())?;
@@ -975,7 +994,9 @@ fn gpgascdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 }
 
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler,pkcs12sha256_handler,rsapubdec_handler,gpgascdec_handler)]
+
+
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler,pkcs12sha256_handler,rsapubdec_handler,gpgascdec_handler,decbase64_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -1050,6 +1071,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "gpgascdec<gpgascdec_handler>##gpgascfile ... to decode gpg file##" : {
             "$" : "+"
+        },
+        "decbase64<decbase64_handler>##str ... to decode base64##" : {
+            "$" : "*"
         }
     }
     "#;
