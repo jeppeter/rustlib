@@ -968,8 +968,6 @@ fn gpgascdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     for f in sarr.iter() {
         let s = read_file(f)?;
         let (maind,bd) = decode_gpg_asc(&s)?;
-        debug_trace!("maind [{}]",maind.len());
-        debug_trace!("bd [{}]",bd.len());
         debug_buffer_trace!(maind.as_ptr(),maind.len(),"maind for {}",f);
         debug_buffer_trace!(bd.as_ptr(),bd.len(), "bd for {}",f);
     }
