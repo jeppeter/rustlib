@@ -1,8 +1,9 @@
 //! AES256 CBC、CTR mode encrypt decrypt demo
 extern crate crypto;
 use std::str;
-use crypto::{buffer,aes,blockmodes};
+use crypto::{buffer,aes,blockmodes,aessafe};
 use crypto::buffer::{ReadBuffer,WriteBuffer,BufferResult};
+use crypto::symmetriccipher::{BlockEncryptor,BlockDecryptor};
 //use rand::{Rng};
 //use rand::rngs::{OsRng};
 
@@ -76,3 +77,113 @@ pub fn aes256_cbc_decrypt(encrypted_data: &[u8], key: &[u8], iv: &[u8]) -> Resul
     Ok(final_result)
 }
 
+pub fn aes128_encrypt(data :&[u8],key :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    if key.len() != 16 {
+        extargs_new_error!{AesLibError,"key [{}] != 16", key.len()}
+    }
+    if (data.len() % 16 ) != 0 {
+        extargs_new_error!{AesLibError,"data [{}] % 16 != 0", data.len()}
+    }
+
+    let aes_enc = aessafe::AesSafe128Encryptor::new(key);
+    let mut retdata :Vec<u8> = Vec::new();
+    for _ in 0..data.len() {
+        retdata.push(0);
+    }
+    for _ in 0..8 {
+        retdata.push(0);
+    }
+    aes_enc.encrypt_block(&data[..], &mut retdata[..]);
+    Ok(retdata)
+}
+
+pub fn aes128_decrypt(encdata :&[u8],key :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    if key.len() != 16 {
+        extargs_new_error!{AesLibError,"key [{}] != 16", key.len()}
+    }
+    if (encdata.len() % 16 ) != 8 {
+        extargs_new_error!{AesLibError,"data [{}] % 16 != 8", encdata.len()}
+    }
+
+    let aes_dec = aessafe::AesSafe128Decryptor::new(key);
+    let mut retdata :Vec<u8> = Vec::new();
+    for _ in 0..(encdata.len()-8) {
+        retdata.push(0);
+    }
+    aes_dec.decrypt_block(&encdata[..], &mut retdata[..]);
+    Ok(retdata)
+}
+
+pub fn aes192_encrypt(data :&[u8],key :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    if key.len() != 24 {
+        extargs_new_error!{AesLibError,"key [{}] != 16", key.len()}
+    }
+    if (data.len() % 16 ) != 0 {
+        extargs_new_error!{AesLibError,"data [{}] % 16 != 0", data.len()}
+    }
+
+    let aes_enc = aessafe::AesSafe192Encryptor::new(key);
+    let mut retdata :Vec<u8> = Vec::new();
+    for _ in 0..data.len() {
+        retdata.push(0);
+    }
+    for _ in 0..8 {
+        retdata.push(0);
+    }
+    aes_enc.encrypt_block(&data[..], &mut retdata[..]);
+    Ok(retdata)
+}
+
+pub fn aes192_decrypt(encdata :&[u8],key :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    if key.len() != 24 {
+        extargs_new_error!{AesLibError,"key [{}] != 16", key.len()}
+    }
+    if (encdata.len() % 16 ) != 8 {
+        extargs_new_error!{AesLibError,"data [{}] % 16 != 0", encdata.len()}
+    }
+
+    let aes_dec = aessafe::AesSafe192Decryptor::new(key);
+    let mut retdata :Vec<u8> = Vec::new();
+    for _ in 0..(encdata.len()-8) {
+        retdata.push(0);
+    }
+    aes_dec.decrypt_block(&encdata[..], &mut retdata[..]);
+    Ok(retdata)
+}
+
+pub fn aes256_encrypt(data :&[u8],key :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    if key.len() != 32 {
+        extargs_new_error!{AesLibError,"key [{}] != 16", key.len()}
+    }
+    if (data.len() % 16 ) != 0 {
+        extargs_new_error!{AesLibError,"data [{}] % 16 != 0", data.len()}
+    }
+
+    let aes_enc = aessafe::AesSafe256Encryptor::new(key);
+    let mut retdata :Vec<u8> = Vec::new();
+    for _ in 0..data.len() {
+        retdata.push(0);
+    }
+    for _ in 0..8 {
+        retdata.push(0);
+    }
+    aes_enc.encrypt_block(&data[..], &mut retdata[..]);
+    Ok(retdata)
+}
+
+pub fn aes256_decrypt(encdata :&[u8],key :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    if key.len() != 32 {
+        extargs_new_error!{AesLibError,"key [{}] != 16", key.len()}
+    }
+    if (encdata.len() % 16 ) != 8 {
+        extargs_new_error!{AesLibError,"data [{}] % 16 != 0", encdata.len()}
+    }
+
+    let aes_dec = aessafe::AesSafe256Decryptor::new(key);
+    let mut retdata :Vec<u8> = Vec::new();
+    for _ in 0..(encdata.len()-8) {
+        retdata.push(0);
+    }
+    aes_dec.decrypt_block(&encdata[..], &mut retdata[..]);
+    Ok(retdata)
+}

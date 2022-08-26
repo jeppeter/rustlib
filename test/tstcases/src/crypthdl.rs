@@ -30,7 +30,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file_bytes,write_file_bytes};
 
-use super::cryptlib::{aes256_cbc_encrypt,aes256_cbc_decrypt};
+use super::cryptlib::{aes256_cbc_encrypt,aes256_cbc_decrypt,aes128_encrypt,aes128_decrypt,aes192_encrypt,aes192_decrypt,aes256_encrypt,aes256_decrypt};
 
 use hex::{FromHex};
 use hex;
@@ -76,7 +76,57 @@ fn aescbcdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 }
 
 
-#[extargs_map_function(aescbcenc_handler,aescbcdec_handler)]
+fn aesencbase_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 2 {
+		asn1obj_new_error!{CryptHdlError,"need key data"}
+	}
+	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
+	let datav8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
+	let encdatav8 :Vec<u8>;
+	if keyv8.len() == 16 {
+		encdatav8 = aes128_encrypt(&datav8,&keyv8)?;
+	} else if keyv8.len() == 24 {
+		encdatav8 = aes192_encrypt(&datav8,&keyv8)?;
+	} else if keyv8.len() == 32 {
+		encdatav8 = aes256_encrypt(&datav8,&keyv8)?;
+	} else {
+		extargs_new_error!{CryptHdlError,"key len [{}] not valid", keyv8.len()}
+	}
+	debug_buffer_trace!(keyv8.as_ptr(), keyv8.len(),"key");
+	debug_buffer_trace!(datav8.as_ptr(),datav8.len(),"data");
+	debug_buffer_trace!(encdatav8.as_ptr(),encdatav8.len(), "encrypt data");
+	Ok(())
+}
+
+fn aesdecbase_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 2 {
+		asn1obj_new_error!{CryptHdlError,"need key data"}
+	}
+	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
+	let encdatav8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
+	let datav8 :Vec<u8>;
+	if keyv8.len() == 16 {
+		datav8 = aes128_decrypt(&encdatav8,&keyv8)?;
+	} else if keyv8.len() == 24 {
+		datav8 = aes192_decrypt(&encdatav8,&keyv8)?;
+	} else if keyv8.len() == 32 {
+		datav8 = aes256_decrypt(&encdatav8,&keyv8)?;
+	} else {
+		extargs_new_error!{CryptHdlError,"key len [{}] not valid", keyv8.len()}
+	}
+	debug_buffer_trace!(keyv8.as_ptr(), keyv8.len(),"key");
+	debug_buffer_trace!(encdatav8.as_ptr(),encdatav8.len(),"encdata");
+	debug_buffer_trace!(datav8.as_ptr(),datav8.len(), "decrypt data");
+	Ok(())
+}
+
+#[extargs_map_function(aescbcenc_handler,aescbcdec_handler,aesencbase_handler,aesdecbase_handler)]
 pub fn load_crypto_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -85,6 +135,12 @@ pub fn load_crypto_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"aescbcdec<aescbcdec_handler>##key iv to decrypt encdata from input data to output##" : {
 			"$" : 2
+		},
+		"aesencbase<aesencbase_handler>##key data [size] to encrypt aes##" : {
+			"$" : "+"
+		},
+		"aesdecbase<aesdecbase_handler>##key encdata [size] to decrypt aes##" : {
+			"$" : "+"
 		}
 
 	}
