@@ -243,15 +243,6 @@ pub fn aes256_decrypt(encdata :&[u8],key :&[u8]) -> Result<Vec<u8>,Box<dyn Error
 pub type Aes256CfbEnc = cfb_mode::Encryptor<aes::Aes256>;
 pub type Aes256CfbDec = cfb_mode::Decryptor<aes::Aes256>;
 
-pub fn aes256_cfb_enc_new(key :&[u8],iv :&[u8]) -> Result<Aes256CfbEnc,Box<dyn Error>> {
-    let enc :Aes256CfbEnc = Aes256CfbEnc::new(key.into(),iv.into());
-    Ok(enc)
-}
-
-pub fn aes256_cfb_dec_new(key :&[u8],iv :&[u8]) -> Result<Aes256CfbDec,Box<dyn Error>> {
-    let dec :Aes256CfbDec = Aes256CfbDec::new(key.into(),iv.into());
-    Ok(dec)
-}
 
 pub fn aes256_cfb_encrypt(data :&[u8],key :&[u8], iv :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
     let mut retdata :Vec<u8> = data.to_vec();

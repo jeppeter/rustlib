@@ -30,11 +30,10 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file_bytes,write_file_bytes};
 
-use super::cryptlib::{aes256_cbc_encrypt,aes256_cbc_decrypt,aes128_encrypt,aes128_decrypt,aes192_encrypt,aes192_decrypt,aes256_encrypt,aes256_decrypt,aes256_cbc_pure_encrypt,aes256_cbc_pure_decrypt,aes256_cfb_decrypt,aes256_cfb_encrypt,aes256_cfb_enc_new,aes256_cfb_dec_new,Aes256CfbEnc,Aes256CfbDec};
+use super::cryptlib::{aes256_cbc_encrypt,aes256_cbc_decrypt,aes128_encrypt,aes128_decrypt,aes192_encrypt,aes192_decrypt,aes256_encrypt,aes256_decrypt,aes256_cbc_pure_encrypt,aes256_cbc_pure_decrypt,aes256_cfb_decrypt,aes256_cfb_encrypt};
 
 use hex::{FromHex};
 use hex;
-use aes::cipher::AsyncStreamCipher;
 
 asn1obj_error_class!{CryptHdlError}
 
@@ -216,26 +215,19 @@ fn aescfbmutlenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	let datav8 :Vec<u8> = read_file_bytes(&f)?;
 	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
 	let ivv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
-	let encd :Aes256CfbEnc = aes256_cfb_enc_new(&keyv8,&ivv8)?;
-	let mut encdata :Vec<u8> = Vec::new();
-	let mut retdata :Vec<u8> = datav8.clone();
-	let curenc = encd.clone();
-	curenc.encrypt(&mut retdata);
-	for i in 0..retdata.len() {
-		encdata.push(retdata[i]);
+	let mut pdata :Vec<u8> = Vec::new();
+	for i in 0..datav8.len() {
+		pdata.push(datav8[i]);
 	}
-	debug_buffer_trace!(retdata.as_ptr(),retdata.len(),"encrypt [{}]", f);
 	for i in 2..sarr.len() {
 		let f = format!("{}",sarr[i]);
 		let datav8 = read_file_bytes(&f)?;
-		let mut retdata :Vec<u8> = datav8.clone();
-		let curenc = encd.clone();
-		curenc.encrypt(&mut retdata);
-		for i in 0..retdata.len() {
-			encdata.push(retdata[i]);
+		for i in 0..datav8.len() {
+			pdata.push(datav8[i]);
 		}
-		debug_buffer_trace!(retdata.as_ptr(),retdata.len(),"encrypt [{}]", f);
 	}
+
+	let encdata = aes256_cfb_encrypt(&pdata,&keyv8,&ivv8)?;
 
 	let outf = ns.get_string("output");
 	let _ = write_file_bytes(&outf,&encdata)?;
@@ -253,26 +245,18 @@ fn aescfbmutldec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	let datav8 :Vec<u8> = read_file_bytes(&f)?;
 	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
 	let ivv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
-	let decd :Aes256CfbDec = aes256_cfb_dec_new(&keyv8,&ivv8)?;
-	let mut decdata :Vec<u8> = Vec::new();
-	let mut retdata :Vec<u8> = datav8.clone();
-	let curdec = decd.clone();
-	curdec.decrypt(&mut retdata);
-	for i in 0..retdata.len() {
-		decdata.push(retdata[i]);
+	let mut encdata :Vec<u8> = Vec::new();
+	for i in 0..datav8.len() {
+		encdata.push(datav8[i]);
 	}
-	debug_buffer_trace!(retdata.as_ptr(),retdata.len(),"decrypt [{}]", f);
 	for i in 2..sarr.len() {
 		let f = format!("{}",sarr[i]);
 		let datav8 = read_file_bytes(&f)?;
-		let mut retdata :Vec<u8> = datav8.clone();
-		let curdec = decd.clone();
-		curdec.decrypt(&mut retdata);
-		for i in 0..retdata.len() {
-			decdata.push(retdata[i]);
+		for i in 0..datav8.len() {
+			encdata.push(datav8[i]);
 		}
-		debug_buffer_trace!(retdata.as_ptr(),retdata.len(),"decrypt [{}]", f);
 	}
+	let decdata = aes256_cfb_decrypt(&encdata,&keyv8,&ivv8)?;
 
 	let outf = ns.get_string("output");
 	let _ = write_file_bytes(&outf,&decdata)?;
