@@ -308,7 +308,7 @@ pub fn load_crypto_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		"aescfbdec<aescfbdec_handler>##key encdata [size] to decrypt aes##" : {
 			"$" : "+"
 		},
-		"aescfbmultenc<aescfbmultenc_handler>##key iv [file] to encrypt aes cfb##" : {
+		"aescfbmultenc<aescfbmutlenc_handler>##key iv [file] to encrypt aes cfb##" : {
 			"$" : "+"
 		},
 		"aescfbmultdec<aescfbmutldec_handler>##key iv [file] to decrypt aes cfb##" : {
