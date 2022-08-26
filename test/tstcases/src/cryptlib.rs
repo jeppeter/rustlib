@@ -7,9 +7,11 @@ use crypto::symmetriccipher::{BlockEncryptor,BlockDecryptor};
 //use crypto;
 use aes;
 use aes::cipher::KeyIvInit;
+use aes::cipher::AsyncStreamCipher;
 use aes::cipher::BlockEncryptMut;
 use aes::cipher::BlockDecryptMut;
 use cbc;
+use cfb_mode;
 //use rand::{Rng};
 //use rand::rngs::{OsRng};
 
@@ -25,8 +27,18 @@ type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
 
 pub fn aes256_cbc_pure_encrypt(data: &[u8],key: &[u8], iv: &[u8])->Result<Vec<u8>,Box<dyn Error>>{
     let mut retdata  :Vec<u8> = Vec::new();
+    let clen :usize;
     for i in 0..data.len() {
         retdata.push(data[i]);
+    }
+    if (data.len() % 16) != 0 {
+        clen = (data.len() + 15 ) / 16;
+    } else {
+        clen = data.len() + 16;
+    }
+
+    while retdata.len() < clen {
+        retdata.push(0);
     }
     let eo = Aes256CbcEnc::new(key.into(),iv.into()).encrypt_padded_mut::<aes::cipher::block_padding::Pkcs7>(&mut retdata,data.len());
     if eo.is_err() {
@@ -42,6 +54,10 @@ pub fn aes256_cbc_pure_decrypt(encrypted_data: &[u8], key: &[u8], iv: &[u8]) -> 
     for i in 0..encrypted_data.len() {
         retdata.push(encrypted_data[i]);
     }
+    if (retdata.len() % 16) != 0 {
+        extargs_new_error!{AesLibError,"not valid len [{}] % 16 != 0", retdata.len()}
+    }
+
     let eo = Aes256CbcDec::new(key.into(),iv.into()).decrypt_padded_mut::<aes::cipher::block_padding::Pkcs7>(&mut retdata);
     if eo.is_err() {
         let e = eo.err().unwrap();
@@ -221,5 +237,20 @@ pub fn aes256_decrypt(encdata :&[u8],key :&[u8]) -> Result<Vec<u8>,Box<dyn Error
         retdata.push(0);
     }
     aes_dec.decrypt_block(&encdata[..], &mut retdata[..]);
+    Ok(retdata)
+}
+
+type Aes256CfbEnc = cfb_mode::Encryptor<aes::Aes256>;
+type Aes256CfbDec = cfb_mode::Decryptor<aes::Aes256>;
+
+pub fn aes256_cfb_encrypt(data :&[u8],key :&[u8], iv :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    let mut retdata :Vec<u8> = data.to_vec();
+    Aes256CfbEnc::new(key.into(),iv.into()).encrypt(&mut retdata);
+    Ok(retdata)
+}
+
+pub fn aes256_cfb_decrypt(encdata :&[u8],key :&[u8], iv :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    let mut retdata :Vec<u8> = encdata.to_vec();
+    Aes256CfbDec::new(key.into(),iv.into()).decrypt(&mut retdata);
     Ok(retdata)
 }
