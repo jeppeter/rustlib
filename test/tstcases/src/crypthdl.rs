@@ -30,7 +30,8 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file_bytes,write_file_bytes};
 
-use super::cryptlib::{aes256_cbc_encrypt,aes256_cbc_decrypt,aes128_encrypt,aes128_decrypt,aes192_encrypt,aes192_decrypt,aes256_encrypt,aes256_decrypt,aes256_cbc_pure_encrypt,aes256_cbc_pure_decrypt,aes256_cfb_decrypt,aes256_cfb_encrypt};
+use super::cryptlib::{aes256_cbc_encrypt,aes256_cbc_decrypt,aes128_encrypt,aes128_decrypt,aes192_encrypt,aes192_decrypt,aes256_encrypt,aes256_decrypt,aes256_cbc_pure_encrypt,aes256_cbc_pure_decrypt,aes256_cfb_decrypt,aes256_cfb_encrypt,opengpg_s2k_sha512};
+use super::strop::{parse_u64};
 
 use hex::{FromHex};
 use hex;
@@ -263,8 +264,23 @@ fn aescfbmutldec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	Ok(())
 }
 
+fn gpgkdfs2k512_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() != 3 {
+		asn1obj_new_error!{CryptHdlError,"need pass salt iterations"}
+	}
+	let passin = format!("{}",sarr[0]);
+	let saltv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
+	let iterations :u64 = parse_u64(&sarr[2])?;
+	let outv = opengpg_s2k_sha512(passin.as_bytes(),&saltv8,iterations as usize,32)?;
+	debug_buffer_trace!(outv.as_ptr(),outv.len(),"output kdf");
+	Ok(())
+}
 
-#[extargs_map_function(aescbcenc_handler,aescbcdec_handler,aesencbase_handler,aesdecbase_handler,aescbcpureenc_handler,aescbcpuredec_handler,aescfbenc_handler,aescfbdec_handler,aescfbmutlenc_handler,aescfbmutldec_handler)]
+
+#[extargs_map_function(aescbcenc_handler,aescbcdec_handler,aesencbase_handler,aesdecbase_handler,aescbcpureenc_handler,aescbcpuredec_handler,aescfbenc_handler,aescfbdec_handler,aescfbmutlenc_handler,aescfbmutldec_handler,gpgkdfs2k512_handler)]
 pub fn load_crypto_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -297,6 +313,9 @@ pub fn load_crypto_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"aescfbmultdec<aescfbmutldec_handler>##key iv [file] to decrypt aes cfb##" : {
 			"$" : "+"
+		},
+		"gpgkdfs2k512<gpgkdfs2k512_handler>##pass salt iterations to encrypt##" : {
+			"$" : 3
 		}
 
 	}

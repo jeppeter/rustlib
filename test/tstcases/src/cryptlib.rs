@@ -12,6 +12,7 @@ use aes::cipher::BlockEncryptMut;
 use aes::cipher::BlockDecryptMut;
 use cbc;
 use cfb_mode;
+use sha2::{Sha512,Digest};
 //use rand::{Rng};
 //use rand::rngs::{OsRng};
 
@@ -254,4 +255,56 @@ pub fn aes256_cfb_decrypt(encdata :&[u8],key :&[u8], iv :&[u8]) -> Result<Vec<u8
     let mut retdata :Vec<u8> = encdata.to_vec();
     Aes256CfbDec::new(key.into(),iv.into()).decrypt(&mut retdata);
     Ok(retdata)
+}
+
+pub fn opengpg_s2k_sha512(passv8 :&[u8],saltv8 :&[u8],iterations :usize,outlen :usize) -> Result<Vec<u8>,Box<dyn Error>> {
+    let mut idx :usize = 0;
+    let mut retv :Vec<u8> = Vec::new();
+    let mut pass :usize = 0;
+
+    if saltv8.len() != 8 {
+        extargs_new_error!{AesLibError,"saltv8 len[{}] != 8", saltv8.len()}
+    }
+
+    while idx < outlen {
+        let mut md512 = Sha512::new();
+        if pass > 0 {
+            let mut upzero :Vec<u8> = Vec::new();
+            for _ in 0..pass {
+                upzero.push(0);
+            }
+            md512.update(&upzero);
+        }
+        let len2 = passv8.len() + saltv8.len();
+        let mut cnt :usize = iterations;
+        if cnt < len2 {
+            cnt = len2;
+        }
+
+        while cnt > len2 {
+            md512.update(saltv8);
+            md512.update(passv8);
+            cnt -= len2;
+        }
+
+        if cnt < saltv8.len() {
+            md512.update(saltv8);
+        } else {
+            md512.update(saltv8);
+            cnt -= saltv8.len();
+            md512.update(&passv8[0..cnt]);
+        }
+
+        let res = md512.finalize();
+        let mut cplen :usize = 32;
+        if cplen > (outlen - idx ) {
+            cplen = outlen - idx;
+        }
+        for i in 0..cplen {
+            retv.push(res[i]);
+        }
+        idx += cplen;
+        pass += 1;
+    }
+    Ok(retv)
 }

@@ -26,3 +26,26 @@ pub fn decode_base64(instr :&str) -> Result<Vec<u8>,Box<dyn Error>> {
 	let bv = res.unwrap();
 	Ok(bv)
 }
+
+pub fn parse_u64(instr :&str) -> Result<u64,Box<dyn Error>> {
+	let mut cparse = format!("{}",instr);
+	let mut base :u32 = 10;
+	let retv :u64;
+	if cparse.starts_with("0x") || cparse.starts_with("0X") {
+		cparse = cparse[2..].to_string();
+		base = 16;
+	} else if cparse.starts_with("x") || cparse.starts_with("X") {
+		cparse = cparse[1..].to_string();
+		base = 16;
+	}
+
+	match u64::from_str_radix(&cparse,base) {
+		Ok(v) => {
+			retv = v;
+		},
+		Err(e) => {
+			extargs_new_error!{StrOpError, "parse [{}] error [{:?}]", instr, e}
+		}
+	}
+	Ok(retv)
+}
