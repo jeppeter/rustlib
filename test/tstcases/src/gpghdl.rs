@@ -109,6 +109,20 @@ fn gpgascdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     for f in sarr.iter() {
         let s = read_file(f)?;
         let (maind,bd) = decode_gpg_asc(&s)?;
+        let mut getcrc :u32 = 0;
+        let mut gpgcrc24 :GpgCrc24 = GpgCrc24::new();
+        if bd.len() != 3 {
+        	asn1obj_new_error!{GpgHdlError,"crc [{:?}] not valid", bd}
+        }
+        for i in 0..bd.len() {
+        	getcrc |= (bd[i] as u32 ) << ((2 - i) * 8);
+        }
+
+        gpgcrc24.update(&maind);
+        if gpgcrc24.get() != getcrc {
+        	asn1obj_new_error!{GpgHdlError,"check crc [0x{:x}] != get crc [0x{:x}]", gpgcrc24.get(), getcrc}
+        }
+
         debug_buffer_trace!(maind.as_ptr(),maind.len(),"maind for {}",f);
         debug_buffer_trace!(bd.as_ptr(),bd.len(), "bd for {}",f);
     }
