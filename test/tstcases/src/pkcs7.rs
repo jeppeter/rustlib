@@ -929,54 +929,6 @@ fn pkcs12safebagdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
     Ok(())
 }
 
-#[allow(unused_assignments)]
-fn decode_gpg_asc(s :&str) -> Result<(Vec<u8>,Vec<u8>,Vec<u8>), Box<dyn Error>> {
-    let sarr :Vec<&str> = s.split("\n").collect();
-    let mut maind :Vec<u8> = Vec::new();
-    let mut bd :Vec<u8> = Vec::new();
-    let mut rbd :Vec<u8> = Vec::new();
-    let mut c :String = "".to_string();
-    for l in sarr.iter() {
-        let mut kl = format!("{}",l);
-        kl = kl.trim_end_matches("\r").to_string();
-        if !kl.starts_with("---") {
-            c.push_str(&kl);
-            if kl.len() < 64 {
-                if maind.len() == 0 {
-                    maind = decode_base64(&c)?;
-                    c = "".to_string();
-                } else if bd.len() == 0 {
-                    c = c[1..].to_string();                    
-                    bd = decode_base64(&c)?;
-                    let mut cv :String = "".to_string();
-                    let cb = c.as_bytes();
-                    let mut idx :usize = cb.len();
-                    while idx > 0 {
-                        cv.push(cb[idx-1] as char);
-                        idx -= 1;
-                    }
-                    rbd = decode_base64(&cv)?;
-                    c = "".to_string();
-                }
-            }
-        }
-    }
-
-    if c.len() > 0 && bd.len() == 0 {
-        c = c[1..].to_string();
-        bd = decode_base64(&c)?;
-        let mut cv :String = "".to_string();
-        let cb = c.as_bytes();
-        let mut idx :usize = cb.len();
-        while idx > 0 {
-            cv.push(cb[idx-1] as char);
-            idx -= 1;
-        }
-        rbd = decode_base64(&cv)?;
-        c = "".to_string();
-    }
-    return Ok((maind,bd,rbd));
-}
 
 fn decbase64_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
@@ -997,24 +949,11 @@ fn decbase64_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 }
 
 
-fn gpgascdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
-    let sarr :Vec<String>;
-    init_log(ns.clone())?;
-    sarr = ns.get_array("subnargs");
-    for f in sarr.iter() {
-        let s = read_file(f)?;
-        let (maind,bd,rbd) = decode_gpg_asc(&s)?;
-        debug_buffer_trace!(maind.as_ptr(),maind.len(),"maind for {}",f);
-        debug_buffer_trace!(bd.as_ptr(),bd.len(), "bd for {}",f);
-        debug_buffer_trace!(rbd.as_ptr(),rbd.len(), "rbd for {}",f);
-    }
-    Ok(())
-}
 
 
 
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler,pkcs12sha256_handler,rsapubdec_handler,gpgascdec_handler,decbase64_handler)]
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler,pkcs12sha256_handler,rsapubdec_handler,decbase64_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -1085,9 +1024,6 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : "+"
         },
         "pkcs12sha256<pkcs12sha256_handler>##salt  [datafile] [iterval] [retsize]  to format sha256 valid iterval default 2048 retsize default 32 ##" : {
-            "$" : "+"
-        },
-        "gpgascdec<gpgascdec_handler>##gpgascfile ... to decode gpg file##" : {
             "$" : "+"
         },
         "decbase64<decbase64_handler>##str ... to decode base64##" : {

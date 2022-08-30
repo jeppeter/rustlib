@@ -46,7 +46,9 @@ mod pehdl;
 mod ssllib;
 mod sslhdl;
 mod pemlib;
+mod gpglib;
 mod cryptlib;
+mod gpghdl;
 mod crypthdl;
 mod asn1def;
 mod pkcs7;
@@ -72,6 +74,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	//asn1tst::load_asn1_handler(parser.clone())?;
 	crypthdl::load_crypto_handler(parser.clone())?;
 	pkcs7::load_pkcs7_handler(parser.clone())?;
+	gpghdl::load_gpg_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
