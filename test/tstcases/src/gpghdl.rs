@@ -32,7 +32,7 @@ use super::fileop::{read_file_bytes,read_file};
 
 use super::cryptlib::{opengpg_s2k_sha512};
 use super::strop::{parse_u64,decode_base64};
-use super::gpglib::{GpgCrc24};
+use super::gpglib::{GpgCrc24,GpgPkg};
 
 use hex::{FromHex};
 use hex;
@@ -111,6 +111,7 @@ fn gpgascdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
         let (maind,bd) = decode_gpg_asc(&s)?;
         let mut getcrc :u32 = 0;
         let mut gpgcrc24 :GpgCrc24 = GpgCrc24::new();
+        let mut retlen :usize=0;
         if bd.len() != 3 {
         	asn1obj_new_error!{GpgHdlError,"crc [{:?}] not valid", bd}
         }
@@ -123,8 +124,12 @@ fn gpgascdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
         	asn1obj_new_error!{GpgHdlError,"check crc [0x{:x}] != get crc [0x{:x}]", gpgcrc24.get(), getcrc}
         }
 
-        debug_buffer_trace!(maind.as_ptr(),maind.len(),"maind for {}",f);
-        debug_buffer_trace!(bd.as_ptr(),bd.len(), "bd for {}",f);
+        while retlen < maind.len() {
+            let mut pkg :GpgPkg = GpgPkg::new();
+            let curlen = pkg.unpack(&maind[retlen..])?;
+            println!("{:?}", pkg);
+            retlen += curlen;
+        }
     }
     Ok(())
 }
