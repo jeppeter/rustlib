@@ -124,10 +124,13 @@ fn gpgascdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
         	asn1obj_new_error!{GpgHdlError,"check crc [0x{:x}] != get crc [0x{:x}]", gpgcrc24.get(), getcrc}
         }
 
+        debug_buffer_trace!(maind.as_ptr(),maind.len(),"maind");
+        debug_buffer_trace!(bd.as_ptr(),bd.len(),"bd");
+
         while retlen < maind.len() {
             let mut pkg :GpgPkg = GpgPkg::new();
             let curlen = pkg.unpack(&maind[retlen..])?;
-            println!("{:?}", pkg);
+            debug_trace!("{:?}", pkg);
             retlen += curlen;
         }
     }

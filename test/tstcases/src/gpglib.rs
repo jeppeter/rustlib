@@ -69,12 +69,19 @@ impl GpgCrc24 {
 	}
 }
 
+pub trait GpgPackage {
+	fn init_gpg() -> Self;
+	fn decode_gpg(&mut self, code :&[u8]) -> Result<usize,Box<dyn Error>>;
+	fn encode_gpg(&self) -> Result<usize,Box<dyn Error>>;
+}
+
 #[derive(Debug)]
 pub struct GpgPkg {
 	pub code :u8,
 	pub hdrlen :usize,
 	pub data :Vec<u8>,
 }
+
 
 #[allow(dead_code)]
 impl GpgPkg {
@@ -209,4 +216,8 @@ impl GpgPkg {
 		let retv :usize = hdrlen + datalen;
 		Ok(retv)
 	}
+}
+
+pub struct GpgSymKeyEnc {
+
 }
