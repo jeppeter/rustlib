@@ -35,7 +35,7 @@ asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
 [target.'cfg(windows)'.dependencies]
 winreg = "^0.10"
 
-[dependencies.winapi]
+[target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
 features = ["winbase", "debugapi", "stringapiset", "winnls", "datetimeapi",
 	"sysinfoapi", "wincred","combaseapi","errhandlingapi"]
