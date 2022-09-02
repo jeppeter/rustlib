@@ -33,6 +33,7 @@ mod wchar_windows;
 #[cfg(windows)]
 mod loglib_windows;
 mod loglib;
+mod fileop;
 mod logsrc;
 
 
