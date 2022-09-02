@@ -134,6 +134,7 @@ lazy_static! {{
 }}
 
 
+#[allow(dead_code)]
 pub (crate)  fn {bname}_debug_out(level :i32, outs :&str) {{
 	if {cname}_LOG_LEVEL.level >= level {{
 		let c = format!("{{}}\n",outs);
@@ -149,13 +150,13 @@ pub (crate)  fn {bname}_debug_out(level :i32, outs :&str) {{
 	return;
 }}
 
-
+#[allow(dead_code)]
 pub (crate) fn {bname}_log_get_timestamp() -> String {{
 	let now = Local::now();
 	return format!("{{}}/{{}}/{{}} {{}}:{{}}:{{}}",now.year(),now.month(),now.day(),now.hour(),now.minute(),now.second());
 }}
 
-
+#[allow(unused_macros)]
 macro_rules! {bname}_log_error {{
 	($($arg:tt)+) => {{
 		let mut c :String= format!("<ERROR>{{}}[{{}}:{{}}]  ",{bname}_log_get_timestamp(),file!(),line!());
@@ -183,6 +184,7 @@ macro_rules! {bname}_log_info {{
 	}}
 }}
 
+#[allow(unused_macros)]
 macro_rules! {bname}_log_trace {{
 	($($arg:tt)+) => {{
 		let mut _c :String= format!("<TRACE>{{}}[{{}}:{{}}]  ",{bname}_log_get_timestamp(),file!(),line!());
