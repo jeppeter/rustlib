@@ -156,7 +156,7 @@ pub (crate) fn {bname}_log_get_timestamp() -> String {{
 	return format!("{{}}/{{}}/{{}} {{}}:{{}}:{{}}",now.year(),now.month(),now.day(),now.hour(),now.minute(),now.second());
 }}
 
-#[allow(unused_macros)]
+#[macro_export]
 macro_rules! {bname}_log_error {{
 	($($arg:tt)+) => {{
 		let mut c :String= format!("<ERROR>{{}}[{{}}:{{}}]  ",{bname}_log_get_timestamp(),file!(),line!());
@@ -165,7 +165,7 @@ macro_rules! {bname}_log_error {{
 	}}
 }}
 
-#[allow(unused_macros)]
+#[macro_export]
 macro_rules! {bname}_log_warn {{
 	($($arg:tt)+) => {{
 		let mut c :String= format!("<WARN>{{}}[{{}}:{{}}]  ",{bname}_log_get_timestamp(),file!(),line!());
@@ -175,7 +175,7 @@ macro_rules! {bname}_log_warn {{
 }}
 
 
-#[allow(unused_macros)]
+#[macro_export]
 macro_rules! {bname}_log_info {{
 	($($arg:tt)+) => {{
 		let mut c :String= format!("<INFO>{{}}[{{}}:{{}}]  ",{bname}_log_get_timestamp(),file!(),line!());
@@ -184,7 +184,7 @@ macro_rules! {bname}_log_info {{
 	}}
 }}
 
-#[allow(unused_macros)]
+#[macro_export]
 macro_rules! {bname}_log_trace {{
 	($($arg:tt)+) => {{
 		let mut _c :String= format!("<TRACE>{{}}[{{}}:{{}}]  ",{bname}_log_get_timestamp(),file!(),line!());

@@ -28,10 +28,11 @@ use super::{debug_trace};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 use super::credlib::{NetworkCredentials,cred_phisher};
+use super::strop::{timesec_to_tm,parse_u64};
 
 extargs_error_class!{NCredError}
 
-#[allow(unused_assignments)]
+//#[allow(unused_assignments)]
 fn credphisher_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
 
@@ -48,11 +49,30 @@ fn credphisher_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 	return Ok(());
 }
 
-#[extargs_map_function(credphisher_handler)]
+
+fn timesectotm_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for v in sarr.iter() {
+		let tsec :u64 = parse_u64(v)?;
+		let ts = timesec_to_tm(tsec)?;
+		println!("[{}]=[{}]", v,ts);
+	}
+
+	return Ok(());
+}
+
+
+#[extargs_map_function(credphisher_handler,timesectotm_handler)]
 pub fn load_cred_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"credphisher<credphisher_handler>##message to display credphisher message ##" : {
+			"$" : "+"
+		},
+		"timesectotm<timesectotm_handler>##timesec ... to make timestamp##" : {
 			"$" : "+"
 		}
 	}

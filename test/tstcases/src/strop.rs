@@ -8,6 +8,7 @@ use extargsparse_worker::{extargs_error_class,extargs_new_error};
 
 use base64;
 use std::error::Error;
+use chrono::prelude::*;
 
 extargs_error_class!{StrOpError}
 
@@ -48,4 +49,11 @@ pub fn parse_u64(instr :&str) -> Result<u64,Box<dyn Error>> {
 		}
 	}
 	Ok(retv)
+}
+
+pub fn timesec_to_tm(tsec :u64) -> Result<String,Box<dyn Error>> {
+	let n : NaiveDateTime=  NaiveDateTime::from_timestamp(tsec as i64, 0);	
+	let dt :DateTime<Utc> = DateTime::from_utc(n,Utc);
+	let s = format!("{}",dt.format("%Y-%m-%d %H:%M:%S"));
+	Ok(s)
 }
