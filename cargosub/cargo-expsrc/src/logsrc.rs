@@ -199,13 +199,70 @@ macro_rules! {bname}_log_trace {{
 }
 
 
+fn experr_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let errname :String;
+	let sarr :Vec<String>;
+	let cf :String;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 1 {
+		extargs_new_error!{ExpLogError,"need errname [CAPITAL_ERRNAME]"}
+	}
+	errname = format!("{}",sarr[0]);
 
-#[extargs_map_function(explog_handler)]
+	debug_trace!("logname [{}]",errname);
+
+	cf = format!(r#"
+#[macro_export]
+macro_rules! {bname}_error_class {{
+	($type:ident) => {{
+		#[derive(Debug,Clone)]
+		pub struct $type {{
+			msg :String,		
+		}}
+
+		impl $type {{
+			fn create(c :&str) -> $type {{
+				$type {{msg : format!("{{}}",c)}}
+			}}
+		}}
+
+		impl std::fmt::Display for $type {{
+			fn fmt(&self,f :&mut std::fmt::Formatter) -> std::fmt::Result {{
+				write!(f,"{{}}",self.msg)
+			}}
+		}}
+
+		impl std::error::Error for $type {{}}
+	}};
+}}
+
+#[macro_export]
+macro_rules! {bname}_new_error {{
+	($type:ty,$($a:expr),*) => {{
+		{{
+		let mut c :String= format!("[{{}}:{{}}][{{}}]",file!(),line!(),stringify!($type));
+		c.push_str(&(format!($($a),*)[..]));
+		return Err(Box::new(<$type>::create(c.as_str())));
+	  }}
+	}};
+}}
+"#,bname=errname);
+	let fname = ns.get_string("output");
+	_ = write_file_bytes(&fname,cf.as_bytes())?;
+	Ok(())
+}
+
+
+#[extargs_map_function(explog_handler,experr_handler)]
 pub fn load_log_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
-		"explog<explog_handler>##logname [CAPITAL_LOGNAME] ##" : {
+		"explog<explog_handler>##logname [CAPITAL_LOGNAME] to expand to logger.rs for library##" : {
 			"$" : "+"
+		},
+		"experr<experr_handler>##errname##" : {
+			"$" : 1
 		}
 	}
 	"#;
