@@ -478,11 +478,13 @@ if macrouse {
 
 macro_rules! {bname}_error_class {{
 	($type:ident) => {{
+		#[allow(dead_code)]
 		#[derive(Debug,Clone)]
 		struct $type {{
 			msg :String,		
 		}}
 
+		#[allow(dead_code)]
 		impl $type {{
 			fn create(c :&str) -> $type {{
 				$type {{msg : format!("{{}}",c)}}
@@ -516,11 +518,13 @@ macro_rules! {bname}_new_error {{
 #[macro_export]
 macro_rules! {bname}_error_class {{
 	($type:ident) => {{
+		#[allow(dead_code)]
 		#[derive(Debug,Clone)]
 		pub struct $type {{
 			msg :String,		
 		}}
 
+		#[allow(dead_code)]
 		impl $type {{
 			fn create(c :&str) -> $type {{
 				$type {{msg : format!("{{}}",c)}}
