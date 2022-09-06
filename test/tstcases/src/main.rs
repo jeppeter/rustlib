@@ -42,6 +42,7 @@ mod logtst;
 mod credlib;
 mod credhdl;
 mod pelib;
+mod timeop;
 mod pehdl;
 mod ssllib;
 mod sslhdl;

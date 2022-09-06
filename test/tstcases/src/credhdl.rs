@@ -28,7 +28,8 @@ use super::{debug_trace};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 use super::credlib::{NetworkCredentials,cred_phisher};
-use super::strop::{timesec_to_tm,parse_u64};
+use super::strop::{parse_u64};
+use super::timeop::{timesec_to_tm};
 
 extargs_error_class!{NCredError}
 
