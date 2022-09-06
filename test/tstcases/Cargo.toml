@@ -30,6 +30,7 @@ cfb-mode = "^0.8.1"
 
 asn1obj = { path = "../../../asn1obj/asn1obj"}
 asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
+gpgobj = {path = "../../../gpgobj-rs/gpgobj"}
 
 
 [target.'cfg(windows)'.dependencies]
