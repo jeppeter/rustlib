@@ -56,7 +56,8 @@ fn main() -> Result<(),Box<dyn Error>> {
 	let commandline = r#"
 	{
 		"output|o" : null,
-		"input|i" : null
+		"input|i" : null,
+		"macrouse" : false
 	}
 	"#;
 	extargs_load_commandline!(parser,commandline)?;
