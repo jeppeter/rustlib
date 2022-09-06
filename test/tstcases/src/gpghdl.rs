@@ -14,6 +14,7 @@ use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
 use std::cell::RefCell;
 use std::sync::Arc;
+//use std::io::Write;
 use std::error::Error;
 use std::boxed::Box;
 #[allow(unused_imports)]
@@ -33,6 +34,8 @@ use super::fileop::{read_file_bytes,read_file};
 use super::cryptlib::{opengpg_s2k_sha512};
 use super::strop::{parse_u64,decode_base64};
 use gpgobj::crc::{GpgCrc24};
+use gpgobj::complex::{GpgPubKey};
+use gpgobj::gpgimpl::{GpgOp};
 
 use hex::{FromHex};
 use hex;
@@ -129,8 +132,22 @@ fn gpgascdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     Ok(())
 }
 
+fn gpgpubdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    let mut serr = std::io::stderr();
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    for f in sarr.iter() {
+        let code = read_file_bytes(f)?;
+        let mut pubk  = GpgPubKey::init_gpg();
+        let _ = pubk.decode_gpg(&code)?;
+        pubk.print_gpg("pubk",0,&mut serr)?;
+    }
+    Ok(())
+}
 
-#[extargs_map_function(gpgkdfs2k512_handler,gpgcrc_handler,gpgascdec_handler)]
+
+#[extargs_map_function(gpgkdfs2k512_handler,gpgcrc_handler,gpgascdec_handler,gpgpubdec_handler)]
 pub fn load_gpg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -141,6 +158,9 @@ pub fn load_gpg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
         "gpgascdec<gpgascdec_handler>##gpgascfile ... to decode gpg file##" : {
+            "$" : "+"
+        },
+        "gpgpubdec<gpgpubdec_handler>##gpgpubfile ... to decode gpg public key##" : {
             "$" : "+"
         }
 	}
