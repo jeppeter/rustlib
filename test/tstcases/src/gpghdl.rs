@@ -34,7 +34,7 @@ use super::fileop::{read_file_bytes,read_file};
 use super::cryptlib::{opengpg_s2k_sha512};
 use super::strop::{parse_u64,decode_base64};
 use gpgobj::crc::{GpgCrc24};
-use gpgobj::complex::{GpgPubKey};
+use gpgobj::complex::{GpgPubKeyFile,GpggpgFile};
 use gpgobj::gpgimpl::{GpgOp};
 
 use hex::{FromHex};
@@ -139,7 +139,7 @@ fn gpgpubdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     sarr = ns.get_array("subnargs");
     for f in sarr.iter() {
         let code = read_file_bytes(f)?;
-        let mut pubk  = GpgPubKey::init_gpg();
+        let mut pubk  = GpgPubKeyFile::init_gpg();
         let _ = pubk.decode_gpg(&code)?;
         pubk.print_gpg("pubk",0,&mut serr)?;
     }
@@ -147,7 +147,22 @@ fn gpgpubdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 }
 
 
-#[extargs_map_function(gpgkdfs2k512_handler,gpgcrc_handler,gpgascdec_handler,gpgpubdec_handler)]
+fn gpggpgdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    let mut serr = std::io::stderr();
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    for f in sarr.iter() {
+        let code = read_file_bytes(f)?;
+        let mut pubk  = GpggpgFile::init_gpg();
+        let _ = pubk.decode_gpg(&code)?;
+        pubk.print_gpg("pubk",0,&mut serr)?;
+    }
+    Ok(())
+}
+
+
+#[extargs_map_function(gpgkdfs2k512_handler,gpgcrc_handler,gpgascdec_handler,gpgpubdec_handler,gpggpgdec_handler)]
 pub fn load_gpg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -158,6 +173,9 @@ pub fn load_gpg_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
         "gpgascdec<gpgascdec_handler>##gpgascfile ... to decode gpg file##" : {
+            "$" : "+"
+        },
+        "gpggpgdec<gpggpgdec_handler>##gpggpgfile ... to decode gpg file##" : {
             "$" : "+"
         },
         "gpgpubdec<gpgpubdec_handler>##gpgpubfile ... to decode gpg public key##" : {
