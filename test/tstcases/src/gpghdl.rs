@@ -148,7 +148,9 @@ fn gpgpubdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 
 fn s2k_decode_cnt( cnt :u8) -> u64 {
     let retv :u64;
-    retv = ((16 + cnt & 0xf) as u64) << (( cnt >> 4) + 6);
+    debug_trace!("cnt [{}:0x{:x}]",cnt,cnt);
+    retv = ((16 + (cnt & 0xf)) as u64) << (( cnt >> 4) + 6);
+    debug_trace!("retv [0x{:x}:{}]",retv,retv);
     return retv;
 }
 
@@ -169,6 +171,9 @@ fn gpggpgdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
         let passinstr = ns.get_string("passin");
         let passin = passinstr.as_bytes();
         let key = opengpg_s2k_sha512(passin,&salt,cnt as usize,32)?;
+        debug_buffer_trace!(passin.as_ptr(),passin.len(),"passin");
+        debug_buffer_trace!(salt.as_ptr(),salt.len(),"salt cnt [0x{:x}:{}]",cnt,cnt);
+        debug_buffer_trace!(key.as_ptr(),key.len(),"key get");
         let iv :Vec<u8> = Vec::from_hex("00000000000000000000000000000000")?;
         let decdata = aes256_cfb_decrypt(&(pubk.encdata.data.data),&key,&iv)?;
         debug_buffer_trace!(decdata.as_ptr(),decdata.len(),"decdata ");
