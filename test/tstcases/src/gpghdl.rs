@@ -31,7 +31,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file_bytes,read_file};
 
-use super::cryptlib::{opengpg_s2k_sha512};
+use super::cryptlib::{opengpg_s2k_sha512,aes256_cfb_decrypt};
 use super::strop::{parse_u64,decode_base64};
 use gpgobj::crc::{GpgCrc24};
 use gpgobj::complex::{GpgPubKeyFile,GpggpgFile};
@@ -146,17 +146,35 @@ fn gpgpubdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     Ok(())
 }
 
+fn s2k_decode_cnt( cnt :u8) -> u64 {
+    let retv :u64;
+    retv = ((16 + cnt & 0xf) as u64) << (( cnt >> 4) + 6);
+    return retv;
+}
 
 fn gpggpgdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
-    let mut serr = std::io::stderr();
+    //let mut serr = std::io::stderr();
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
     for f in sarr.iter() {
         let code = read_file_bytes(f)?;
         let mut pubk  = GpggpgFile::init_gpg();
         let _ = pubk.decode_gpg(&code)?;
-        pubk.print_gpg("pubk",0,&mut serr)?;
+        //pubk.print_gpg("pubk",0,&mut serr)?;
+
+        /*now we should decode the number*/
+        let salt = pubk.seskey.salt.data.clone();
+        let cnt :u64 = s2k_decode_cnt(pubk.seskey.cnt.data);
+        let passinstr = ns.get_string("passin");
+        let passin = passinstr.as_bytes();
+        debug_trace!(" ");
+        let key = opengpg_s2k_sha512(passin,&salt,cnt as usize,32)?;
+        let iv :Vec<u8> = Vec::new();
+        debug_trace!(" ");
+        let decdata = aes256_cfb_decrypt(&(pubk.encdata.data.data),&key,&iv)?;
+        debug_trace!(" ");
+        debug_buffer_trace!(decdata.as_ptr(),decdata.len(),"decdata ");
     }
     Ok(())
 }
