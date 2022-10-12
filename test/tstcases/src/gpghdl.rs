@@ -154,26 +154,23 @@ fn s2k_decode_cnt( cnt :u8) -> u64 {
 
 fn gpggpgdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
-    //let mut serr = std::io::stderr();
+    let mut serr = std::io::stderr();
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
     for f in sarr.iter() {
         let code = read_file_bytes(f)?;
         let mut pubk  = GpggpgFile::init_gpg();
         let _ = pubk.decode_gpg(&code)?;
-        //pubk.print_gpg("pubk",0,&mut serr)?;
+        pubk.print_gpg("pubk",0,&mut serr)?;
 
         /*now we should decode the number*/
         let salt = pubk.seskey.salt.data.clone();
         let cnt :u64 = s2k_decode_cnt(pubk.seskey.cnt.data);
         let passinstr = ns.get_string("passin");
         let passin = passinstr.as_bytes();
-        debug_trace!(" ");
         let key = opengpg_s2k_sha512(passin,&salt,cnt as usize,32)?;
-        let iv :Vec<u8> = Vec::new();
-        debug_trace!(" ");
+        let iv :Vec<u8> = Vec::from_hex("00000000000000000000000000000000")?;
         let decdata = aes256_cfb_decrypt(&(pubk.encdata.data.data),&key,&iv)?;
-        debug_trace!(" ");
         debug_buffer_trace!(decdata.as_ptr(),decdata.len(),"decdata ");
     }
     Ok(())

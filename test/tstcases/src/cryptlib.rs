@@ -12,6 +12,7 @@ use aes::cipher::BlockEncryptMut;
 use aes::cipher::BlockDecryptMut;
 use cbc;
 use cfb_mode;
+//use cfb8;
 use sha2::{Sha512,Digest};
 //use rand::{Rng};
 //use rand::rngs::{OsRng};
@@ -244,6 +245,8 @@ pub fn aes256_decrypt(encdata :&[u8],key :&[u8]) -> Result<Vec<u8>,Box<dyn Error
 pub type Aes256CfbEnc = cfb_mode::Encryptor<aes::Aes256>;
 pub type Aes256CfbDec = cfb_mode::Decryptor<aes::Aes256>;
 
+//pub type Aes256CfbEnc = cfb8::Encryptor<aes::Aes256>;
+//pub type Aes256CfbDec = cfb8::Decryptor<aes::Aes256>;
 
 pub fn aes256_cfb_encrypt(data :&[u8],key :&[u8], iv :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
     let mut retdata :Vec<u8> = data.to_vec();
