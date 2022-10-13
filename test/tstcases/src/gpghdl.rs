@@ -34,8 +34,11 @@ use super::fileop::{read_file_bytes,read_file};
 use super::cryptlib::{opengpg_s2k_sha512,aes256_cfb_decrypt};
 use super::strop::{parse_u64,decode_base64};
 use gpgobj::crc::{GpgCrc24};
-use gpgobj::complex::{GpgPubKeyFile,GpggpgFile};
+use gpgobj::complex::{GpgPubKeyFile,GpggpgFile,GpgPlainText};
 use gpgobj::gpgimpl::{GpgOp};
+
+use super::asn1def::{Asn1Pkcs12};
+use asn1obj::asn1impl::{Asn1Op};
 
 use hex::{FromHex};
 use hex;
@@ -176,7 +179,20 @@ fn gpggpgdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
         debug_buffer_trace!(key.as_ptr(),key.len(),"key get");
         let iv :Vec<u8> = Vec::from_hex("00000000000000000000000000000000")?;
         let decdata = aes256_cfb_decrypt(&(pubk.encdata.data.data),&key,&iv)?;
-        debug_buffer_trace!(decdata.as_ptr(),decdata.len(),"decdata ");
+        if decdata.len() < (16 + 2+ 2 + 20) {
+            extargs_new_error!{GpgHdlError,"decdata len [{}] < 16 + 2 + 2 + 20", decdata.len()}
+        }
+
+        /*now first to decode */
+        let mut plaintxt :GpgPlainText = GpgPlainText::init_gpg();
+        let retv = plaintxt.decode_gpg(&decdata[18..])?;
+        if decdata.len() < (retv + 18 + 2 + 20) {
+            extargs_new_error!{GpgHdlError,"decdata len [{}] < 18 + {} + 2 + 20", decdata.len(),retv}   
+        }
+
+        let mut pkcs12dec :Asn1Pkcs12 = Asn1Pkcs12::init_asn1();
+        let _ = pkcs12dec.decode_asn1(&plaintxt.data.data)?;
+        pkcs12dec.print_asn1("pkcs12",0,&mut serr)?;
     }
     Ok(())
 }
