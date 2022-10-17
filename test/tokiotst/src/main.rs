@@ -27,6 +27,8 @@ use std::any::Any;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
+use futures::executor::block_on;
+
 #[cfg(windows)]
 mod wchar_windows;
 #[cfg(windows)]
@@ -42,7 +44,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 extargs_error_class!{TokioRunError}
 
-#[tokio::main]
 async fn tokio_listen_main(ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::Error>>  {
 	let sarr :Vec<String>;
 	let fmtstr :String;
@@ -86,8 +87,10 @@ async fn tokio_listen_main(ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::E
 
 fn tokiolisten_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 
+	let res :Result<(),Box<dyn Error>>;
 	init_log(ns.clone())?;
-	return tokio_listen_main(ns.clone());
+	res = block_on(tokio_listen_main(ns.clone()));
+	return res;
 }
 
 #[extargs_map_function(tokiolisten_handler)]
