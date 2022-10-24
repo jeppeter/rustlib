@@ -30,7 +30,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file_bytes,write_file_bytes};
 
-use super::cryptlib::{aes256_cbc_encrypt,aes256_cbc_decrypt,aes128_encrypt,aes128_decrypt,aes192_encrypt,aes192_decrypt,aes256_encrypt,aes256_decrypt,aes256_cbc_pure_encrypt,aes256_cbc_pure_decrypt,aes256_cfb_decrypt,aes256_cfb_encrypt};
+use super::cryptlib::{aes256_cbc_encrypt,aes256_cbc_decrypt,aes128_encrypt,aes128_decrypt,aes192_encrypt,aes192_decrypt,aes256_encrypt,aes256_decrypt,aes256_cbc_pure_encrypt,aes256_cbc_pure_decrypt,aes256_cfb_decrypt,aes256_cfb_encrypt,aes128_cbc_encrypt,aes128_cbc_decrypt};
 
 use hex::{FromHex};
 use hex;
@@ -68,6 +68,44 @@ fn aescbcdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
 	let ivv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
 	let data :Vec<u8> = aes256_cbc_decrypt(&encdatav8,&keyv8,&ivv8)?;
+	debug_buffer_trace!(encdatav8.as_ptr(),encdatav8.len(),"read [{}]",f);
+	debug_buffer_trace!(data.as_ptr(),data.len(), "decrypt with [{}] [{}]",sarr[0],sarr[1]);
+	let outf = ns.get_string("output");
+	let _ = write_file_bytes(&outf,&data)?;
+	Ok(())
+}
+
+fn aes128cbcenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 2 {
+		asn1obj_new_error!{CryptHdlError,"need key iv"}
+	}
+	let f = ns.get_string("input");
+	let datav8 :Vec<u8> = read_file_bytes(&f)?;
+	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
+	let ivv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
+	let encdata :Vec<u8> = aes128_cbc_encrypt(&datav8,&keyv8,&ivv8)?;
+	debug_buffer_trace!(datav8.as_ptr(),datav8.len(),"read [{}]", f);
+	debug_buffer_trace!(encdata.as_ptr(),encdata.len(), "enc data with key [{}] iv[{}]",sarr[0],sarr[1]);
+	let outf = ns.get_string("output");
+	let _ = write_file_bytes(&outf,&encdata)?;
+	Ok(())
+}
+
+fn aes128cbcdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 2 {
+		asn1obj_new_error!{CryptHdlError,"need key iv"}
+	}
+	let f = ns.get_string("input");
+	let encdatav8 :Vec<u8> = read_file_bytes(&f)?;
+	let keyv8 :Vec<u8> = Vec::from_hex(&sarr[0]).unwrap();
+	let ivv8 :Vec<u8> = Vec::from_hex(&sarr[1]).unwrap();
+	let data :Vec<u8> = aes128_cbc_decrypt(&encdatav8,&keyv8,&ivv8)?;
 	debug_buffer_trace!(encdatav8.as_ptr(),encdatav8.len(),"read [{}]",f);
 	debug_buffer_trace!(data.as_ptr(),data.len(), "decrypt with [{}] [{}]",sarr[0],sarr[1]);
 	let outf = ns.get_string("output");
@@ -265,7 +303,7 @@ fn aescfbmutldec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 
 
 
-#[extargs_map_function(aescbcenc_handler,aescbcdec_handler,aesencbase_handler,aesdecbase_handler,aescbcpureenc_handler,aescbcpuredec_handler,aescfbenc_handler,aescfbdec_handler,aescfbmutlenc_handler,aescfbmutldec_handler)]
+#[extargs_map_function(aescbcenc_handler,aescbcdec_handler,aesencbase_handler,aesdecbase_handler,aescbcpureenc_handler,aescbcpuredec_handler,aescfbenc_handler,aescfbdec_handler,aescfbmutlenc_handler,aescfbmutldec_handler,aes128cbcenc_handler,aes128cbcdec_handler)]
 pub fn load_crypto_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -279,6 +317,12 @@ pub fn load_crypto_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : 2
 		},
 		"aescbcdec<aescbcdec_handler>##key iv to decrypt encdata from input data to output##" : {
+			"$" : 2
+		},
+		"aes128cbcenc<aes128cbcenc_handler>##key iv to encrypt data from input encdata to output##" : {
+			"$" : 2
+		},
+		"aes128cbcdec<aes128cbcdec_handler>##key iv to decrypt encdata from input data to output##" : {
 			"$" : 2
 		},
 		"aesencbase<aesencbase_handler>##key data [size] to encrypt aes##" : {
