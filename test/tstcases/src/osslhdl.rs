@@ -48,6 +48,8 @@ fn spcstringdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
 		let _ = xname.decode_asn1(&code)?;
 		let mut f = std::io::stderr();
 		xname.print_asn1("spcstring",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode SpcString");
 	}
 
 	Ok(())

@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence,asn1_type_choice};
+use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence,asn1_int_choice};
 #[allow(unused_imports)]
 use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData};
 #[allow(unused_imports)]
@@ -15,7 +15,7 @@ use std::error::Error;
 use std::boxed::Box;
 use std::io::{Write};
 
-#[asn1_type_choice(debug=3,unicode=0,ascii=1,selector=stype)]
+#[asn1_int_choice(debug=3,unicode=0,ascii=1,selector=stype)]
 pub struct SpcString {
 	pub stype :i32,
 	pub unicode : Asn1Imp<Asn1OctData,0>,
