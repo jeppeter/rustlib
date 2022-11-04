@@ -28,9 +28,11 @@ use std::collections::HashMap;
 use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
+#[allow(unused_imports)]
 use super::fileop::{read_file_bytes,write_file_bytes};
 
 use super::ossllib::{SpcString};
+use asn1obj::asn1impl::Asn1Op;
 
 asn1obj_error_class!{OsslHdlError}
 
