@@ -53,6 +53,8 @@ mod gpghdl;
 mod crypthdl;
 mod asn1def;
 mod pkcs7;
+mod ossllib;
+mod osslhdl;
 
 
 #[extargs_map_function()]
@@ -76,6 +78,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	crypthdl::load_crypto_handler(parser.clone())?;
 	pkcs7::load_pkcs7_handler(parser.clone())?;
 	gpghdl::load_gpg_handler(parser.clone())?;
+	osslhdl::load_ossl_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
