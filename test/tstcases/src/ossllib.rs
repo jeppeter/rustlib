@@ -18,6 +18,6 @@ use std::io::{Write};
 #[asn1_type_choice(debug=3,unicode=0,ascii=1,selector=stype)]
 pub struct SpcString {
 	pub stype :i32,
-	pub unicode : Asn1Imp<Asn1BitString,0>,
-	pub ascii :Asn1Imp<Asn1BitString,1>,
+	pub unicode : Asn1Imp<Asn1OctData,0>,
+	pub ascii :Asn1Imp<Asn1OctData,1>,
 }
