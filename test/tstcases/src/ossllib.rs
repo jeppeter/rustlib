@@ -35,3 +35,15 @@ pub struct SpcLink {
 	pub moniker :Asn1Imp<SpcSerializedObject,1>,
 	pub file :Asn1Imp<SpcString,2>,
 }
+
+#[asn1_sequence()]
+pub struct SpcSpOpusInfo {
+	pub programname :SpcString,
+	pub moreinfo : SpcLink,
+}
+
+#[asn1_sequence()]
+pub struct SpcAttributeTypeAndOptionalValue {
+	pub otype  :Asn1Object,
+	pub value :Asn1Any,
+}

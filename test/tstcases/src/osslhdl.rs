@@ -31,7 +31,7 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 #[allow(unused_imports)]
 use super::fileop::{read_file_bytes,write_file_bytes};
 
-use super::ossllib::{SpcString,SpcSerializedObject,SpcLink};
+use super::ossllib::{SpcString,SpcSerializedObject,SpcLink,SpcSpOpusInfo,SpcAttributeTypeAndOptionalValue};
 use asn1obj::asn1impl::Asn1Op;
 
 asn1obj_error_class!{OsslHdlError}
@@ -92,7 +92,42 @@ fn spclinkdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
 	Ok(())
 }
 
-#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler)]
+fn spcopusinfodec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = SpcSpOpusInfo::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("SpcSpOpusInfo",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode SpcSpOpusInfo");
+	}
+
+	Ok(())
+}
+
+fn spcattrvaldec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = SpcAttributeTypeAndOptionalValue::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("SpcAttributeTypeAndOptionalValue",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode SpcAttributeTypeAndOptionalValue");
+	}
+
+	Ok(())
+}
+#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler)]
 pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -103,6 +138,12 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"spclinkdec<spclinkdec_handler>##binfile ... to decode SpcLink##" : {
+			"$" : "+"
+		},
+		"spcopusinfodec<spcopusinfodec_handler>##binfile ... to decode SpcSpOpusInfo##" : {
+			"$" : "+"
+		},
+		"spcattrvaldec<spcattrvaldec_handler>##binfile ... to decode SpcAttributeTypeAndOptionalValue##" : {
 			"$" : "+"
 		}
 	}
