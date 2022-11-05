@@ -31,7 +31,7 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 #[allow(unused_imports)]
 use super::fileop::{read_file_bytes,write_file_bytes};
 
-use super::ossllib::{SpcString};
+use super::ossllib::{SpcString,SpcSerializedObject,SpcLink};
 use asn1obj::asn1impl::Asn1Op;
 
 asn1obj_error_class!{OsslHdlError}
@@ -55,12 +55,54 @@ fn spcstringdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
 	Ok(())
 }
 
+fn spcserobjdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
 
-#[extargs_map_function(spcstringdec_handler)]
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = SpcSerializedObject::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("SpcSerializedObject",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode SpcSerializedObject");
+	}
+
+	Ok(())
+}
+
+
+fn spclinkdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = SpcLink::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("SpcLink",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode SpcLink");
+	}
+
+	Ok(())
+}
+
+#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler)]
 pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"spcstringdec<spcstringdec_handler>##files ... to decode spcstring##" : {
+			"$" : "+"
+		},
+		"spcserobjdec<spcserobjdec_handler>##binfile ... to decode SpcSerializedObject##" : {
+			"$" : "+"
+		},
+		"spclinkdec<spclinkdec_handler>##binfile ... to decode SpcLink##" : {
 			"$" : "+"
 		}
 	}

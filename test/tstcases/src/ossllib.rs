@@ -21,3 +21,17 @@ pub struct SpcString {
 	pub unicode : Asn1Imp<Asn1OctData,0>,
 	pub ascii :Asn1Imp<Asn1OctData,1>,
 }
+
+#[asn1_sequence()]
+pub struct SpcSerializedObject {
+	pub classid :Asn1OctData,
+	pub serializeddata : Asn1OctData,
+}
+
+#[asn1_int_choice(debug=3,selector=stype,url=0,moniker=1,file=2)]
+pub struct SpcLink {
+	pub stype :i32,
+	pub url :Asn1Imp<Asn1OctData,0>,
+	pub moniker :Asn1Imp<SpcSerializedObject,1>,
+	pub file :Asn1Imp<SpcString,2>,
+}
