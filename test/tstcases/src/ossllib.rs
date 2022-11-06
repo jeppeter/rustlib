@@ -47,3 +47,9 @@ pub struct SpcAttributeTypeAndOptionalValue {
 	pub otype  :Asn1Object,
 	pub value :Asn1Any,
 }
+
+#[asn1_sequence()]
+pub struct AlgorithmIdentifier {
+	pub algorithm : Asn1Object,
+	pub parameters : Asn1Any,
+}
