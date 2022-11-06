@@ -31,7 +31,7 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 #[allow(unused_imports)]
 use super::fileop::{read_file_bytes,write_file_bytes};
 
-use super::ossllib::{SpcString,SpcSerializedObject,SpcLink,SpcSpOpusInfo,SpcAttributeTypeAndOptionalValue,AlgorithmIdentifier};
+use super::ossllib::{SpcString,SpcSerializedObject,SpcLink,SpcSpOpusInfo,SpcAttributeTypeAndOptionalValue,AlgorithmIdentifier,DigestInfo,SpcIndirectDataContent};
 use asn1obj::asn1impl::Asn1Op;
 
 asn1obj_error_class!{OsslHdlError}
@@ -146,8 +146,44 @@ fn algoridentdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	Ok(())
 }
 
+fn diginfodec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
 
-#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler)]
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = DigestInfo::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("DigestInfo",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode DigestInfo");
+	}
+
+	Ok(())
+}
+
+fn spcinddatacondec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = SpcIndirectDataContent::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("SpcIndirectDataContent",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode SpcIndirectDataContent");
+	}
+
+	Ok(())
+}
+
+
+#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler)]
 pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -167,6 +203,12 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"algoridentdec<algoridentdec_handler>##binfile ... to decode AlgorithmIdentifier##" : {
+			"$" : "+"
+		},
+		"diginfodec<diginfodec_handler>##binfile ... to decode DigestInfo##" : {
+			"$" : "+"
+		},
+		"spcinddatacondec<spcinddatacondec_handler>##binfile ... to decode SpcIndirectDataContent##" : {
 			"$" : "+"
 		}
 	}

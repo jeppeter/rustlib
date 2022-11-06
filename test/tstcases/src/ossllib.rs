@@ -53,3 +53,15 @@ pub struct AlgorithmIdentifier {
 	pub algorithm : Asn1Object,
 	pub parameters : Asn1Any,
 }
+
+#[asn1_sequence()]
+pub struct DigestInfo {
+	pub digestalgorithm :AlgorithmIdentifier,
+	pub digest :Asn1OctData,
+}
+
+#[asn1_sequence()]
+pub struct SpcIndirectDataContent {
+	pub data :SpcAttributeTypeAndOptionalValue,
+	pub messagedigest :DigestInfo,
+}
