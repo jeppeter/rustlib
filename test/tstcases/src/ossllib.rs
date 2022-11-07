@@ -65,3 +65,25 @@ pub struct SpcIndirectDataContent {
 	pub data :SpcAttributeTypeAndOptionalValue,
 	pub messagedigest :DigestInfo,
 }
+
+#[asn1_sequence()]
+pub struct CatalogAuthAttrElem {
+	pub otype :Asn1Object,
+	pub contents : Asn1Opt<Asn1Any>,	
+}
+
+#[asn1_sequence()]
+pub struct CatalogAuthAttr {
+	pub elem :Asn1Seq<CatalogAuthAttrElem>,
+}
+
+#[asn1_sequence()]
+pub struct CatalogInfoElem {
+	pub digest : Asn1OctData,
+	pub attributes :Asn1Set<CatalogAuthAttr>,	
+}
+
+#[asn1_sequence()]
+pub struct CatalogInfo {
+	pub elem : Asn1Seq<CatalogInfoElem>,
+}
