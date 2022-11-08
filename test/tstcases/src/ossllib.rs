@@ -215,3 +215,20 @@ pub struct TimeStampRespElem {
 pub struct TimeStampResp {
 	pub elem :Asn1Seq<TimeStampRespElem>,
 }
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct TimeStampReqElem {
+	pub version : Asn1Integer,
+	pub msgimpprint :MessageImprint,
+	pub reqpolicy :Asn1Opt<Asn1Object>,
+	pub nonce :Asn1Opt<Asn1Integer>,
+	pub certreq :Asn1Boolean,
+	pub extensions :Asn1Opt<Asn1ImpSet<Asn1X509Extension,0>>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct TimeStampReq {
+	pub elem :Asn1Seq<TimeStampReqElem>,
+}
