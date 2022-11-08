@@ -232,3 +232,17 @@ pub struct TimeStampReqElem {
 pub struct TimeStampReq {
 	pub elem :Asn1Seq<TimeStampReqElem>,
 }
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct TimeStampAccuracyElem {
+	pub seconds :Asn1Integer,
+	pub millis :Asn1Integer,
+	pub micros :Asn1Integer,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct TimeStampAccuracy {
+	pub elem :Asn1Seq<TimeStampAccuracyElem>,
+}

@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence};
+use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence,asn1_int_choice};
 use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData};
 use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
 use asn1obj::strop::{asn1_format_line};
@@ -558,4 +558,38 @@ pub struct Asn1RsaPubkeyFormElem {
 #[derive(Clone)]
 pub struct Asn1RsaPubkeyForm {
 	pub elem :Asn1Seq<Asn1RsaPubkeyFormElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct Asn1OtherNameElem {
+	pub typeid :Asn1Object,
+	pub value :Asn1Ndef<Asn1Any,0>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct Asn1OtherName {
+	pub elem :Asn1Seq<Asn1OtherNameElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct Asn1EdiPartyNameElem {
+	pub nameassigner :Asn1Opt<Asn1Ndef<Asn1PrintableString,0>>,
+	pub partyname :Asn1Ndef<Asn1PrintableString,1>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct Asn1EdiPartyName {
+	pub elem :Asn1Seq<Asn1EdiPartyNameElem>,
+}
+
+#[derive(Clone)]
+#[asn1_int_choice(debug=3,selector=stype,othername=0,rfc822name=1)]
+pub struct Asn1GeneralName {
+	pub stype :i32,
+	pub othername : Asn1Imp<Asn1OtherName,0>,
+	pub rfc822name :Asn1Imp<Asn1BitString,1>,
 }
