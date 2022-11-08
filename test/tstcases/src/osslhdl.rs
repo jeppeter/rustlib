@@ -31,7 +31,7 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 #[allow(unused_imports)]
 use super::fileop::{read_file_bytes,write_file_bytes};
 
-use super::ossllib::{SpcString,SpcSerializedObject,SpcLink,SpcSpOpusInfo,SpcAttributeTypeAndOptionalValue,AlgorithmIdentifier,DigestInfo,SpcIndirectDataContent,CatalogAuthAttr,CatalogInfo};
+use super::ossllib::*;
 use asn1obj::asn1impl::Asn1Op;
 
 asn1obj_error_class!{OsslHdlError}
@@ -217,7 +217,62 @@ fn catainfodec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 
 	Ok(())
 }
-#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler)]
+
+fn msctlcondec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = MsCtlContent::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("MsCtlContent",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode MsCtlContent");
+	}
+
+	Ok(())
+}
+
+fn spcpeimagedatadec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = SpcPeImageData::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("SpcPeImageData",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode SpcPeImageData");
+	}
+
+	Ok(())
+}
+
+fn spcsipinfodec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = SpcSipInfo::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("SpcSipInfo",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode SpcSipInfo");
+	}
+
+	Ok(())
+}
+
+#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler)]
 pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -249,6 +304,15 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"catainfodec<catainfodec_handler>##binfile ... to decode CatalogInfo##" : {
+			"$" : "+"
+		},
+		"msctlcondec<msctlcondec_handler>##binfile ... to decode MsCtlContent##" : {
+			"$" : "+"
+		},
+		"spcpeimagedatadec<spcpeimagedatadec_handler>##binfile ... to decode SpcPeImageData##" : {
+			"$" : "+"
+		},
+		"spcsipinfodec<spcsipinfodec_handler>##binfile ... to decode SpcSipInfo##" : {
 			"$" : "+"
 		}
 	}

@@ -15,6 +15,9 @@ use std::error::Error;
 use std::boxed::Box;
 use std::io::{Write};
 
+//use super::asn1def::*;
+
+#[derive(Clone)]
 #[asn1_int_choice(debug=3,unicode=0,ascii=1,selector=stype)]
 pub struct SpcString {
 	pub stype :i32,
@@ -22,12 +25,14 @@ pub struct SpcString {
 	pub ascii :Asn1Imp<Asn1OctData,1>,
 }
 
+#[derive(Clone)]
 #[asn1_sequence()]
 pub struct SpcSerializedObject {
 	pub classid :Asn1OctData,
 	pub serializeddata : Asn1OctData,
 }
 
+#[derive(Clone)]
 #[asn1_int_choice(debug=3,selector=stype,url=0,moniker=1,file=2)]
 pub struct SpcLink {
 	pub stype :i32,
@@ -36,54 +41,111 @@ pub struct SpcLink {
 	pub file :Asn1Imp<SpcString,2>,
 }
 
+#[derive(Clone)]
 #[asn1_sequence()]
 pub struct SpcSpOpusInfo {
 	pub programname :SpcString,
 	pub moreinfo : SpcLink,
 }
 
+#[derive(Clone)]
 #[asn1_sequence()]
 pub struct SpcAttributeTypeAndOptionalValue {
 	pub otype  :Asn1Object,
 	pub value :Asn1Any,
 }
 
+#[derive(Clone)]
 #[asn1_sequence()]
 pub struct AlgorithmIdentifier {
 	pub algorithm : Asn1Object,
 	pub parameters : Asn1Any,
 }
 
+#[derive(Clone)]
 #[asn1_sequence()]
 pub struct DigestInfo {
 	pub digestalgorithm :AlgorithmIdentifier,
 	pub digest :Asn1OctData,
 }
 
+#[derive(Clone)]
 #[asn1_sequence()]
 pub struct SpcIndirectDataContent {
 	pub data :SpcAttributeTypeAndOptionalValue,
 	pub messagedigest :DigestInfo,
 }
 
+#[derive(Clone)]
 #[asn1_sequence()]
 pub struct CatalogAuthAttrElem {
 	pub otype :Asn1Object,
 	pub contents : Asn1Opt<Asn1Any>,	
 }
 
+#[derive(Clone)]
 #[asn1_sequence()]
 pub struct CatalogAuthAttr {
 	pub elem :Asn1Seq<CatalogAuthAttrElem>,
 }
 
+#[derive(Clone)]
 #[asn1_sequence()]
 pub struct CatalogInfoElem {
 	pub digest : Asn1OctData,
 	pub attributes :Asn1Set<CatalogAuthAttr>,	
 }
 
+#[derive(Clone)]
 #[asn1_sequence()]
 pub struct CatalogInfo {
 	pub elem : Asn1Seq<CatalogInfoElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct MsCtlContentElem {
+	pub stype :SpcAttributeTypeAndOptionalValue,
+	pub identifier : Asn1OctData,
+	pub time :Asn1Time,
+	pub version :SpcAttributeTypeAndOptionalValue,
+	pub header_attributes : Asn1Seq<CatalogInfo>,
+	pub filename :Asn1Opt<Asn1Any>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct MsCtlContent {
+	pub elem :Asn1Seq<MsCtlContentElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct SpcPeImageDataElem {
+	pub flags : Asn1BitData,
+	pub file :Asn1Opt<SpcLink>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct SpcPeImageData {
+	pub elem :Asn1Seq<SpcPeImageDataElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct SpcSipInfoElem {
+	pub a :Asn1Integer,
+	pub stringv :Asn1OctData,
+	pub b :Asn1Integer,
+	pub c :Asn1Integer,
+	pub d :Asn1Integer,
+	pub e :Asn1Integer,
+	pub f :Asn1Integer,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct SpcSipInfo {
+	pub elem :Asn1Seq<SpcSipInfoElem>,
 }
