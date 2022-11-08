@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence,asn1_int_choice};
 #[allow(unused_imports)]
-use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData};
+use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData,Asn1String};
 #[allow(unused_imports)]
 use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
 #[allow(unused_imports)]
@@ -15,7 +15,7 @@ use std::error::Error;
 use std::boxed::Box;
 use std::io::{Write};
 
-//use super::asn1def::*;
+use super::asn1def::*;
 
 #[derive(Clone)]
 #[asn1_int_choice(debug=3,unicode=0,ascii=1,selector=stype)]
@@ -148,4 +148,70 @@ pub struct SpcSipInfoElem {
 #[asn1_sequence()]
 pub struct SpcSipInfo {
 	pub elem :Asn1Seq<SpcSipInfoElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct MessageImprintElem {
+	pub digestalgorithm :AlgorithmIdentifier,
+	pub digest : Asn1OctData,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct MessageImprint {
+	pub elem :Asn1Seq<MessageImprintElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct TimeStampRequestBlobElem {
+	pub otype :Asn1Object,
+	pub signature :Asn1OctData,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct TimeStampRequestBlob {
+	pub elem :Asn1Seq<TimeStampRequestBlobElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct TimeStampRequestElem {
+	pub otype :Asn1Object,
+	pub blob :TimeStampRequestBlob,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct TimeStampRequest {
+	pub elem :Asn1Seq<TimeStampRequestElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct PKIStatusInfoElem {
+	pub status :Asn1Integer,
+	pub statusstring :Asn1Opt<Asn1Seq<Asn1String>>,
+	pub failinfo :Asn1Opt<Asn1BitData>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct PKIStatusInfo {
+	pub elem :Asn1Seq<PKIStatusInfoElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct TimeStampRespElem {
+	pub status :PKIStatusInfo,
+	pub token :Asn1Opt<Asn1Pkcs7>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct TimeStampResp {
+	pub elem :Asn1Seq<TimeStampRespElem>,
 }

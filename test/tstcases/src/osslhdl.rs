@@ -272,7 +272,98 @@ fn spcsipinfodec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	Ok(())
 }
 
-#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler)]
+fn msgimpprintdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = MessageImprint::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("MessageImprint",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode MessageImprint");
+	}
+
+	Ok(())
+}
+
+fn timestamprqstblobdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = TimeStampRequestBlob::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("TimeStampRequestBlob",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode TimeStampRequestBlob");
+	}
+
+	Ok(())
+}
+
+fn timestamprqstdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = TimeStampRequest::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("TimeStampRequest",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode TimeStampRequest");
+	}
+
+	Ok(())
+}
+
+fn pkistatusinfodec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = PKIStatusInfo::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("PKIStatusInfo",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode PKIStatusInfo");
+	}
+
+	Ok(())
+}
+
+fn timestamprespdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = TimeStampResp::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("TimeStampResp",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode TimeStampResp");
+	}
+
+	Ok(())
+}
+
+
+#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler,msgimpprintdec_handler,timestamprqstblobdec_handler,timestamprqstdec_handler,pkistatusinfodec_handler,timestamprespdec_handler)]
 pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -313,6 +404,21 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"spcsipinfodec<spcsipinfodec_handler>##binfile ... to decode SpcSipInfo##" : {
+			"$" : "+"
+		},
+		"msgimpprintdec<msgimpprintdec_handler>##binfile ... to decode MessageImprint##" : {
+			"$" : "+"
+		},
+		"timestamprqstblobdec<timestamprqstblobdec_handler>##binfile ... to decode TimeStampRequestBlob##" : {
+			"$" : "+"
+		},
+		"timestamprqstdec<timestamprqstdec_handler>##binfile ... to decode TimeStampRequest##" : {
+			"$" : "+"
+		},
+		"pkistatusinfodec<pkistatusinfodec_handler>##binfile ... to decode PKIStatusInfo##" : {
+			"$" : "+"
+		},
+		"timestamprespdec<timestamprespdec_handler>##binfile ... to decode TimeStampResp##" : {
 			"$" : "+"
 		}
 	}
