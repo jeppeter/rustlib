@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence,asn1_int_choice};
-use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData};
+use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData,Asn1IA5String};
 use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
@@ -22,7 +22,6 @@ pub const OID_PKCS7_ENCRYPTED_DATA :&str = "1.2.840.113549.1.7.6";
 pub const OID_PKCS7_DATA :&str = "1.2.840.113549.1.7.1";
 pub const OID_PKCS12_SAFE_BAG_X509_CERT :&str = "1.2.840.113549.1.9.22.1";
 pub const OID_SHA256_DIGEST :&str = "2.16.840.1.101.3.4.2.1";
-
 
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
@@ -586,10 +585,13 @@ pub struct Asn1EdiPartyName {
 	pub elem :Asn1Seq<Asn1EdiPartyNameElem>,
 }
 
+#[asn1_int_choice(debug=0,selector=stype,othername=0,rfc822name=1,dnsname=2,directoryname=4)]
 #[derive(Clone)]
-#[asn1_int_choice(debug=3,selector=stype,othername=0,rfc822name=1)]
 pub struct Asn1GeneralName {
 	pub stype :i32,
 	pub othername : Asn1Imp<Asn1OtherName,0>,
-	pub rfc822name :Asn1Imp<Asn1BitString,1>,
+	pub rfc822name :Asn1Imp<Asn1IA5String,1>,
+	pub dnsname :Asn1Imp<Asn1IA5String,2>,
+	pub directoryname : Asn1Imp<Asn1Seq<Asn1X509Name>,4>,
 }
+

@@ -78,12 +78,33 @@ fn othernamedec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
 	Ok(())
 }
 
+fn generalnamedec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
 
-#[extargs_map_function(othernamedec_handler)]
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let mut xname = Asn1GeneralName::init_asn1();
+		let _ = xname.decode_asn1(&code)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("Asn1GeneralName",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode Asn1GeneralName");
+	}
+
+	Ok(())
+}
+
+
+#[extargs_map_function(othernamedec_handler,generalnamedec_handler)]
 pub fn load_asn1_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"othernamedec<othernamedec_handler>##binfile ... to decode OTHERNAME##" : {
+			"$" : "+"
+		},
+		"generalnamedec<generalnamedec_handler>##binfile ... to decode GENERAL_NAME##" : {
 			"$" : "+"
 		}
 	}
