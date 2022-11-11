@@ -52,6 +52,7 @@ mod cryptlib;
 mod gpghdl;
 mod crypthdl;
 mod asn1def;
+mod asn1tst;
 mod pkcs7;
 mod ossllib;
 mod osslhdl;
@@ -74,7 +75,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	pehdl::load_pe_handler(parser.clone())?;
 	filehdl::load_file_handler(parser.clone())?;
 	sslhdl::load_ssl_handler(parser.clone())?;
-	//asn1tst::load_asn1_handler(parser.clone())?;
+	asn1tst::load_asn1_handler(parser.clone())?;
 	crypthdl::load_crypto_handler(parser.clone())?;
 	pkcs7::load_pkcs7_handler(parser.clone())?;
 	gpghdl::load_gpg_handler(parser.clone())?;
