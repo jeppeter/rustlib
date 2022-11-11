@@ -585,7 +585,7 @@ pub struct Asn1EdiPartyName {
 	pub elem :Asn1Seq<Asn1EdiPartyNameElem>,
 }
 
-#[asn1_int_choice(debug=0,selector=stype,othername=0,rfc822name=1,dnsname=2,directoryname=4)]
+#[asn1_int_choice(debug=0,selector=stype,othername=0,rfc822name=1,dnsname=2,directoryname=4,uri=6,ipaddress=7,registerid=8)]
 #[derive(Clone)]
 pub struct Asn1GeneralName {
 	pub stype :i32,
@@ -593,5 +593,8 @@ pub struct Asn1GeneralName {
 	pub rfc822name :Asn1Imp<Asn1IA5String,1>,
 	pub dnsname :Asn1Imp<Asn1IA5String,2>,
 	pub directoryname : Asn1Imp<Asn1Seq<Asn1X509Name>,4>,
+	pub uri : Asn1Imp<Asn1IA5String,6>,
+	pub ipaddress :Asn1Imp<Asn1IA5String,7>,
+	pub registerid :Asn1Imp<Asn1Object,8>,
 }
 
