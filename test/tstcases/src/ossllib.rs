@@ -50,30 +50,54 @@ pub struct SpcSpOpusInfo {
 
 #[derive(Clone)]
 #[asn1_sequence()]
-pub struct SpcAttributeTypeAndOptionalValue {
+pub struct SpcAttributeTypeAndOptionalValueElem {
 	pub otype  :Asn1Object,
 	pub value :Asn1Any,
 }
 
 #[derive(Clone)]
 #[asn1_sequence()]
-pub struct AlgorithmIdentifier {
+pub struct SpcAttributeTypeAndOptionalValue {
+	pub elem :Asn1Seq<SpcAttributeTypeAndOptionalValueElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct AlgorithmIdentifierElem {
 	pub algorithm : Asn1Object,
 	pub parameters : Asn1Any,
 }
 
 #[derive(Clone)]
 #[asn1_sequence()]
-pub struct DigestInfo {
+pub struct AlgorithmIdentifier {
+	pub elem : Asn1Seq<AlgorithmIdentifierElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct DigestInfoElem {
 	pub digestalgorithm :AlgorithmIdentifier,
 	pub digest :Asn1OctData,
 }
 
 #[derive(Clone)]
 #[asn1_sequence()]
-pub struct SpcIndirectDataContent {
+pub struct DigestInfo {
+	pub elem : Asn1Seq<DigestInfoElem>,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct SpcIndirectDataContentElem {
 	pub data :SpcAttributeTypeAndOptionalValue,
 	pub messagedigest :DigestInfo,
+}
+
+#[derive(Clone)]
+#[asn1_sequence()]
+pub struct SpcIndirectDataContent {
+	pub elem :Asn1Seq<SpcIndirectDataContentElem>,
 }
 
 #[derive(Clone)]
