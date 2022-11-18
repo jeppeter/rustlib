@@ -247,8 +247,8 @@ pub struct Asn1Pkcs7IssuerAndSerial {
 }
 
 
-//#[asn1_sequence(debug=enable)]
-#[asn1_sequence()]
+//#[asn1_sequence()]
+#[asn1_sequence(debug=enable)]
 #[derive(Clone)]
 pub struct Asn1Pkcs7SignerInfoElem {
 	pub version : Asn1Integer,
@@ -267,8 +267,8 @@ pub struct Asn1Pkcs7SignerInfo {
 	pub elem : Asn1Seq<Asn1Pkcs7SignerInfoElem>,
 }
 
-//#[asn1_sequence(debug=enable)]
-#[asn1_sequence()]
+//#[asn1_sequence()]
+#[asn1_sequence(debug=enable)]
 #[derive(Clone)]
 pub struct Asn1Pkcs7SignedElem {
 	pub version :Asn1Integer,
@@ -317,14 +317,14 @@ pub struct Asn1Pkcs7Encrypt {
 	pub elem : Asn1Seq<Asn1Pkcs7EncryptElem>,
 }
 
-#[asn1_obj_selector(anyobj=default,signed="1.2.840.113549.1.7.2",encryptdata="1.2.840.113549.1.7.6",data="1.2.840.113549.1.7.1")]
+#[asn1_obj_selector(debug=enable,anyobj=default,signed="1.2.840.113549.1.7.2",encryptdata="1.2.840.113549.1.7.6",data="1.2.840.113549.1.7.1")]
 #[derive(Clone)]
 pub struct Asn1Pkcs7Selector {
 	pub val :Asn1Object,
 }
 
-//#[asn1_choice(selector=selector,debug=enable)]
-#[asn1_choice(selector=selector)]
+//#[asn1_choice(selector=selector)]
+#[asn1_choice(selector=selector,debug=enable)]
 #[derive(Clone)]
 pub struct Asn1Pkcs7Elem {
 	pub selector :Asn1Pkcs7Selector,

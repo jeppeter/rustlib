@@ -214,7 +214,7 @@ pub struct TimeStampRequest {
 }
 
 #[derive(Clone)]
-#[asn1_sequence()]
+#[asn1_sequence(debug=enable)]
 pub struct PKIStatusInfoElem {
 	pub status :Asn1Integer,
 	pub statusstring :Asn1Opt<Asn1Seq<Asn1String>>,
@@ -222,20 +222,20 @@ pub struct PKIStatusInfoElem {
 }
 
 #[derive(Clone)]
-#[asn1_sequence()]
+#[asn1_sequence(debug=enable)]
 pub struct PKIStatusInfo {
 	pub elem :Asn1Seq<PKIStatusInfoElem>,
 }
 
 #[derive(Clone)]
-#[asn1_sequence()]
+#[asn1_sequence(debug=enable)]
 pub struct TimeStampRespElem {
 	pub status :PKIStatusInfo,
 	pub token :Asn1Opt<Asn1Pkcs7>,
 }
 
 #[derive(Clone)]
-#[asn1_sequence()]
+#[asn1_sequence(debug=enable)]
 pub struct TimeStampResp {
 	pub elem :Asn1Seq<TimeStampRespElem>,
 }
