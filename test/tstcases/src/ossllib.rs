@@ -270,3 +270,19 @@ pub struct TimeStampAccuracyElem {
 pub struct TimeStampAccuracy {
 	pub elem :Asn1Seq<TimeStampAccuracyElem>,
 }
+
+#[asn1_sequence(debug=enable)]
+#[derive(Clone)]
+pub struct SpcAsn1CodeElem {
+	pub classid : Asn1OctData,
+	pub serializeddata :Asn1Opt<Asn1ImpSet<Asn1Object,0>>,
+	pub intval :Asn1ImpSet<Asn1BigNum,1>,
+	pub ccval :Asn1BigNum,
+}
+
+//#[asn1_sequence(debug=enable)]
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct SpcAsn1Code {
+	pub elem : Asn1Seq<SpcAsn1CodeElem>,
+}
