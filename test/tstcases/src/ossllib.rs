@@ -213,29 +213,33 @@ pub struct TimeStampRequest {
 	pub elem :Asn1Seq<TimeStampRequestElem>,
 }
 
+//#[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-#[asn1_sequence(debug=enable)]
+#[asn1_sequence()]
 pub struct PKIStatusInfoElem {
 	pub status :Asn1Integer,
 	pub statusstring :Asn1Opt<Asn1Seq<Asn1String>>,
 	pub failinfo :Asn1Opt<Asn1BitData>,
 }
 
+//#[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-#[asn1_sequence(debug=enable)]
+#[asn1_sequence()]
 pub struct PKIStatusInfo {
 	pub elem :Asn1Seq<PKIStatusInfoElem>,
 }
 
+//#[asn1_sequence(debug=enable)]
 #[derive(Clone)]
-#[asn1_sequence(debug=enable)]
+#[asn1_sequence()]
 pub struct TimeStampRespElem {
 	pub status :PKIStatusInfo,
 	pub token :Asn1Opt<Asn1Pkcs7>,
 }
 
 #[derive(Clone)]
-#[asn1_sequence(debug=enable)]
+//#[asn1_sequence(debug=enable)]
+#[asn1_sequence()]
 pub struct TimeStampResp {
 	pub elem :Asn1Seq<TimeStampRespElem>,
 }
@@ -271,7 +275,8 @@ pub struct TimeStampAccuracy {
 	pub elem :Asn1Seq<TimeStampAccuracyElem>,
 }
 
-#[asn1_sequence(debug=enable)]
+//#[asn1_sequence(debug=enable)]
+#[asn1_sequence()]
 #[derive(Clone)]
 pub struct SpcAsn1CodeElem {
 	pub classid : Asn1OctData,

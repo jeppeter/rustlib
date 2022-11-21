@@ -318,7 +318,8 @@ pub struct Asn1Pkcs7Encrypt {
 	pub elem : Asn1Seq<Asn1Pkcs7EncryptElem>,
 }
 
-#[asn1_obj_selector(debug=enable,anyobj=default,signed="1.2.840.113549.1.7.2",encryptdata="1.2.840.113549.1.7.6",data="1.2.840.113549.1.7.1")]
+//#[asn1_obj_selector(debug=enable,anyobj=default,signed="1.2.840.113549.1.7.2",encryptdata="1.2.840.113549.1.7.6",data="1.2.840.113549.1.7.1")]
+#[asn1_obj_selector(anyobj=default,signed="1.2.840.113549.1.7.2",encryptdata="1.2.840.113549.1.7.6",data="1.2.840.113549.1.7.1")]
 #[derive(Clone)]
 pub struct Asn1Pkcs7Selector {
 	pub val :Asn1Object,
