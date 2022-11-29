@@ -20,6 +20,7 @@ use std::boxed::Box;
 use regex::Regex;
 #[allow(unused_imports)]
 use std::any::Any;
+use std::io::{Write};
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
@@ -29,7 +30,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 #[allow(unused_imports)]
-use super::fileop::{read_file_bytes,write_file_bytes};
+use super::fileop::{read_file_bytes,write_file_bytes,read_file};
 
 use super::ossllib::*;
 use asn1obj::asn1impl::Asn1Op;
@@ -346,7 +347,7 @@ fn pkistatusinfodec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
 
 fn timestamprespdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
-
+	let mut cv :serde_json::value::Value;
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
 	for f in sarr.iter() {
@@ -356,11 +357,35 @@ fn timestamprespdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
 		let mut f = std::io::stderr();
 		xname.print_asn1("TimeStampResp",0,&mut f)?;
 		let vcode = xname.encode_asn1()?;
+		cv = serde_json::json!({});
+		let _ = xname.encode_json("",&mut cv)?;
+		let s = serde_json::to_string_pretty(&cv)?;
+		let _ = f.write(s.as_bytes())?;
 		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode TimeStampResp");
 	}
 
 	Ok(())
 }
+
+fn timestamprespenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	let mut cv :serde_json::value::Value;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let jcode = read_file(f)?;
+		cv = serde_json::from_str(&jcode)?;
+		let mut xname = TimeStampResp::init_asn1();
+		let _ = xname.decode_json("",&cv)?;
+		let mut f = std::io::stderr();
+		xname.print_asn1("TimeStampResp",0,&mut f)?;
+		let vcode = xname.encode_asn1()?;
+		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode TimeStampResp");
+	}
+
+	Ok(())
+}
+
 
 fn timestampreqdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
@@ -400,7 +425,7 @@ fn timestampaccdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Ar
 
 fn spcasn1codedec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
-
+	let mut cv :serde_json::value::Value;
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
 	for f in sarr.iter() {
@@ -408,15 +433,19 @@ fn spcasn1codedec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 		let mut xname = SpcAsn1Code::init_asn1();
 		let _ = xname.decode_asn1(&code)?;
 		let mut f = std::io::stderr();
+		cv = serde_json::json!({});
 		xname.print_asn1("SpcAsn1Code",0,&mut f)?;
 		let vcode = xname.encode_asn1()?;
+		let _ = xname.encode_json("",&mut cv)?;
+		let s = serde_json::to_string_pretty(&cv)?;
+		let _ = f.write(s.as_bytes())?;
 		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode SpcAsn1Code");
 	}
 
 	Ok(())
 }
 
-#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler,msgimpprintdec_handler,timestamprqstblobdec_handler,timestamprqstdec_handler,pkistatusinfodec_handler,timestamprespdec_handler,timestampreqdec_handler,timestampaccdec_handler,spcasn1codedec_handler)]
+#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler,msgimpprintdec_handler,timestamprqstblobdec_handler,timestamprqstdec_handler,pkistatusinfodec_handler,timestamprespdec_handler,timestampreqdec_handler,timestampaccdec_handler,spcasn1codedec_handler,timestamprespenc_handler)]
 pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -481,6 +510,9 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"spcasn1codedec<spcasn1codedec_handler>##binfile ... to decode SpcAsn1Code##" : {
+			"$" : "+"
+		},
+		"timestamprespenc<timestamprespenc_handler>##jsonfile ... to encode TimeStampResp##" : {
 			"$" : "+"
 		}
 	}

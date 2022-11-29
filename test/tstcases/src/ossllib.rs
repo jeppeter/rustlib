@@ -275,8 +275,8 @@ pub struct TimeStampAccuracy {
 	pub elem :Asn1Seq<TimeStampAccuracyElem>,
 }
 
-//#[asn1_sequence(debug=enable)]
-#[asn1_sequence()]
+//#[asn1_sequence()]
+#[asn1_sequence(debug=enable)]
 #[derive(Clone)]
 pub struct SpcAsn1CodeElem {
 	pub classid : Asn1OctData,
