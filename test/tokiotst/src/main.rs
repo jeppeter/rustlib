@@ -27,7 +27,7 @@ use std::any::Any;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-use futures::executor::block_on;
+//use futures::executor::block_on;
 
 #[cfg(windows)]
 mod wchar_windows;
@@ -59,12 +59,15 @@ async fn tokio_listen_main(ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::E
 
 	let listener = TcpListener::bind(&fmtstr).await?;
 	loop {
+		debug_info!(" ");
 		let (mut socket, _) = listener.accept().await?;
+		debug_info!(" ");
 		tokio::spawn(async move {
             let mut buf = [0; 1024];
 
             // In a loop, read data from the socket and write the data back.
             loop {
+            	debug_info!(" ");
                 let n = match socket.read(&mut buf).await {
                     // socket closed
                     Ok(n) if n == 0 => return,
@@ -75,6 +78,7 @@ async fn tokio_listen_main(ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::E
                     }
                 };
 
+                debug_info!("n [{}]",n);
                 // Write the data back
                 if let Err(e) = socket.write_all(&buf[0..n]).await {
                     eprintln!("failed to write to socket; err = {:?}", e);
@@ -87,10 +91,10 @@ async fn tokio_listen_main(ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::E
 
 fn tokiolisten_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 
-	let res :Result<(),Box<dyn Error>>;
+	//let res :Result<(),Box<dyn Error>>;
 	init_log(ns.clone())?;
-	res = block_on(tokio_listen_main(ns.clone()));
-	return res;
+	let _ =  tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(tokio_listen_main(ns.clone()))?;
+	return Ok(());
 }
 
 #[extargs_map_function(tokiolisten_handler)]
