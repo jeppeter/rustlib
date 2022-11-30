@@ -1,5 +1,6 @@
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence,asn1_int_choice};
+#[allow(unused_imports)]
 use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData,Asn1IA5String};
 use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
 use asn1obj::strop::{asn1_format_line};
@@ -126,7 +127,7 @@ pub struct Asn1RsaPubkey {
 #[derive(Clone)]
 pub struct Asn1X509PubkeySelector {
 	pub val : Asn1Object,
-	pub padded : Asn1Null,
+	pub padded : Asn1Any,
 }
 
 //#[asn1_choice(selector=valid,debug=enable)]
