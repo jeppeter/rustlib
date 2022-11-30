@@ -275,7 +275,7 @@ pub struct Asn1Pkcs7SignedElem {
 	pub md_algs : Asn1Set<Asn1X509Algor>,
 	pub contents : Asn1Pkcs7Content,
 	pub cert :Asn1Opt<Asn1ImpSet<Asn1X509,0>>,
-	pub clr : Asn1ImpSet<Asn1X509Crl,1>,
+	pub crl : Asn1Opt<Asn1ImpSet<Asn1X509Crl,1>>,
 	pub signer_info : Asn1Set<Asn1Pkcs7SignerInfo>,
 }
 
