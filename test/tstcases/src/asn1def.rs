@@ -97,7 +97,7 @@ pub struct Asn1X509Algor {
 #[derive(Clone)]
 pub struct Asn1Pkcs7ContentElem {
 	pub objval : Asn1Object,
-	pub data :Asn1Any,	
+	pub data :Asn1Opt<Asn1Any>,	
 }
 
 //#[asn1_sequence(debug=enable)]
