@@ -325,7 +325,7 @@ pub struct Asn1Pkcs7Signed {
 
 
 impl Asn1Pkcs7Signed {
-	pub fn get_all_certs(&self) -> Result<Vec<Asn1X509>,Box<dyn Error>> {
+	pub fn get_certs(&self) -> Result<Vec<Asn1X509>,Box<dyn Error>> {
 		let mut retv :Vec<Asn1X509> = Vec::new();
 		if self.elem.val.len() != 1 {
 			asn1obj_new_error!{Asn1DefError,"elem [{}] != 1", self.elem.val.len()}
