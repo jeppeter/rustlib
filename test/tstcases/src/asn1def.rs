@@ -327,18 +327,20 @@ pub struct Asn1Pkcs7Signed {
 impl Asn1Pkcs7Signed {
 	pub fn get_certs(&self) -> Result<Vec<Asn1X509>,Box<dyn Error>> {
 		let mut retv :Vec<Asn1X509> = Vec::new();
-		if self.elem.val.len() != 1 {
-			asn1obj_new_error!{Asn1DefError,"elem [{}] != 1", self.elem.val.len()}
+		if self.elem.val.len() != 1 && self.elem.val.len() != 0 {
+			asn1obj_new_error!{Asn1DefError,"elem [{}] not valid", self.elem.val.len()}
 		}
-		if self.elem.val[0].cert.val.is_some() {
-			let b = self.elem.val[0].cert.val.as_ref().unwrap();
-			for v in b.val.iter() {
-				let code = v.encode_asn1()?;
-				let mut cv :Asn1X509 = Asn1X509::init_asn1();
-				let _ = cv.decode_asn1(&code)?;
-				retv.push(cv);
+		if self.elem.val.len() > 0 {
+			if self.elem.val[0].cert.val.is_some() {
+				let b = self.elem.val[0].cert.val.as_ref().unwrap();
+				for v in b.val.iter() {
+					let code = v.encode_asn1()?;
+					let mut cv :Asn1X509 = Asn1X509::init_asn1();
+					let _ = cv.decode_asn1(&code)?;
+					retv.push(cv);
+				}
 			}
-		}		
+		}
 		Ok(retv)
 	}
 	pub fn set_certs(&mut self, certs :&Vec<Asn1X509>) -> Result<(),Box<dyn Error>> {
