@@ -32,11 +32,44 @@ pub struct Asn1X509NameElement {
 	pub name :Asn1PrintableString,
 }
 
+impl Asn1X509NameElement {
+	pub fn format_name(&self) -> String {
+		let rets :String;
+		rets = format!("{}:{}",self.obj.get_value(),self.name.val);
+		return rets;
+	}
+}
+
+
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
 pub struct Asn1X509NameEntry {
 	pub names : Asn1Set<Asn1Seq<Asn1X509NameElement>>,
+}
+
+
+impl Asn1X509NameEntry {
+	pub fn get_names(&self) -> Vec<String>{
+		let mut retn :Vec<String> = Vec::new();
+		for v in self.names.val.iter() {
+			for bv in v.val.iter() {
+				retn.push(bv.format_name());
+			}
+		}
+		return retn;
+	}
+
+	pub fn is_name_in(&self,name :&str) -> bool {
+		for v in self.names.val.iter() {
+			for bv in v.val.iter() {
+				if bv.format_name() == name {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 }
 
 //#[asn1_sequence(debug=enable)]
@@ -342,6 +375,23 @@ pub struct Asn1Pkcs7Elem {
 #[derive(Clone)]
 pub struct Asn1Pkcs7 {
 	pub elem :Asn1Seq<Asn1Pkcs7Elem>,
+}
+
+impl Asn1Pkcs7 {
+	pub fn is_signed_data(&self) -> bool {
+		if self.elem.val.len() < 1 {
+			return false;
+		}
+		let ores = self.elem.val[0].selector.encode_select();
+		if ores.is_err() {
+			return false;
+		}
+		let val = ores.unwrap();
+		if val == "signed" {
+			return true;
+		}
+		return false;
+	}
 }
 
 #[asn1_sequence()]

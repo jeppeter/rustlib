@@ -33,6 +33,7 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file_bytes,write_file_bytes,read_file};
 
 use super::ossllib::*;
+use super::asn1def::*;
 use asn1obj::asn1impl::Asn1Op;
 
 asn1obj_error_class!{OsslHdlError}
@@ -445,7 +446,26 @@ fn spcasn1codedec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 	Ok(())
 }
 
-#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler,msgimpprintdec_handler,timestamprqstblobdec_handler,timestamprqstdec_handler,pkistatusinfodec_handler,timestamprespdec_handler,timestampreqdec_handler,timestampaccdec_handler,spcasn1codedec_handler,timestamprespenc_handler)]
+fn removeselfcert_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	let mut p7 :Asn1Pkcs7 = Asn1Pkcs7::init_asn1();
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 1 {
+		asn1obj_new_error!{OsslHdlError,"need at least one argument"}
+	}
+	let data = read_file_bytes(&sarr[0])?;
+	let _ = p7.decode_asn1(&data)?;
+	if !p7.is_signed_data() {
+		asn1obj_new_error!{OsslHdlError,"not signed data"}
+	}
+
+	
+
+	Ok(())
+}
+
+
+#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler,msgimpprintdec_handler,timestamprqstblobdec_handler,timestamprqstdec_handler,pkistatusinfodec_handler,timestamprespdec_handler,timestampreqdec_handler,timestampaccdec_handler,spcasn1codedec_handler,timestamprespenc_handler,removeselfcert_handler)]
 pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -514,9 +534,13 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"timestamprespenc<timestamprespenc_handler>##jsonfile ... to encode TimeStampResp##" : {
 			"$" : "+"
+		},
+		"removeselfcert<removeselfcert_handler>##pkcs7.bin out.bin to remove self cert##" : {
+			"$" : "+"
 		}
 	}
 	"#;
+	/**/
 	extargs_load_commandline!(parser,cmdline)?;
 	Ok(())
 }
