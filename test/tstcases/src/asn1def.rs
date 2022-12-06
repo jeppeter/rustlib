@@ -24,6 +24,9 @@ pub const OID_PKCS7_DATA :&str = "1.2.840.113549.1.7.1";
 pub const OID_PKCS12_SAFE_BAG_X509_CERT :&str = "1.2.840.113549.1.9.22.1";
 pub const OID_SHA256_DIGEST :&str = "2.16.840.1.101.3.4.2.1";
 
+
+asn1obj_error_class!{Asn1DefError}
+
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
@@ -320,6 +323,38 @@ pub struct Asn1Pkcs7Signed {
 	pub elem : Asn1Seq<Asn1Pkcs7SignedElem>,
 }
 
+
+impl Asn1Pkcs7Signed {
+	pub fn get_all_certs(&self) -> Result<Vec<Asn1X509>,Box<dyn Error>> {
+		let mut retv :Vec<Asn1X509> = Vec::new();
+		if self.elem.val.len() != 1 {
+			asn1obj_new_error!{Asn1DefError,"elem [{}] != 1", self.elem.val.len()}
+		}
+		if self.elem.val[0].cert.val.is_some() {
+			let b = self.elem.val[0].cert.val.as_ref().unwrap();
+			for v in b.val.iter() {
+				let code = v.encode_asn1()?;
+				let mut cv :Asn1X509 = Asn1X509::init_asn1();
+				let _ = cv.decode_asn1(&code)?;
+				retv.push(cv);
+			}
+		}		
+		Ok(retv)
+	}
+	pub fn set_certs(&mut self, certs :&Vec<Asn1X509>) -> Result<(),Box<dyn Error>> {
+		let mut cimp :Asn1ImpSet<Asn1X509,0> = Asn1ImpSet::init_asn1();
+		cimp.val = certs.clone();
+		if self.elem.val.len() != 1 && self.elem.val.len() != 0 {
+			asn1obj_new_error!{Asn1DefError,"elem [{}] not valid",self.elem.val.len()}
+		}
+		if self.elem.val.len() == 0 {
+			let c = Asn1Pkcs7SignedElem::init_asn1();
+			self.elem.val.push(c);
+		}
+		self.elem.val[0].cert.val = Some(cimp);
+		return Ok(());
+	}
+}
 
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
