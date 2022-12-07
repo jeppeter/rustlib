@@ -458,13 +458,14 @@ fn removeselfcert_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 	let p7signed :&mut Asn1Pkcs7Signed = p7.get_signed_data_mut()?;
 	let ocerts :Vec<Asn1X509> = p7signed.get_certs()?;
 	let mut ncerts :Vec<Asn1X509> = Vec::new();
+	let mut scerts :Vec<Asn1X509> = Vec::new();
 	let mut f = std::io::stderr();
 	let mut i :i32=0;
 	for k in ocerts.iter() {
 		if k.is_self_signed() {
+			scerts.push(k.clone());
 			continue;
 		}
-		k.print_asn1(&format!("insert cert [{}]",i),0,&mut f)?;
 		ncerts.push(k.clone());
 		i += 1;
 	}
@@ -475,6 +476,16 @@ fn removeselfcert_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 		let _ = write_file_bytes(&sarr[1],&code)?;
 	} else {
 		debug_buffer_trace!(code.as_ptr(),code.len(),"out buffer");
+	}
+
+	if sarr.len() > 2 {
+		i = 0;
+		for k in scerts.iter() {
+			let code = k.encode_asn1()?;
+			let fname = format!("{}.{}",sarr[2],i);
+			let _ = write_file_bytes(&fname,&code)?;
+			i += 1;
+		}
 	}
 
 	Ok(())
@@ -551,7 +562,7 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		"timestamprespenc<timestamprespenc_handler>##jsonfile ... to encode TimeStampResp##" : {
 			"$" : "+"
 		},
-		"removeselfcert<removeselfcert_handler>##pkcs7.bin out.bin to remove self cert##" : {
+		"removeselfcert<removeselfcert_handler>##pkcs7.bin [out.bin] [selfsigncert.bin] to remove self cert##" : {
 			"$" : "+"
 		}
 	}
