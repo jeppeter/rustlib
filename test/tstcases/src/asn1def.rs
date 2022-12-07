@@ -11,6 +11,11 @@ use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 use std::error::Error;
 use std::boxed::Box;
 use std::io::{Write};
+use std::cmp::PartialEq;
+use super::{debug_error,format_str_log};
+#[allow(unused_imports)]
+use super::loglib::{log_get_timestamp,log_output_function,init_log};
+
 
 pub const OID_PBES2 :&str = "1.2.840.113549.1.5.13";
 pub const OID_PBKDF2 :&str = "1.2.840.113549.1.5.12";
@@ -62,17 +67,6 @@ impl Asn1X509NameEntry {
 		}
 		return retn;
 	}
-
-	pub fn is_name_in(&self,name :&str) -> bool {
-		for v in self.names.val.iter() {
-			for bv in v.val.iter() {
-				if bv.format_name() == name {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
 }
 
 //#[asn1_sequence(debug=enable)]
@@ -80,6 +74,68 @@ impl Asn1X509NameEntry {
 #[derive(Clone)]
 pub struct Asn1X509Name {
 	pub entries : Asn1Seq<Asn1X509NameEntry>,
+}
+
+impl  PartialEq for Asn1X509Name {
+
+	fn ne(&self,other :&Self) -> bool {
+		let snames :Vec<String>;
+		let onames :Vec<String>;
+		let mut bmatched :bool;
+
+		if self.entries.val.len() == 0 && other.entries.val.len() == 0 {
+			return false;
+		} else if self.entries.val.len() == 0 {
+			return true;
+		} else if other.entries.val.len() == 0 {
+			return true;
+		} else {
+			snames = self.entries.val[0].get_names();
+			onames = other.entries.val[0].get_names();
+			if snames.len() == 0 && onames.len() == 0 {
+				return false;
+			} else if snames.len() == 0 {
+				return true;
+			} else if onames.len() == 0 {
+				return true;
+			}
+			for i in 0..snames.len() {
+				bmatched = false;
+				for j in 0..onames.len() {
+					if snames[i].eq(&(onames[j])) {
+						bmatched = true;
+						break;
+					}
+				}
+
+				if !bmatched {
+					return true;
+				}
+			}
+
+			for j in 0..onames.len() {
+				bmatched = false;
+				for i in 0..snames.len() {
+					if onames[j].eq(&snames[i]) {
+						bmatched = true;
+						break;
+					}
+				}
+				if !bmatched {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	fn eq(&self, other :&Self) -> bool {
+		if self.ne(other) {
+			return false;
+		}
+		return true;
+	}
+
 }
 
 
@@ -267,6 +323,27 @@ pub struct Asn1X509 {
 	pub elem : Asn1Seq<Asn1X509Elem>,
 }
 
+impl Asn1X509 {
+	pub fn is_self_signed(&self) -> bool {
+		if self.elem.val.len() != 1 {
+			debug_error!("{} len != 1" ,self.elem.val.len());
+			return false;
+		}
+		let certinfo :&Asn1X509Cinf = &self.elem.val[0].certinfo;
+
+		if certinfo.elem.val.len() != 1 {
+			debug_error!("certinfo {} len != 1" ,certinfo.elem.val.len());
+			return false;
+		}
+
+		if certinfo.elem.val[0].issuer.eq(&certinfo.elem.val[0].subject) {
+			return true;
+		}
+
+		return false;
+	}
+}
+
 
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
@@ -414,6 +491,7 @@ pub struct Asn1Pkcs7 {
 	pub elem :Asn1Seq<Asn1Pkcs7Elem>,
 }
 
+#[allow(dead_code)]
 impl Asn1Pkcs7 {
 	pub fn is_signed_data(&self) -> bool {
 		if self.elem.val.len() < 1 {
@@ -428,6 +506,21 @@ impl Asn1Pkcs7 {
 			return true;
 		}
 		return false;
+	}
+
+	pub fn get_signed_data(&self) -> Result<&Asn1Pkcs7Signed,Box<dyn Error>> {
+		if self.is_signed_data() {
+			let p = self.elem.val[0].signed.val.as_ref().unwrap();
+			return Ok(p);
+		}
+		asn1obj_new_error!{Asn1DefError,"not signed data"}
+	}
+
+	pub fn get_signed_data_mut(&mut self) -> Result<&mut Asn1Pkcs7Signed,Box<dyn Error>> {
+		if self.is_signed_data() {
+			return Ok(self.elem.val[0].signed.val.as_mut().unwrap());
+		}
+		asn1obj_new_error!{Asn1DefError,"not signed data"}	
 	}
 }
 
