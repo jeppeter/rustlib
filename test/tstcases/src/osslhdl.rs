@@ -494,7 +494,7 @@ fn removeselfcert_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 }
 
 
-fn digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+fn pk7digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
 	let mut p7 :Asn1Pkcs7 = Asn1Pkcs7::init_asn1();
 	let passin :String = ns.get_string("passin");
@@ -573,7 +573,7 @@ fn digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	Ok(())
 }
 
-#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler,msgimpprintdec_handler,timestamprqstblobdec_handler,timestamprqstdec_handler,pkistatusinfodec_handler,timestamprespdec_handler,timestampreqdec_handler,timestampaccdec_handler,spcasn1codedec_handler,timestamprespenc_handler,removeselfcert_handler,digestset_handler)]
+#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler,msgimpprintdec_handler,timestamprqstblobdec_handler,timestamprqstdec_handler,pkistatusinfodec_handler,timestamprespdec_handler,timestampreqdec_handler,timestampaccdec_handler,spcasn1codedec_handler,timestamprespenc_handler,removeselfcert_handler,pk7digestset_handler)]
 pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -646,7 +646,7 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		"removeselfcert<removeselfcert_handler>##pkcs7.bin [out.bin] [selfsigncert.bin] to remove self cert##" : {
 			"$" : "+"
 		},
-		"pk7digestset<digestset_handler>##pkcs7.bin infile privpem [out.bin] to change digest for infile ##" : {
+		"pk7digestset<pk7digestset_handler>##pkcs7.bin infile privpem [out.bin] to change digest for infile ##" : {
 			"$" : "+"
 		}
 	}
