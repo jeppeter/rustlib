@@ -10,6 +10,7 @@ use std::io;
 use std::fs;
 use std::io::prelude::*;
 use std::io::BufReader;
+use sha2::{Sha256,Digest};
 
 
 use std::error::Error;
@@ -101,3 +102,9 @@ pub fn read_file(fname :&str) -> Result<String,Box<dyn Error>> {
 	}
 }
 
+pub fn get_sha256_data(ind :&[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.update(&ind);
+    let res = hasher.finalize();
+    return res.to_vec();    
+}

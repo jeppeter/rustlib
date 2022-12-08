@@ -23,6 +23,7 @@ use std::io::{Write};
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use sha2::{Sha256,Digest};
 
 #[allow(unused_imports)]
 use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
@@ -30,7 +31,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 
-use super::fileop::{read_file,read_file_bytes,write_file_bytes};
+use super::fileop::{read_file,read_file_bytes,write_file_bytes,get_sha256_data};
 use super::pemlib::{pem_to_der,der_to_pem};
 use super::cryptlib::{aes256_cbc_decrypt};
 use super::asn1def::*;
@@ -41,7 +42,6 @@ use asn1obj::complex::{Asn1Seq};
 use asn1obj::asn1impl::{Asn1Op};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
-use sha2::{Sha256,Digest};
 use hmac::{Hmac,Mac};
 use hex::FromHex;
 use rsa::{RsaPublicKey,RsaPrivateKey,PublicKey};
@@ -432,12 +432,6 @@ fn rsapubdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     Ok(())
 }
 
-fn get_sha256_data(ind :&[u8]) -> Vec<u8> {
-    let mut hasher = Sha256::new();
-    hasher.update(&ind);
-    let res = hasher.finalize();
-    return res.to_vec();    
-}
 
 fn sha256_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;

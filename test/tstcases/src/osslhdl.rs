@@ -11,6 +11,8 @@ use extargsparse_worker::funccall::{ExtArgsParseFunc};
 
 #[allow(unused_imports)]
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
+use asn1obj::base::*;
+use asn1obj::consts::*;
 
 use std::cell::RefCell;
 use std::sync::Arc;
@@ -30,7 +32,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 #[allow(unused_imports)]
-use super::fileop::{read_file_bytes,write_file_bytes,read_file};
+use super::fileop::{read_file_bytes,write_file_bytes,read_file,get_sha256_data};
 
 use super::ossllib::*;
 use super::asn1def::*;
@@ -492,7 +494,59 @@ fn removeselfcert_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 }
 
 
-#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler,msgimpprintdec_handler,timestamprqstblobdec_handler,timestamprqstdec_handler,pkistatusinfodec_handler,timestamprespdec_handler,timestampreqdec_handler,timestampaccdec_handler,spcasn1codedec_handler,timestamprespenc_handler,removeselfcert_handler)]
+fn digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	let mut p7 :Asn1Pkcs7 = Asn1Pkcs7::init_asn1();
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 2 {
+		asn1obj_new_error!{OsslHdlError,"need at least pkcs7.bin infile"}
+	}
+	let data = read_file_bytes(&sarr[0])?;
+	let _ = p7.decode_asn1(&data)?;
+	let p7signed :&mut Asn1Pkcs7Signed = p7.get_signed_data_mut()?;
+	let data = read_file_bytes(&sarr[1])?;
+	let shadigest = get_sha256_data(&data);
+	let mut idx :usize;
+	let mut setobj :Asn1Object = Asn1Object::init_asn1();
+	let _ = setobj.set_value(OID_SHA256_DIGEST_SET)?;
+	let mut setany :Asn1Any = Asn1Any::init_asn1();
+	let mut setdata :Vec<u8> = Vec::new();
+
+	setdata.push(ASN1_OCT_STRING_FLAG);
+	setdata.push(shadigest.len() as u8);
+	for v in shadigest.iter() {
+		setdata.push(*v);
+	}
+
+	setany.tag = 0x31;
+	setany.content = setdata;
+
+	assert!(p7signed.elem.val.len() == 1);
+
+	idx = 0;
+	loop {
+		let ov :Option<&mut Asn1Pkcs7SignerInfo> = p7signed.get_signer_info_mut(idx);
+		if ov.is_none() {
+			break;
+		}
+
+		let si :&mut Asn1Pkcs7SignerInfo = ov.unwrap();
+
+		let mut cattrs :Vec<Asn1X509Attribute> = si.get_auth_attrs()?;
+		for i in 0..cattrs.len() {
+			let _ = cattrs[i].check_set_object_val(&setobj,&setany)?;
+		}
+
+		let _ = si.set_auth_attrs(&cattrs)?;
+
+		idx += 1;
+	}	
+
+
+	Ok(())
+}
+
+#[extargs_map_function(spcstringdec_handler,spcserobjdec_handler,spclinkdec_handler,spcopusinfodec_handler,spcattrvaldec_handler,algoridentdec_handler,diginfodec_handler,spcinddatacondec_handler,cataattrdec_handler,catainfodec_handler,msctlcondec_handler,spcpeimagedatadec_handler,spcsipinfodec_handler,msgimpprintdec_handler,timestamprqstblobdec_handler,timestamprqstdec_handler,pkistatusinfodec_handler,timestamprespdec_handler,timestampreqdec_handler,timestampaccdec_handler,spcasn1codedec_handler,timestamprespenc_handler,removeselfcert_handler,digestset_handler)]
 pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -563,6 +617,9 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"removeselfcert<removeselfcert_handler>##pkcs7.bin [out.bin] [selfsigncert.bin] to remove self cert##" : {
+			"$" : "+"
+		},
+		"digestset<digestset_handler>##pkcs7.bin infile [out.bin] to change digest for infile ##" : {
 			"$" : "+"
 		}
 	}

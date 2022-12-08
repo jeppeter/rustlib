@@ -28,6 +28,7 @@ pub const OID_PKCS7_ENCRYPTED_DATA :&str = "1.2.840.113549.1.7.6";
 pub const OID_PKCS7_DATA :&str = "1.2.840.113549.1.7.1";
 pub const OID_PKCS12_SAFE_BAG_X509_CERT :&str = "1.2.840.113549.1.9.22.1";
 pub const OID_SHA256_DIGEST :&str = "2.16.840.1.101.3.4.2.1";
+pub const OID_SHA256_DIGEST_SET :&str = "1.2.840.113549.1.9.4";
 
 
 asn1obj_error_class!{Asn1DefError}
@@ -152,6 +153,22 @@ pub struct Asn1X509AttributeElem {
 #[derive(Clone)]
 pub struct Asn1X509Attribute {
 	pub elem : Asn1Seq<Asn1X509AttributeElem>,
+}
+
+impl Asn1X509Attribute {
+	pub fn check_set_object_val(&mut self,objval :&Asn1Object,setval :&Asn1Any) -> Result<bool,Box<dyn Error>> {
+		let mut retv :bool = false;
+		if self.elem.val.len() != 0 && self.elem.val.len()!=1 {
+			asn1obj_new_error!{Asn1DefError,"val [{}] != 0 or 1",self.elem.val.len()}
+		}
+		if self.elem.val.len() != 0 {
+			if self.elem.val[0].object.eq(objval) {
+				self.elem.val[0].set = setval.clone();
+				retv= true;
+			}
+		}
+		Ok(retv)
+	}
 }
 
 //#[asn1_sequence(debug=enable)]
@@ -381,6 +398,45 @@ pub struct Asn1Pkcs7SignerInfo {
 	pub elem : Asn1Seq<Asn1Pkcs7SignerInfoElem>,
 }
 
+impl Asn1Pkcs7SignerInfo {
+	pub fn get_auth_attrs(&self) -> Result<Vec<Asn1X509Attribute>,Box<dyn Error>> {
+		let mut retv :Vec<Asn1X509Attribute> = Vec::new();
+		if self.elem.val.len() != 1 && self.elem.val.len() != 0 {
+			asn1obj_new_error!{Asn1DefError,"val [{}] != 0 or 1",self.elem.val.len()}
+		}
+
+		if self.elem.val.len() == 1 {
+			if self.elem.val[0].auth_attr.val.is_some() {
+				let cset :&Asn1ImpSet<Asn1X509Attribute,0> = self.elem.val[0].auth_attr.val.as_ref().unwrap();
+				for k in cset.val.iter() {
+					retv.push(k.clone());
+				}
+			}
+		}
+
+		Ok(retv)
+	}
+
+	pub fn set_auth_attrs(&mut self, attrs :&Vec<Asn1X509Attribute>) -> Result<(),Box<dyn Error>> {
+		if self.elem.val.len() != 1 && self.elem.val.len() != 0 {
+			asn1obj_new_error!{Asn1DefError,"val [{}] != 0 or 1",self.elem.val.len()}	
+		}
+
+		if self.elem.val.len() == 0 {
+			self.elem.val.push(Asn1Pkcs7SignerInfoElem::init_asn1());
+		}
+
+		if attrs.len() == 0 {
+			self.elem.val[0].auth_attr.val = None;
+		} else {
+			let mut cset :Asn1ImpSet<Asn1X509Attribute,0> = Asn1ImpSet::init_asn1();
+			cset.val = attrs.clone();
+			self.elem.val[0].auth_attr.val = Some(cset);
+		}
+		Ok(())
+	}
+}
+
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
@@ -433,6 +489,21 @@ impl Asn1Pkcs7Signed {
 		self.elem.val[0].cert.val = Some(cimp);
 		return Ok(());
 	}
+
+	pub fn get_signer_info_mut(&mut self,i :usize) -> Option<&mut Asn1Pkcs7SignerInfo> {
+		if self.elem.val.len() != 1 && self.elem.val.len() != 0 {
+			return None;
+		}
+
+		if self.elem.val.len() != 0 {
+			if i < self.elem.val[0].signer_info.val.len() {
+				return Some(&mut self.elem.val[0].signer_info.val[i]);
+			}
+		}
+		return None;
+	}
+
+
 }
 
 //#[asn1_sequence(debug=enable)]
