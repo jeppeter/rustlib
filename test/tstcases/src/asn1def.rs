@@ -12,7 +12,8 @@ use std::error::Error;
 use std::boxed::Box;
 use std::io::{Write};
 use std::cmp::PartialEq;
-use super::{debug_error,format_str_log};
+#[allow(unused_imports)]
+use super::{debug_trace,debug_buffer_trace,format_buffer_log,debug_error,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 #[allow(unused_imports)]
@@ -22,6 +23,9 @@ use super::pemlib::{pem_to_der,der_to_pem};
 #[allow(unused_imports)]
 use rsa::{RsaPublicKey,RsaPrivateKey,PublicKey};
 use rsa::BigUint as rsaBigUint;
+use rsa::hash::{Hash};
+use rsa::padding::{PaddingScheme};
+
 use hmac::{Hmac,Mac};
 #[allow(unused_imports)]
 use sha2::{Sha256,Digest};
@@ -41,15 +45,20 @@ pub const OID_PKCS12_SAFE_BAG_X509_CERT :&str = "1.2.840.113549.1.9.22.1";
 pub const OID_SHA256_DIGEST :&str = "2.16.840.1.101.3.4.2.1";
 pub const OID_SHA256_DIGEST_SET :&str = "1.2.840.113549.1.9.4";
 
+#[derive(Debug)]
+pub enum SignType {
+	Sha256Type,	
+}
+
 
 asn1obj_error_class!{Asn1DefError}
 
 pub trait Asn1SignOp {
-	fn sign(&self,data :&[u8]) -> Result<Vec<u8>,Box<dyn Error>>;
+	fn sign(&self,data :&[u8],signtype :SignType) -> Result<Vec<u8>,Box<dyn Error>>;
 }
 
 pub trait Asn1VerifyOp {
-	fn verify(&self, data :&[u8], digest :&[u8]) -> Result<bool,Box<dyn Error>>;
+	fn verify(&self, data :&[u8], verifytype :SignType) -> Result<bool,Box<dyn Error>>;
 }
 
 //#[asn1_sequence(debug=enable)]
@@ -251,8 +260,24 @@ pub struct Asn1RsaPubkey {
 }
 
 impl Asn1VerifyOp for Asn1RsaPubkey {
-	fn verify(&self, data :&[u8],digest :&[u8]) -> Result<bool,Box<dyn Error>> {
-		Ok(false)
+	fn verify(&self, data :&[u8],verifytype :SignType) -> Result<bool,Box<dyn Error>> {
+		let mut retv :bool = false;
+		if self.elem.val.len() != 1 {
+			asn1obj_new_error!{Asn1DefError,"{} != 1 len",self.elem.val.len()}
+		}
+		match verifytype {
+			SignType::Sha256Type => {
+				let n = rsaBigUint::from_bytes_be(&self.elem.val[0].n.val.to_bytes_be());
+				let e = rsaBigUint::from_bytes_be(&self.elem.val[0].e.val.to_bytes_be());
+				let pubk = RsaPublicKey::new(n,e)?;
+				let digest = get_sha256_data(data);
+				let ores = pubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,data);
+				if ores.is_ok() {
+					retv = true;
+				} 
+			}
+		}
+		Ok(retv)
 	}
 }
 
@@ -479,13 +504,14 @@ impl Asn1Pkcs7SignerInfo {
 		Ok(data)
 	}
 
-	pub fn sign_auth_attr_enc<T : Asn1SignOp>(&mut self, signer :&T) -> Result<(),Box<dyn Error>> {
+	pub fn sign_auth_attr_enc<T : Asn1SignOp>(&mut self, signer :&T,signtype :SignType) -> Result<(),Box<dyn Error>> {
 		if self.elem.val.len() != 1 && self.elem.val.len() != 0 {
 			asn1obj_new_error!{Asn1DefError,"val [{}] != 0 or 1",self.elem.val.len()}	
 		}
 		if self.elem.val.len() != 0 {
 			let encdata = self.format_auth_attr_data()?;
-			self.elem.val[0].enc_digest.data = signer.sign(&encdata)?;
+			debug_buffer_trace!(encdata.as_ptr(),encdata.len(),"sign data");
+			self.elem.val[0].enc_digest.data = signer.sign(&encdata,signtype)?;
 		}
 		Ok(())
 	}
@@ -749,10 +775,55 @@ pub struct Asn1RsaPrivateKey {
 }
 
 impl Asn1SignOp for Asn1RsaPrivateKey {
-	fn sign(&self,data :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
-		let retv :Vec<u8> = Vec::new();
+	fn sign(&self,data :&[u8],signtype :SignType) -> Result<Vec<u8>,Box<dyn Error>> {
+		let retv :Vec<u8>;
+		if self.elem.val.len() != 1 {
+			asn1obj_new_error!{Asn1DefError,"{} not valid len",self.elem.val.len()}
+		}
+
+		let n = rsaBigUint::from_bytes_be(&self.elem.val[0].modulus.val.to_bytes_be());
+		let d = rsaBigUint::from_bytes_be(&self.elem.val[0].pubexp.val.to_bytes_be());
+		let e = rsaBigUint::from_bytes_be(&self.elem.val[0].privexp.val.to_bytes_be());
+		let mut primes :Vec<rsaBigUint> = Vec::new();
+		primes.push(rsaBigUint::from_bytes_be(&self.elem.val[0].prime1.val.to_bytes_be()));
+		primes.push(rsaBigUint::from_bytes_be(&self.elem.val[0].prime2.val.to_bytes_be()));
+		let po = RsaPrivateKey::from_components(n,d,e,primes);
+		match signtype {
+			SignType::Sha256Type => {
+				let digest = get_sha256_data(data);
+				retv = po.sign(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest)?;
+			}
+		}
+		debug_buffer_trace!(retv.as_ptr(),retv.len(),"sign value");
 		Ok(retv)
 	}
+}
+
+impl Asn1VerifyOp for Asn1RsaPrivateKey {
+	fn verify(&self, data :&[u8],verifytype :SignType) -> Result<bool,Box<dyn Error>> {
+		let mut retv :bool = false;
+		if self.elem.val.len() != 1 {
+			asn1obj_new_error!{Asn1DefError,"{} != 1 len",self.elem.val.len()}
+		}
+		match verifytype {
+			SignType::Sha256Type => {
+				let n = rsaBigUint::from_bytes_be(&self.elem.val[0].modulus.val.to_bytes_be());
+				let d = rsaBigUint::from_bytes_be(&self.elem.val[0].pubexp.val.to_bytes_be());
+				let e = rsaBigUint::from_bytes_be(&self.elem.val[0].privexp.val.to_bytes_be());
+				let mut primes :Vec<rsaBigUint> = Vec::new();
+				primes.push(rsaBigUint::from_bytes_be(&self.elem.val[0].prime1.val.to_bytes_be()));
+				primes.push(rsaBigUint::from_bytes_be(&self.elem.val[0].prime2.val.to_bytes_be()));
+				let po = RsaPrivateKey::from_components(n,d,e,primes);
+				let pubk = po.to_public_key();
+				let digest = get_sha256_data(data);
+				let ores = pubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,data);
+				if ores.is_ok() {
+					retv = true;
+				} 
+			}
+		}
+		Ok(retv)
+	}	
 }
 
 #[asn1_sequence()]

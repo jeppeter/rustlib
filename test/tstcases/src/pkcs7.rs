@@ -363,6 +363,34 @@ fn rsaverify_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 }
 
 
+
+fn rsasign_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {   
+    let sarr :Vec<String>;
+
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+
+    if sarr.len() < 1 {
+        asn1obj_new_error!{Pkcs7Error,"should indata"}
+    }
+    let passin = ns.get_string("passin");
+    let keyfile = ns.get_string("rsapriv");
+    if keyfile.len() == 0 {
+        asn1obj_new_error!{Pkcs7Error,"need rsa private key file"}
+    }
+    let privkey = get_rsa_private_key(&keyfile,passin.as_bytes())?;
+
+    let ind = read_file_bytes(&sarr[0])?;
+    let digest = get_sha256_data(&ind);
+    let ro = privkey.sign(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest)?;
+    if sarr.len() > 1 {
+        let _ = write_file_bytes(&sarr[1],&ro)?;
+    } else {
+        debug_buffer_trace!(ro.as_ptr(),ro.len(),"sign data");
+    }
+    Ok(())
+}
+
 fn x509dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> { 
     let sarr :Vec<String>;
     let capub :String;
@@ -837,7 +865,7 @@ fn pkcs7signerdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 
 
 
-#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler,pkcs12sha256_handler,rsapubdec_handler,decbase64_handler,pkcs7signerdec_handler)]
+#[extargs_map_function(pkcs7dec_handler,x509namedec_handler,objenc_handler,pemtoder_handler,dertopem_handler,encryptprivdec_handler,privinfodec_handler,pbe2dec_handler,pbkdf2dec_handler,hmacsha256_handler,netpkeydec_handler,rsaprivdec_handler,x509dec_handler,sha256_handler,rsaverify_handler,rsasign_handler,csrdec_handler,pkcs12dec_handler,objdec_handler,authsafesdec_handler,pkcs12safebagdec_handler,pkcs12sha256_handler,rsapubdec_handler,decbase64_handler,pkcs7signerdec_handler)]
 pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -887,6 +915,9 @@ pub fn load_pkcs7_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : "+"
         },
         "sha256<sha256_handler>##infile ... to sha256 file##" : {
+            "$" : "+"
+        },
+        "rsasign<rsasign_handler>##infile [outfile] to sign data ##" : {
             "$" : "+"
         },
         "rsaverify<rsaverify_handler>##infile rsasignval to verify file to get the file##" : {

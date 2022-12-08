@@ -532,16 +532,29 @@ fn digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 		if ov.is_none() {
 			break;
 		}
+		let mut setval :bool = false;
 
 		let si :&mut Asn1Pkcs7SignerInfo = ov.unwrap();
 
 		let mut cattrs :Vec<Asn1X509Attribute> = si.get_auth_attrs()?;
 		for i in 0..cattrs.len() {
-			let _ = cattrs[i].check_set_object_val(&setobj,&setany)?;
+			setval = cattrs[i].check_set_object_val(&setobj,&setany)?;
+			if setval {
+				break;
+			}
 		}
 
-		let bval = si.set_auth_attrs(&cattrs)?;
-		let _ = si.sign_auth_attr_enc(&privkey)?;
+
+		if !setval {
+			let mut c :Asn1X509Attribute = Asn1X509Attribute::init_asn1();
+			let mut cv :Asn1X509AttributeElem = Asn1X509AttributeElem::init_asn1();
+			cv.object = setobj.clone();
+			cv.set = setany.clone();
+			c.elem.val.push(cv);
+			cattrs.push(c);
+		}
+		let _ = si.set_auth_attrs(&cattrs)?;
+		let _ = si.sign_auth_attr_enc(&privkey,SignType::Sha256Type)?;
 
 		idx += 1;
 	}
