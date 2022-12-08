@@ -33,6 +33,14 @@ pub const OID_SHA256_DIGEST_SET :&str = "1.2.840.113549.1.9.4";
 
 asn1obj_error_class!{Asn1DefError}
 
+pub trait Asn1SignOp {
+	fn sign(&self,data :&[u8]) -> Result<Vec<u8>,Box<dyn Error>>;
+}
+
+pub trait Asn1VerifyOp {
+	fn verify(&self, data :&[u8], digest :&[u8]) -> Result<bool,Box<dyn Error>>;
+}
+
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
@@ -231,6 +239,12 @@ pub struct Asn1RsaPubkey {
 	pub elem :Asn1Seq<Asn1RsaPubkeyElem>,
 }
 
+impl Asn1VerifyOp for Asn1RsaPubkey {
+	fn verify(&self, data :&[u8],digest :&[u8]) -> Result<bool,Box<dyn Error>> {
+		Ok(false)
+	}
+}
+
 //#[asn1_obj_selector(selector=val,any=default,rsa="1.2.840.113549.1.1.1",debug=enable)]
 #[asn1_obj_selector(selector=val,any=default,rsa="1.2.840.113549.1.1.1")]
 #[derive(Clone)]
@@ -377,6 +391,11 @@ pub struct Asn1Pkcs7IssuerAndSerial {
 	pub elem :Asn1Seq<Asn1Pkcs7IssuerAndSerialElem>,
 }
 
+#[asn1_sequence()]
+#[derive(Clone)]
+pub struct Asn1X509AttrPack {
+	pub elem :Asn1Set<Asn1X509Attribute>,
+}
 
 //#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
@@ -432,6 +451,22 @@ impl Asn1Pkcs7SignerInfo {
 			let mut cset :Asn1ImpSet<Asn1X509Attribute,0> = Asn1ImpSet::init_asn1();
 			cset.val = attrs.clone();
 			self.elem.val[0].auth_attr.val = Some(cset);
+		}
+		Ok(())
+	}
+
+	fn format_auth_attr_data(&self) -> Result<Vec<u8>,Box<dyn Error>> {
+		let data :Vec<u8>= Vec::new();
+		Ok(data)
+	}
+
+	pub fn sign_auth_attr_enc<T : Asn1SignOp>(&mut self, signer :&T) -> Result<(),Box<dyn Error>> {
+		if self.elem.val.len() != 1 && self.elem.val.len() != 0 {
+			asn1obj_new_error!{Asn1DefError,"val [{}] != 0 or 1",self.elem.val.len()}	
+		}
+		if self.elem.val.len() != 0 {
+			let encdata = self.format_auth_attr_data()?;
+			self.elem.val[0].enc_digest.data = signer.sign(&encdata)?;
 		}
 		Ok(())
 	}
@@ -692,6 +727,13 @@ pub struct Asn1RsaPrivateKeyElem {
 #[derive(Clone)]
 pub struct Asn1RsaPrivateKey {
 	pub elem : Asn1Seq<Asn1RsaPrivateKeyElem>,
+}
+
+impl Asn1SignOp for Asn1RsaPrivateKey {
+	fn sign(&self,data :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+		let retv :Vec<u8> = Vec::new();
+		Ok(retv)
+	}
 }
 
 #[asn1_sequence()]
