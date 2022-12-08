@@ -58,7 +58,7 @@ pub trait Asn1SignOp {
 }
 
 pub trait Asn1VerifyOp {
-	fn verify(&self, data :&[u8], verifytype :SignType) -> Result<bool,Box<dyn Error>>;
+	fn verify(&self, origdata :&[u8],signdata :&[u8], verifytype :SignType) -> Result<bool,Box<dyn Error>>;
 }
 
 //#[asn1_sequence(debug=enable)]
@@ -260,7 +260,7 @@ pub struct Asn1RsaPubkey {
 }
 
 impl Asn1VerifyOp for Asn1RsaPubkey {
-	fn verify(&self, data :&[u8],verifytype :SignType) -> Result<bool,Box<dyn Error>> {
+	fn verify(&self, origdata :&[u8],signdata :&[u8], verifytype :SignType) -> Result<bool,Box<dyn Error>> {
 		let mut retv :bool = false;
 		if self.elem.val.len() != 1 {
 			asn1obj_new_error!{Asn1DefError,"{} != 1 len",self.elem.val.len()}
@@ -270,8 +270,8 @@ impl Asn1VerifyOp for Asn1RsaPubkey {
 				let n = rsaBigUint::from_bytes_be(&self.elem.val[0].n.val.to_bytes_be());
 				let e = rsaBigUint::from_bytes_be(&self.elem.val[0].e.val.to_bytes_be());
 				let pubk = RsaPublicKey::new(n,e)?;
-				let digest = get_sha256_data(data);
-				let ores = pubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,data);
+				let digest = get_sha256_data(origdata);
+				let ores = pubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,signdata);
 				if ores.is_ok() {
 					retv = true;
 				} 
@@ -800,7 +800,7 @@ impl Asn1SignOp for Asn1RsaPrivateKey {
 }
 
 impl Asn1VerifyOp for Asn1RsaPrivateKey {
-	fn verify(&self, data :&[u8],verifytype :SignType) -> Result<bool,Box<dyn Error>> {
+	fn verify(&self, origdata :&[u8],signdata :&[u8], verifytype :SignType) -> Result<bool,Box<dyn Error>> {
 		let mut retv :bool = false;
 		if self.elem.val.len() != 1 {
 			asn1obj_new_error!{Asn1DefError,"{} != 1 len",self.elem.val.len()}
@@ -815,8 +815,8 @@ impl Asn1VerifyOp for Asn1RsaPrivateKey {
 				primes.push(rsaBigUint::from_bytes_be(&self.elem.val[0].prime2.val.to_bytes_be()));
 				let po = RsaPrivateKey::from_components(n,d,e,primes);
 				let pubk = po.to_public_key();
-				let digest = get_sha256_data(data);
-				let ores = pubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,data);
+				let digest = get_sha256_data(origdata);
+				let ores = pubk.verify(PaddingScheme::new_pkcs1v15_sign(Some(Hash::SHA2_256)),&digest,signdata);
 				if ores.is_ok() {
 					retv = true;
 				} 
