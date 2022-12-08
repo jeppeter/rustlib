@@ -497,6 +497,7 @@ fn removeselfcert_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 fn digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
 	let mut p7 :Asn1Pkcs7 = Asn1Pkcs7::init_asn1();
+	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
 	if sarr.len() < 2 {
 		asn1obj_new_error!{OsslHdlError,"need at least pkcs7.bin infile"}
@@ -541,6 +542,15 @@ fn digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 
 		idx += 1;
 	}	
+
+	let data = p7.encode_asn1()?;
+
+
+	if sarr.len() > 2 {
+		let _ = write_file_bytes(&sarr[2],&data)?;
+	} else {
+		debug_buffer_trace!(data.as_ptr(),data.len(),"dump new data");
+	}
 
 
 	Ok(())
@@ -619,7 +629,7 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		"removeselfcert<removeselfcert_handler>##pkcs7.bin [out.bin] [selfsigncert.bin] to remove self cert##" : {
 			"$" : "+"
 		},
-		"digestset<digestset_handler>##pkcs7.bin infile [out.bin] to change digest for infile ##" : {
+		"pk7digestset<digestset_handler>##pkcs7.bin infile [out.bin] to change digest for infile ##" : {
 			"$" : "+"
 		}
 	}
