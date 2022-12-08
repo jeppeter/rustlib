@@ -33,18 +33,17 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 use super::fileop::{read_file,read_file_bytes,write_file_bytes,get_sha256_data};
 use super::pemlib::{pem_to_der,der_to_pem};
-use super::cryptlib::{aes256_cbc_decrypt};
 use super::asn1def::*;
 use super::strop::{decode_base64};
 
-use asn1obj::base::{Asn1OctData,Asn1Any,Asn1Object};
+use asn1obj::base::{Asn1OctData,Asn1Object};
 use asn1obj::complex::{Asn1Seq};
 use asn1obj::asn1impl::{Asn1Op};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
-use hmac::{Hmac,Mac};
+//use hmac::{Hmac,Mac};
 use hex::FromHex;
-use rsa::{RsaPublicKey,RsaPrivateKey,PublicKey};
+use rsa::{RsaPublicKey,PublicKey};
 use rsa::BigUint as rsaBigUint;
 use rsa::hash::{Hash};
 use rsa::padding::{PaddingScheme};
@@ -225,58 +224,6 @@ fn pbkdf2dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     Ok(())
 }
 
-type HmacSha256 = Hmac<Sha256>;
-
-fn get_hmac_sha256_key(passv8 :&[u8], saltv8 :&[u8], itertimes : usize) -> Vec<u8> {
-    let omac = HmacSha256::new_from_slice(&passv8).unwrap();
-    let mut nmac ;
-    let mut tkeylen : usize = 32;
-    let cplen :usize = 32;
-    let mut i :usize = 1;
-    let mut p :Vec<u8> = Vec::new();
-    let mut plen :usize = 0;
-
-    while tkeylen > 0 {
-        let mut itmp :Vec<u8> = Vec::new();
-        let mut curv :u8;
-        nmac = omac.clone();
-        curv = ((i >> 24) & 0xff) as u8;
-        itmp.push(curv);
-        curv = ((i >> 16) & 0xff) as u8;
-        itmp.push(curv);
-        curv = ((i >> 8) & 0xff) as u8;
-        itmp.push(curv);
-        curv = ((i >> 0) & 0xff) as u8;
-        itmp.push(curv);
-        nmac.update(&saltv8);
-        nmac.update(&itmp);
-        let mut resdigtmp = nmac.finalize();
-        let mut digtmp = resdigtmp.into_bytes();
-        for i in 0..digtmp.len() {
-            if (p.len()-plen) <= i {
-                p.push(digtmp[i]);
-            } else {
-                p[i+plen] = digtmp[i];
-            }
-        }
-
-
-        for _ in 1..itertimes {
-            nmac = omac.clone();
-            nmac.update(&digtmp);
-            resdigtmp = nmac.finalize();
-            digtmp = resdigtmp.into_bytes();
-            for k in 0..cplen {
-                p[k+plen] ^= digtmp[k];
-            }
-        }
-
-        tkeylen -= cplen;
-        i += 1;
-        plen += cplen;
-    }
-    return p;   
-}
 
 fn hmacsha256_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
     let sarr :Vec<String>;
@@ -310,72 +257,8 @@ fn netpkeydec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
     Ok(())
 }
 
-fn get_algor_pbkdf2_private_data(x509algorbytes :&[u8],encdata :&[u8],passin :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
-    let mut algor :Asn1X509Algor = Asn1X509Algor::init_asn1();
-    let _ = algor.decode_asn1(x509algorbytes)?;
-    let types = algor.elem.val[0].algorithm.get_value();
-    if types == OID_PBES2 {
-        let params :&Asn1Any = algor.elem.val[0].parameters.val.as_ref().unwrap();
-        let decdata :Vec<u8> = params.content.clone();
-        let mut pbe2 : Asn1Pbe2ParamElem = Asn1Pbe2ParamElem::init_asn1();
-        let _ = pbe2.decode_asn1(&decdata)?;
-        let pbe2types = pbe2.keyfunc.elem.val[0].algorithm.get_value();
-        if pbe2types == OID_PBKDF2 {
-            //debug_trace!("debug {}", OID_PBKDF2);
-            let params :&Asn1Any = pbe2.keyfunc.elem.val[0].parameters.val.as_ref().unwrap();
-            let decdata :Vec<u8> = params.content.clone();
-            let mut pbkdf2 :Asn1Pbkdf2ParamElem = Asn1Pbkdf2ParamElem::init_asn1();
-            let _ = pbkdf2.decode_asn1(&decdata)?;
-            let aeskey :Vec<u8> = get_hmac_sha256_key(passin,&pbkdf2.salt.content,pbkdf2.iter.val as usize);
-            let types = pbe2.encryption.elem.val[0].algorithm.get_value();
-            if types  == OID_AES_256_CBC {
-                let params :Asn1Any = pbe2.encryption.elem.val[0].parameters.val.as_ref().unwrap().clone();
-                let ivkey :Vec<u8> = params.content.clone();
-                let decdata :Vec<u8> = aes256_cbc_decrypt(encdata,&aeskey,&ivkey)?;
-                return Ok(decdata);
-            }
-            asn1obj_new_error!{Pkcs7Error,"not support OID_PBKDF2 types [{}]", types}
-        }
-        asn1obj_new_error!{Pkcs7Error,"not support OID_PBES2 types [{}]",pbe2types}
-    }
-    asn1obj_new_error!{Pkcs7Error,"can not support types [{}]", types}
-}
 
-fn get_private_key(x509sigbytes :&[u8],passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
-    let mut x509sig = Asn1X509Sig::init_asn1();
-    let _ = x509sig.decode_asn1(x509sigbytes)?;
-    let algordata = x509sig.elem.val[0].algor.encode_asn1()?;
-    let encdata = x509sig.elem.val[0].digest.data.clone();
-    let decdata = get_algor_pbkdf2_private_data(&algordata,&encdata,passin)?;
-    let mut netpkey :Asn1NetscapePkey = Asn1NetscapePkey::init_asn1();
-    let _ = netpkey.decode_asn1(&decdata)?;
-    let types = netpkey.elem.val[0].algor.elem.val[0].algorithm.get_value();
-    if types == OID_RSA_ENCRYPTION {
-        let decdata :Vec<u8> = netpkey.elem.val[0].privdata.data.clone();
-        let mut privkey :Asn1RsaPrivateKey = Asn1RsaPrivateKey::init_asn1();
-        let _ = privkey.decode_asn1(&decdata)?;
-        return Ok(privkey);
-    }
-    asn1obj_new_error!{Pkcs7Error,"not support [{}]",types}
-}
 
-fn get_private_key_file(pemfile :&str,passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
-    let pemdata = read_file(pemfile)?;
-    let (derdata,_) = pem_to_der(&pemdata)?;
-    return get_private_key(&derdata,passin);
-}
-
-fn get_rsa_private_key(pemfile :&str, passin :&[u8]) -> Result<RsaPrivateKey, Box<dyn Error>> {
-    let privkey = get_private_key_file(pemfile,passin)?;
-    let n = rsaBigUint::from_bytes_be(&privkey.elem.val[0].modulus.val.to_bytes_be());
-    let d = rsaBigUint::from_bytes_be(&privkey.elem.val[0].pubexp.val.to_bytes_be());
-    let e = rsaBigUint::from_bytes_be(&privkey.elem.val[0].privexp.val.to_bytes_be());
-    let mut primes :Vec<rsaBigUint> = Vec::new();
-    primes.push(rsaBigUint::from_bytes_be(&privkey.elem.val[0].prime1.val.to_bytes_be()));
-    primes.push(rsaBigUint::from_bytes_be(&privkey.elem.val[0].prime2.val.to_bytes_be()));
-    let po = RsaPrivateKey::from_components(n,d,e,primes);
-    Ok(po)
-}
 
 fn rsaprivdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
@@ -383,7 +266,7 @@ fn rsaprivdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
     for f in sarr.iter() {
-        let code = read_file_bytes(f)?;
+        let code :Vec<u8> = read_file_bytes(f)?;
         let privkey = get_private_key(&code,passin.as_bytes())?;
         let mut f = std::io::stderr();
         privkey.print_asn1("privkey",0,&mut f)?;
@@ -679,12 +562,6 @@ fn get_pkcs12kdf_sha256(passin :&[u8],salt :&[u8], idval :u8, iterval :usize,tot
     return retv;
 }
 
-fn calc_hmac_sha256(initkey :&[u8],data :&[u8]) -> Vec<u8> {
-    let mut hmac = HmacSha256::new_from_slice(initkey).unwrap();
-    hmac.update(data);
-    let res = hmac.finalize();
-    return res.into_bytes().to_vec();
-}
 
 fn expand_uni(passin :&[u8]) -> Vec<u8> {
     let mut retv :Vec<u8> = Vec::new();
