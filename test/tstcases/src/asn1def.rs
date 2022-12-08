@@ -467,7 +467,15 @@ impl Asn1Pkcs7SignerInfo {
 	}
 
 	fn format_auth_attr_data(&self) -> Result<Vec<u8>,Box<dyn Error>> {
-		let data :Vec<u8>= Vec::new();
+		let mut attrs :Asn1X509AttrPack = Asn1X509AttrPack::init_asn1();
+		if self.elem.val[0].auth_attr.val.is_some() {
+			let c = self.elem.val[0].auth_attr.val.as_ref().unwrap();
+
+			for k in c.val.iter() {
+				attrs.elem.val.push(k.clone());
+			}
+		}
+		let data = attrs.encode_asn1()?;
 		Ok(data)
 	}
 

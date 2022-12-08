@@ -497,10 +497,11 @@ fn removeselfcert_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 fn digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
 	let mut p7 :Asn1Pkcs7 = Asn1Pkcs7::init_asn1();
+	let passin :String = ns.get_string("passin");
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
-	if sarr.len() < 2 {
-		asn1obj_new_error!{OsslHdlError,"need at least pkcs7.bin infile"}
+	if sarr.len() < 3 {
+		asn1obj_new_error!{OsslHdlError,"need at least pkcs7.bin infile privpem"}
 	}
 	let data = read_file_bytes(&sarr[0])?;
 	let _ = p7.decode_asn1(&data)?;
@@ -512,6 +513,7 @@ fn digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	let _ = setobj.set_value(OID_SHA256_DIGEST_SET)?;
 	let mut setany :Asn1Any = Asn1Any::init_asn1();
 	let mut setdata :Vec<u8> = Vec::new();
+	let privkey = get_private_key_file(&sarr[2],passin.as_bytes())?;
 
 	setdata.push(ASN1_OCT_STRING_FLAG);
 	setdata.push(shadigest.len() as u8);
@@ -538,16 +540,18 @@ fn digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 			let _ = cattrs[i].check_set_object_val(&setobj,&setany)?;
 		}
 
-		let _ = si.set_auth_attrs(&cattrs)?;
+		let bval = si.set_auth_attrs(&cattrs)?;
+		let _ = si.sign_auth_attr_enc(&privkey)?;
 
 		idx += 1;
-	}	
+	}
+
 
 	let data = p7.encode_asn1()?;
 
 
-	if sarr.len() > 2 {
-		let _ = write_file_bytes(&sarr[2],&data)?;
+	if sarr.len() > 3 {
+		let _ = write_file_bytes(&sarr[3],&data)?;
 	} else {
 		debug_buffer_trace!(data.as_ptr(),data.len(),"dump new data");
 	}
@@ -629,7 +633,7 @@ pub fn load_ossl_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		"removeselfcert<removeselfcert_handler>##pkcs7.bin [out.bin] [selfsigncert.bin] to remove self cert##" : {
 			"$" : "+"
 		},
-		"pk7digestset<digestset_handler>##pkcs7.bin infile [out.bin] to change digest for infile ##" : {
+		"pk7digestset<digestset_handler>##pkcs7.bin infile privpem [out.bin] to change digest for infile ##" : {
 			"$" : "+"
 		}
 	}
