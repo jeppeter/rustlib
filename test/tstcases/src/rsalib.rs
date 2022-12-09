@@ -32,8 +32,15 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
 use rsa::BigUint as rsaBigUint;
+use num_bigint::BigUint;
 #[allow(unused_imports)]
 use rsa::{RsaPublicKey,RsaPrivateKey,PublicKeyParts};
+use hex::FromHex;
+use num_traits::{Zero};
+
+#[allow(unused_imports)]
+use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Rem, Shl, Shr, Sub};
+
 
 asn1obj_error_class!{RsalibError}
 
@@ -126,9 +133,8 @@ impl rand_core::RngCore for RandFile {
 	}
 }
 
-fn get_bigints(bn :&rsaBigUint,tab : i32) -> String {
+fn format_vecs(buf :&[u8], tab :i32) -> String {
 	let mut outs :String = "".to_string();
-	let buf :Vec<u8> = bn.to_bytes_be();
 	let mut lasti : usize = 0;
 	let mut ki :usize;
 	for i in 0..buf.len() {
@@ -178,6 +184,16 @@ fn get_bigints(bn :&rsaBigUint,tab : i32) -> String {
 	return outs;
 }
 
+fn get_bigints(bn :&rsaBigUint,tab : i32) -> String {
+	let buf :Vec<u8> = bn.to_bytes_be();
+	return format_vecs(&buf,tab);
+}
+
+fn get_bigints_bn(bn :&BigUint,tab : i32) -> String {
+	let buf :Vec<u8> = bn.to_bytes_be();
+	return format_vecs(&buf,tab);
+}
+
 fn rsagen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
 	let mut bits : usize = 2048;
@@ -224,12 +240,56 @@ fn rsagen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 	Ok(())
 }
 
-#[extargs_map_function(rsagen_handler)]
+
+fn rsaform_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	let p :BigUint ;
+	let q :BigUint;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 2 {
+		asn1obj_new_error!{RsalibError,"need p q primes"}
+	}
+
+	let mut v8 :Vec<u8>;
+	v8 = Vec::from_hex(&sarr[0])?;
+	p = BigUint::from_bytes_be(&v8);
+	v8 = Vec::from_hex(&sarr[1])?;
+	q = BigUint::from_bytes_be(&v8);
+	let n = p.clone() * q.clone();
+	let e1 :BigUint = Zero::zero();
+	let e :BigUint = e1 + 0x10001 as u32;
+	let r1 :BigUint = p.clone() - 1 as u32;
+	let r2 :BigUint = q.clone() - 1 as u32;
+	let d = r1.clone() * r2.clone();
+	let mut outs :String;
+	let mut f = std::io::stdout();
+	outs = format!("p \n{}",get_bigints_bn(&p,1));
+	f.write(outs.as_bytes())?;
+	outs = format!("q \n{}",get_bigints_bn(&q,1));
+	f.write(outs.as_bytes())?;
+	outs = format!("n \n{}",get_bigints_bn(&n,1));
+	f.write(outs.as_bytes())?;
+	outs = format!("e \n{}",get_bigints_bn(&e,1));
+	f.write(outs.as_bytes())?;
+	outs = format!("d \n{}",get_bigints_bn(&d,1));
+	f.write(outs.as_bytes())?;
+
+
+
+
+	Ok(())
+}
+
+#[extargs_map_function(rsagen_handler,rsaform_handler)]
 pub fn load_rsa_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"genrsa<rsagen_handler>##[bits] [rndfile] to generate rsa bits default 2048##" : {
 			"$" : "*"
+		},
+		"rsaform<rsaform_handler>##p q prime to generate rsa value##" : {
+			"$" : 2
 		}
 	}
 	"#;
