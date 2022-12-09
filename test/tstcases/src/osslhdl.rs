@@ -554,7 +554,7 @@ fn pk7digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
 			cattrs.push(c);
 		}
 		let _ = si.set_auth_attrs(&cattrs)?;
-		let _ = si.sign_auth_attr_enc(&privkey,SignType::Sha256Type)?;
+		let _ = si.sign_auth_attr_enc(&privkey)?;
 
 		idx += 1;
 	}
