@@ -48,6 +48,7 @@ mod ssllib;
 mod sslhdl;
 mod pemlib;
 mod gpglib;
+mod rsalib;
 mod cryptlib;
 mod gpghdl;
 mod crypthdl;
@@ -76,6 +77,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	filehdl::load_file_handler(parser.clone())?;
 	sslhdl::load_ssl_handler(parser.clone())?;
 	asn1tst::load_asn1_handler(parser.clone())?;
+	rsalib::load_rsa_handler(parser.clone())?;
 	crypthdl::load_crypto_handler(parser.clone())?;
 	pkcs7::load_pkcs7_handler(parser.clone())?;
 	gpghdl::load_gpg_handler(parser.clone())?;
