@@ -32,7 +32,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 #[allow(unused_imports)]
-use super::fileop::{read_file_bytes,write_file_bytes,read_file,get_sha256_data};
+use super::fileop::{read_file_bytes,write_file_bytes,read_file};
 
 use super::ossllib::*;
 use super::asn1def::*;
@@ -507,7 +507,7 @@ fn pk7digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
 	let _ = p7.decode_asn1(&data)?;
 	let p7signed :&mut Asn1Pkcs7Signed = p7.get_signed_data_mut()?;
 	let data = read_file_bytes(&sarr[1])?;
-	let shadigest = get_sha256_data(&data);
+	let shadigest = Sha256Digest::calc(&data);
 	let mut idx :usize;
 	let mut setobj :Asn1Object = Asn1Object::init_asn1();
 	let _ = setobj.set_value(OID_SHA256_DIGEST_SET)?;

@@ -17,7 +17,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,debug_error,format_
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 #[allow(unused_imports)]
-use super::fileop::{read_file,read_file_bytes,write_file_bytes,get_sha256_data};
+use super::fileop::{read_file,read_file_bytes,write_file_bytes};
 #[allow(unused_imports)]
 use super::pemlib::{pem_to_der,der_to_pem};
 #[allow(unused_imports)]
@@ -57,22 +57,22 @@ pub struct Sha256Digest {
 }
 
 impl Sha256Digest {
-	fn calc(data :&[u8]) -> Vec<u8> {
-		let retv = get_sha256_data(data);
-		retv
+	pub fn calc(data :&[u8]) -> Vec<u8> {
+	    let mut hasher = Sha256::new();
+	    hasher.update(&data);
+	    let res = hasher.finalize();
+	    return res.to_vec();    
 	}	
+
+	pub fn new() -> Self {
+		Sha256Digest{}
+	}
 }
 
 impl Asn1DigestOp for Sha256Digest {
 	fn digest(&self, data :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
-		let retv = Self::calc(data);
+		let retv = Sha256Digest::calc(data);
 		Ok(retv)
-	}
-}
-
-impl Sha256Digest {
-	pub fn new() -> Self {
-		Sha256Digest{}
 	}
 }
 
