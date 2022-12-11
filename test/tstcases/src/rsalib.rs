@@ -391,7 +391,11 @@ fn rsaform_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	let e :BigUint = e1 + 0x10001 as u32;
 	let r1 :BigUint = p.clone() - 1 as u32;
 	let r2 :BigUint = q.clone() - 1 as u32;
-	let d = r1.clone() * r2.clone();
+	let dbase =  r1.clone() * r2.clone();
+	let d2 = e.clone().mod_inverse(&dbase).unwrap();
+	let d = d2.to_biguint().unwrap();
+	let co2 = p.clone().mod_inverse(&q).unwrap();
+	let co = co2.to_biguint().unwrap();
 	let mut outs :String;
 	let mut f = std::io::stdout();
 	outs = format!("p \n{}",get_bigints_bn(&p,1));
@@ -403,6 +407,8 @@ fn rsaform_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	outs = format!("e \n{}",get_bigints_bn(&e,1));
 	f.write(outs.as_bytes())?;
 	outs = format!("d \n{}",get_bigints_bn(&d,1));
+	f.write(outs.as_bytes())?;
+	outs = format!("coeff \n{}",get_bigints_bn(&co,1));
 	f.write(outs.as_bytes())?;
 
 
