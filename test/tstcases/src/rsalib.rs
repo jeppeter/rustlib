@@ -394,7 +394,7 @@ fn rsaform_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	let dbase =  r1.clone() * r2.clone();
 	let d2 = e.clone().mod_inverse(&dbase).unwrap();
 	let d = d2.to_biguint().unwrap();
-	let co2 = p.clone().mod_inverse(&q).unwrap();
+	let co2 = q.clone().mod_inverse(&p).unwrap();
 	let co = co2.to_biguint().unwrap();
 	let mut outs :String;
 	let mut f = std::io::stdout();
