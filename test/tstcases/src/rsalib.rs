@@ -32,15 +32,19 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
 
 use rsa::BigUint as rsaBigUint;
-use num_bigint::BigUint;
 #[allow(unused_imports)]
 use rsa::{RsaPublicKey,RsaPrivateKey,PublicKeyParts};
 use hex::FromHex;
-use num_traits::{Zero};
 
 #[allow(unused_imports)]
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Rem, Shl, Shr, Sub};
 
+
+use num_bigint::traits::ModInverse;
+use num_bigint::{BigUint, RandPrime};
+#[allow(unused_imports)]
+use num_traits::Float;
+use num_traits::{FromPrimitive, One, Zero};
 
 asn1obj_error_class!{RsalibError}
 
@@ -133,6 +137,129 @@ impl rand_core::RngCore for RandFile {
 	}
 }
 
+#[allow(dead_code)]
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum ErrorId {
+    InvalidPaddingScheme,
+    Decryption,
+    Verification,
+    MessageTooLong,
+    InputNotHashed,
+    NprimesTooSmall,
+    TooFewPrimes,
+    InvalidPrime,
+    InvalidModulus,
+    InvalidExponent,
+    InvalidCoefficient,
+    PublicExponentTooSmall,
+    PublicExponentTooLarge,
+    Internal,
+    LabelTooLong,
+}
+
+
+/// Generates a multi-prime RSA keypair of the given bit size, public exponent,
+/// and the given random source, as suggested in [1]. Although the public
+/// keys are compatible (actually, indistinguishable) from the 2-prime case,
+/// the private keys are not. Thus it may not be possible to export multi-prime
+/// private keys in certain formats or to subsequently import them into other
+/// code.
+///
+/// Table 1 in [2] suggests maximum numbers of primes for a given size.
+///
+/// [1]: https://patents.google.com/patent/US4405829A/en
+/// [2]: http://www.cacr.math.uwaterloo.ca/techreports/2006/cacr2006-16.pdf
+#[allow(unused_variables,unused_assignments)]
+pub fn generate_multi_prime_key_with_exp<R: rand_core::RngCore + rand_core::CryptoRng>(
+    rng: &mut R,
+    nprimes: usize,
+    bit_size: usize,
+    exp: &rsaBigUint,
+) -> Result<(),ErrorId> {
+    if nprimes < 2 {
+        return Err(ErrorId::NprimesTooSmall);
+    }
+
+    if bit_size < 64 {
+        let prime_limit = (1u64 << (bit_size / nprimes) as u64) as f64;
+
+        // pi aproximates the number of primes less than prime_limit
+        let mut pi = prime_limit / (prime_limit.ln() - 1f64);
+        // Generated primes start with 0b11, so we can only use a quarter of them.
+        pi /= 4f64;
+        // Use a factor of two to ensure taht key generation terminates in a
+        // reasonable amount of time.
+        pi /= 2f64;
+
+        if pi < nprimes as f64 {
+            return Err(ErrorId::TooFewPrimes);
+        }
+    }
+
+    let mut primes = vec![BigUint::zero(); nprimes];
+    let n_final: BigUint;
+    let d_final: BigUint;
+
+    'next: loop {
+        let mut todo = bit_size;
+        // `gen_prime` should set the top two bits in each prime.
+        // Thus each prime has the form
+        //   p_i = 2^bitlen(p_i) × 0.11... (in base 2).
+        // And the product is:
+        //   P = 2^todo × α
+        // where α is the product of nprimes numbers of the form 0.11...
+        //
+        // If α < 1/2 (which can happen for nprimes > 2), we need to
+        // shift todo to compensate for lost bits: the mean value of 0.11...
+        // is 7/8, so todo + shift - nprimes * log2(7/8) ~= bits - 1/2
+        // will give good results.
+        if nprimes >= 7 {
+            todo += (nprimes - 2) / 5;
+        }
+
+        for (i, prime) in primes.iter_mut().enumerate() {
+            *prime = rng.gen_prime(todo / (nprimes - i));
+            todo -= prime.bits();
+        }
+
+        // Makes sure that primes is pairwise unequal.
+        for (i, prime1) in primes.iter().enumerate() {
+            for prime2 in primes.iter().take(i) {
+                if prime1 == prime2 {
+                    continue 'next;
+                }
+            }
+        }
+
+        let mut n = BigUint::one();
+        let mut totient = BigUint::one();
+
+        for prime in &primes {
+            n *= prime;
+            totient *= prime - BigUint::one();
+            debug_trace!("prime \n{}",get_bigints_bn(&prime,1));
+            debug_trace!("cur totient\n{}",get_bigints_bn(&totient,1));
+        }
+
+        if n.bits() != bit_size {
+            // This should never happen for nprimes == 2 because
+            // gen_prime should set the top two bits in each prime.
+            // For nprimes > 2 we hope it does not happen often.
+            continue 'next;
+        }
+
+        if let Some(d) = exp.mod_inverse(totient) {
+            n_final = n;
+            d_final = d.to_biguint().unwrap();
+            debug_trace!("d_final \n{}",get_bigints_bn(&d_final,1));
+            break;
+        }
+    }
+
+    Ok(())
+}
+
 fn format_vecs(buf :&[u8], tab :i32) -> String {
 	let mut outs :String = "".to_string();
 	let mut lasti : usize = 0;
@@ -219,6 +346,9 @@ fn rsagen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 	} else {
 		key = RsaPrivateKey::new(&mut gencore,bits)?;
 	}
+
+	let exp = rsaBigUint::from_u64(0x10001).unwrap();
+	let _ = generate_multi_prime_key_with_exp(&mut gencore,2 as usize,bits,&exp);
 
 	
 	let mut f = std::io::stdout();
