@@ -1107,6 +1107,7 @@ pub fn get_algor_pbkdf2_private_data(x509algorbytes :&[u8],encdata :&[u8],passin
 pub fn get_private_key(x509sigbytes :&[u8],passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
 	let mut x509sig = Asn1X509Sig::init_asn1();
 	let mut ores = x509sig.decode_asn1(x509sigbytes);
+	let mut serr = std::io::stderr();
 	if ores.is_err() {
 		let s :&str = std::str::from_utf8(x509sigbytes)?;
 		let (code,_) = pem_to_der(s)?;
@@ -1116,11 +1117,13 @@ pub fn get_private_key(x509sigbytes :&[u8],passin :&[u8]) -> Result<Asn1RsaPriva
 		let e = Err(ores.err().unwrap());
 		return e;
 	}
+	x509sig.print_asn1("Asn1X509Sig",0, &mut serr)?;
 	let algordata = x509sig.elem.val[0].algor.encode_asn1()?;
 	let encdata = x509sig.elem.val[0].digest.data.clone();
 	let decdata = get_algor_pbkdf2_private_data(&algordata,&encdata,passin)?;
 	let mut netpkey :Asn1NetscapePkey = Asn1NetscapePkey::init_asn1();
 	let _ = netpkey.decode_asn1(&decdata)?;
+	netpkey.print_asn1("Asn1NetscapePkey",0,&mut serr)?;
 	let types = netpkey.elem.val[0].algor.elem.val[0].algorithm.get_value();
 	if types == OID_RSA_ENCRYPTION {
 		let decdata :Vec<u8> = netpkey.elem.val[0].privdata.data.clone();
