@@ -12,6 +12,7 @@ use aes::cipher::BlockEncryptMut;
 use aes::cipher::BlockDecryptMut;
 use cbc;
 use cfb_mode;
+use des;
 //use cfb8;
 use sha2::{Sha512,Digest};
 //use rand::{Rng};
@@ -68,6 +69,54 @@ pub fn aes256_cbc_pure_decrypt(encrypted_data: &[u8], key: &[u8], iv: &[u8]) -> 
     let nd = eo.unwrap();
     Ok(nd.to_vec())
 }
+
+
+type DesCbcEnc = cbc::Encryptor<des::Des>;
+type DesCbcDec = cbc::Decryptor<des::Des>;
+
+
+pub fn des_cbc_pure_encrypt(data: &[u8],key: &[u8], iv: &[u8])->Result<Vec<u8>,Box<dyn Error>>{
+    let mut retdata  :Vec<u8> = Vec::new();
+    let clen :usize;
+    for i in 0..data.len() {
+        retdata.push(data[i]);
+    }
+    if (data.len() % 16) != 0 {
+        clen = (data.len() + 15 ) / 16;
+    } else {
+        clen = data.len() + 16;
+    }
+
+    while retdata.len() < clen {
+        retdata.push(0);
+    }
+    let eo = DesCbcEnc::new(key.into(),iv.into()).encrypt_padded_mut::<aes::cipher::block_padding::Pkcs7>(&mut retdata,data.len());
+    if eo.is_err() {
+        let e = eo.err().unwrap();
+        extargs_new_error!{AesLibError,"encrypt error {}", e}
+    }
+    let nd = eo.unwrap();
+    Ok(nd.to_vec())
+}
+
+pub fn des_cbc_pure_decrypt(encrypted_data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    let mut retdata :Vec<u8> = Vec::new();
+    for i in 0..encrypted_data.len() {
+        retdata.push(encrypted_data[i]);
+    }
+    if (retdata.len() % 16) != 0 {
+        extargs_new_error!{AesLibError,"not valid len [{}] % 16 != 0", retdata.len()}
+    }
+
+    let eo = DesCbcDec::new(key.into(),iv.into()).decrypt_padded_mut::<aes::cipher::block_padding::Pkcs7>(&mut retdata);
+    if eo.is_err() {
+        let e = eo.err().unwrap();
+        extargs_new_error!{AesLibError,"decrypt error {}", e}
+    }
+    let nd = eo.unwrap();
+    Ok(nd.to_vec())
+}
+
 
 // Encrypt a buffer with the given key and iv using AES-256/CBC/Pkcs encryption.
 pub fn aes256_cbc_encrypt(data: &[u8],key: &[u8], iv: &[u8])->Result<Vec<u8>,Box<dyn Error>>{
