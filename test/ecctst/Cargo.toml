@@ -1,0 +1,11 @@
+[package]
+name = "ecctst"
+version = "1.0.0"
+authors = ["Bill"]
+edition = "2021"
+
+[dependencies]
+p384="^0.11.2"
+k256="^0.11.6"
+hex="^0.4.3"
+rand_core="^0.6.3"
