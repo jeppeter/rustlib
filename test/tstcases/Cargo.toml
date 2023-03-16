@@ -32,6 +32,7 @@ rand_core = "^0.6.4"
 asn1obj = { path = "../../../asn1obj/asn1obj"}
 asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
 gpgobj = {path = "../../../gpgobj-rs/gpgobj"}
+ecsimple = {path = "../../../ecsimple/ecsimple"}
 
 
 [dependencies.num-bigint]
