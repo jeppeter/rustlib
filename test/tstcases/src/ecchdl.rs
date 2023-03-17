@@ -9,7 +9,7 @@ use extargsparse_worker::argset::{ArgSetImpl};
 use extargsparse_worker::parser::{ExtArgsParser};
 use extargsparse_worker::funccall::{ExtArgsParseFunc};
 use num_bigint::{BigInt};
-use num_traits::{zero,one};
+//use num_traits::{zero,one};
 
 
 use std::cell::RefCell;
@@ -30,8 +30,8 @@ use super::{debug_trace};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
-use ecsimple::curves::{get_ecc_by_name};
-use ecsimple::jacobi::{PointJacobi};
+use ecsimple::curves::{get_ecc_by_name,ECCCurve};
+use ecsimple::jacobi::*;
 
 
 extargs_error_class!{EcchdlError}
@@ -46,21 +46,51 @@ fn multecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
     }
     let v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
     let multval :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
-    let mut cv : PointJacobi = get_ecc_by_name(&sarr[0])?;
-    let retcv :PointJacobi = cv.mul_int(&multval);
-    println!("PointJacobi\n{:?}",cv);
+    let mut cv : ECCCurve = get_ecc_by_name(&sarr[0])?;
+    let retcv :PointJacobi = cv.generator.mul_int(&multval);
+    println!("PointJacobi\n{:?}",cv.generator);
     println!("multval\n0x{:x}",multval);
     println!("retcv\n{:?}",retcv);
     Ok(())
 }
 
+fn addecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 2 {
+    	extargs_new_error!{EcchdlError,"need eccname and multval"}
+    }
+    let mut v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
+    let mut multval :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let mut cv : ECCCurve = get_ecc_by_name(&sarr[0])?;
+    let mut retcv :PointJacobi = cv.generator.mul_int(&multval);
+    let mut idx :usize = 2;
+    while idx < sarr.len() {
+	    cv = get_ecc_by_name(&sarr[0])?;
+        v8 = Vec::from_hex(&sarr[idx])?;
+        multval = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+	    let curv :PointJacobi = cv.generator.mul_int(&multval);
+	    retcv = retcv.add_jacobi(&curv);
+        idx += 1;
+    }
 
-#[extargs_map_function(multecc_handler)]
+    println!("PointJacobi\n{:?}",cv.generator);
+    println!("result\n{:?}",retcv);
+    Ok(())
+}
+
+
+
+#[extargs_map_function(multecc_handler,addecc_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
     	"multecc<multecc_handler>##eccname multval to multiple##" : {
     		"$" : 2
+    	},
+    	"addecc<addecc_handler>##eccname multval ... to add ecc with multivalue##" : {
+    		"$" : "+"
     	}
     }
     "#;
