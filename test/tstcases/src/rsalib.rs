@@ -40,8 +40,8 @@ use hex::FromHex;
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Rem, Shl, Shr, Sub};
 
 
-use num_bigint::traits::ModInverse;
-use num_bigint::{BigUint, RandPrime};
+use num_bigint_dig::traits::ModInverse;
+use num_bigint_dig::{BigUint, RandPrime};
 #[allow(unused_imports)]
 use num_traits::Float;
 use num_traits::{FromPrimitive, One, Zero};

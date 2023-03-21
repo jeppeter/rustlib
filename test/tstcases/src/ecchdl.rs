@@ -26,12 +26,15 @@ use std::collections::HashMap;
 use hex::FromHex;
 
 #[allow(unused_imports)]
-use super::{debug_trace};
+use super::{debug_trace,debug_buffer_trace,format_buffer_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
+use super::fileop::{read_file_bytes,write_file_bytes};
 
 use ecsimple::curves::{get_ecc_by_name,ECCCurve};
 use ecsimple::jacobi::*;
+use ecsimple::keys::*;
+use ecsimple::signature::*;
 
 
 extargs_error_class!{EcchdlError}
@@ -81,8 +84,63 @@ fn addecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 }
 
 
+fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 4 {
+        extargs_new_error!{EcchdlError,"need eccname secnum hashnumber randkey"}
+    }
+    let mut v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
+    let secnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let cv : ECCCurve = get_ecc_by_name(&sarr[0])?;
+    v8 = Vec::from_hex(&sarr[2])?;
+    let hashnumber :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let (_,hashcode) = hashnumber.to_bytes_be();
+    v8 = Vec::from_hex(&sarr[3])?;
+    let randkey :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
+    let sig  =  privkey.sign(&hashcode,&randkey)?;
+    let outv8 = sig.to_der()?;
 
-#[extargs_map_function(multecc_handler,addecc_handler)]
+    let outf :String = ns.get_string("output");
+    if outf.len() == 0 {
+        debug_buffer_trace!(outv8.as_ptr(),outv8.len(),"output ");
+    } else {
+        let _ = write_file_bytes(&outf,&outv8)?;
+    }
+    Ok(())
+}
+
+
+fn verifybaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 3 {
+        extargs_new_error!{EcchdlError,"need eccname secnum hashnumber"}
+    }
+    let inf :String = ns.get_string("input");
+    let signcode :Vec<u8> = read_file_bytes(&inf)?;
+    let mut v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
+    let secnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let cv : ECCCurve = get_ecc_by_name(&sarr[0])?;
+    v8 = Vec::from_hex(&sarr[2])?;
+    let hashnumber :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let (_,hashcode) = hashnumber.to_bytes_be();
+    let privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
+    let pubkey :PublicKey = privkey.get_public_key();
+    let sigv :ECCSignature = ECCSignature::from_der(&signcode)?;
+    let valid :bool = pubkey.verify(&hashcode,&sigv);
+    if valid {
+        println!("verify {} ok", inf);
+    } else {
+        extargs_new_error!{EcchdlError,"verify {} failed ",inf}
+    }
+    Ok(())
+}
+
+#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -91,7 +149,13 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     	},
     	"addecc<addecc_handler>##eccname multval ... to add ecc with multivalue##" : {
     		"$" : "+"
-    	}
+    	},
+        "signbaseecc<signbaseecc_handler>##eccname secnum hashnumber randkey to sign to output##" : {
+            "$" : 4
+        },
+        "verifybaseecc<verifybaseecc_handler>##eccname secnum hashnumber to verify input##" : {
+            "$" : 3
+        }
     }
     "#;
     extargs_load_commandline!(parser,cmdline)?;

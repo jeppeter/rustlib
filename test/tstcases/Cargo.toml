@@ -33,18 +33,19 @@ asn1obj = { path = "../../../asn1obj/asn1obj"}
 asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
 gpgobj = {path = "../../../gpgobj-rs/gpgobj"}
 ecsimple = {path = "../../../ecsimple/ecsimple"}
+num-bigint = "^0.4.3"
+num-bigint-dig = {version = "0.8.1", features = [    "i128",    "u64_digit",    "prime",    "zeroize"], default-features = false}
 
-
-[dependencies.num-bigint]
-version = "0.8.1"
-features = [
-    "i128",
-    "u64_digit",
-    "prime",
-    "zeroize",
-]
-default-features = false
-package = "num-bigint-dig"
+#[dependencies.num-bigint]
+#version = "0.8.1"
+#features = [
+#    "i128",
+#    "u64_digit",
+#    "prime",
+#    "zeroize",
+#]
+#default-features = false
+#package = "num-bigint-dig"
 
 
 
