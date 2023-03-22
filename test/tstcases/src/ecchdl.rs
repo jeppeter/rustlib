@@ -31,7 +31,8 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file_bytes,write_file_bytes};
 
-use ecsimple::curves::{get_ecc_by_name,ECCCurve};
+use ecsimple::consts::*;
+use ecsimple::curves::*;
 use ecsimple::jacobi::*;
 use ecsimple::keys::*;
 use ecsimple::signature::*;
@@ -49,7 +50,7 @@ fn multecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
     }
     let v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
     let multval :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
-    let mut cv : ECCCurve = get_ecc_by_name(&sarr[0])?;
+    let mut cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
     let retcv :PointJacobi = cv.generator.mul_int(&multval);
     println!("PointJacobi\n{:?}",cv.generator);
     println!("multval\n0x{:x}",multval);
@@ -66,11 +67,11 @@ fn addecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
     }
     let mut v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
     let mut multval :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
-    let mut cv : ECCCurve = get_ecc_by_name(&sarr[0])?;
+    let mut cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
     let mut retcv :PointJacobi = cv.generator.mul_int(&multval);
     let mut idx :usize = 2;
     while idx < sarr.len() {
-	    cv = get_ecc_by_name(&sarr[0])?;
+	    cv = get_ecc_curve_by_name(&sarr[0])?;
         v8 = Vec::from_hex(&sarr[idx])?;
         multval = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
 	    let curv :PointJacobi = cv.generator.mul_int(&multval);
@@ -93,7 +94,7 @@ fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
     }
     let mut v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
     let secnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
-    let cv : ECCCurve = get_ecc_by_name(&sarr[0])?;
+    let cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
     v8 = Vec::from_hex(&sarr[2])?;
     let hashnumber :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
     let (_,hashcode) = hashnumber.to_bytes_be();
@@ -102,6 +103,8 @@ fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
     let privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
     let sig  =  privkey.sign(&hashcode,&randkey)?;
     let outv8 = sig.to_der()?;
+    let pubkey :PublicKey = privkey.get_public_key();
+
 
     let outf :String = ns.get_string("output");
     if outf.len() == 0 {
@@ -109,6 +112,8 @@ fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
     } else {
         let _ = write_file_bytes(&outf,&outv8)?;
     }
+    let outv8 = pubkey.to_der(EC_UNCOMPRESSED,EC_PARAMS_EXLICIT)?;
+    debug_buffer_trace!(outv8.as_ptr(),outv8.len(),"pubkey ");
     Ok(())
 }
 
@@ -124,7 +129,7 @@ fn verifybaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
     let signcode :Vec<u8> = read_file_bytes(&inf)?;
     let mut v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
     let secnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
-    let cv : ECCCurve = get_ecc_by_name(&sarr[0])?;
+    let cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
     v8 = Vec::from_hex(&sarr[2])?;
     let hashnumber :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
     let (_,hashcode) = hashnumber.to_bytes_be();
