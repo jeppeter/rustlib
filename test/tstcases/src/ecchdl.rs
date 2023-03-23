@@ -31,6 +31,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file_bytes,write_file_bytes};
 
+use ecsimple::arithmetics::*;
 use ecsimple::consts::*;
 use ecsimple::curves::*;
 use ecsimple::jacobi::*;
@@ -145,7 +146,24 @@ fn verifybaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
     Ok(())
 }
 
-#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler)]
+
+fn modsquareroot_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 2 {
+        extargs_new_error!{EcchdlError,"need anum pnum"}
+    }
+    let mut v8 :Vec<u8> = Vec::from_hex(&sarr[0])?;
+    let anum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    v8 = Vec::from_hex(&sarr[1])?;
+    let pnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let bnum :BigInt = square_root_mod_prime(&anum,&pnum)?;
+    println!("0x{:x} = ( 0x{:x}) ** 2 % 0x{:x}",anum, bnum,pnum);
+    Ok(())
+}
+
+#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -160,6 +178,9 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "verifybaseecc<verifybaseecc_handler>##eccname secnum hashnumber to verify input##" : {
             "$" : 3
+        },
+        "modsquareroot<modsquareroot_handler>##anum pnum to modsquareroot##" : {
+            "$" : 2
         }
     }
     "#;
