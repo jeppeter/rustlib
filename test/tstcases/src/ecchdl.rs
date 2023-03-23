@@ -114,7 +114,13 @@ fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
         let _ = write_file_bytes(&outf,&outv8)?;
     }
     let outv8 = pubkey.to_der(EC_UNCOMPRESSED,EC_PARAMS_EXLICIT)?;
-    debug_buffer_trace!(outv8.as_ptr(),outv8.len(),"pubkey ");
+    let pubout = ns.get_string("ecpubout");
+    if pubout.len() > 0 {
+        let _ = write_file_bytes(&pubout,&outv8)?;
+    } else {
+        debug_buffer_trace!(outv8.as_ptr(),outv8.len(),"pubkey ");    
+    }
+    
     Ok(())
 }
 
@@ -123,19 +129,16 @@ fn verifybaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
     let sarr :Vec<String>;
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
-    if sarr.len() < 3 {
-        extargs_new_error!{EcchdlError,"need eccname secnum hashnumber"}
+    if sarr.len() < 1 {
+        extargs_new_error!{EcchdlError,"need hashnumber pubkey.bin"}
     }
     let inf :String = ns.get_string("input");
     let signcode :Vec<u8> = read_file_bytes(&inf)?;
-    let mut v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
-    let secnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
-    let cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
-    v8 = Vec::from_hex(&sarr[2])?;
+    let  v8 = Vec::from_hex(&sarr[0])?;
     let hashnumber :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
     let (_,hashcode) = hashnumber.to_bytes_be();
-    let privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
-    let pubkey :PublicKey = privkey.get_public_key();
+    let pubcode :Vec<u8> = read_file_bytes(&sarr[1])?;
+    let pubkey :PublicKey = PublicKey::from_der(&pubcode)?;
     let sigv :ECCSignature = ECCSignature::from_der(&signcode)?;
     let valid :bool = pubkey.verify(&hashcode,&sigv);
     if valid {
@@ -215,6 +218,7 @@ fn impecpubkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
+        "ecpubout" : null,
     	"multecc<multecc_handler>##eccname multval to multiple##" : {
     		"$" : 2
     	},
@@ -224,8 +228,8 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         "signbaseecc<signbaseecc_handler>##eccname secnum hashnumber randkey to sign to output##" : {
             "$" : 4
         },
-        "verifybaseecc<verifybaseecc_handler>##eccname secnum hashnumber to verify input##" : {
-            "$" : 3
+        "verifybaseecc<verifybaseecc_handler>##hashnumber pubkey.bin to verify input##" : {
+            "$" : 2
         },
         "modsquareroot<modsquareroot_handler>##anum pnum to modsquareroot##" : {
             "$" : 2
