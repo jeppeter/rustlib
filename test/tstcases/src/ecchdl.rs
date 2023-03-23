@@ -163,7 +163,55 @@ fn modsquareroot_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
     Ok(())
 }
 
-#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler)]
+fn expecpubkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    let mut types :String = "uncompressed".to_string();
+    let mut paramstype :String = "explicit".to_string();
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 2 {
+        extargs_new_error!{EcchdlError,"need eccname secnum"}
+    }
+    let v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
+    let secnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
+
+    if sarr.len() > 2 {
+        types = format!("{}",sarr[2]);
+    }
+
+    if sarr.len() > 3 {
+        paramstype = format!("{}",sarr[3]);
+    }
+
+    let privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
+    let pubkey :PublicKey = privkey.get_public_key();
+    let outv8 = pubkey.to_der(&types,&paramstype)?;
+
+
+    let outf :String = ns.get_string("output");
+    if outf.len() == 0 {
+        debug_buffer_trace!(outv8.as_ptr(),outv8.len(),"output ");
+    } else {
+        let _ = write_file_bytes(&outf,&outv8)?;
+    }
+    Ok(())
+}
+
+fn impecpubkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 1 {
+        extargs_new_error!{EcchdlError,"need pubkeybin"}
+    }
+    let vecs = read_file_bytes(&sarr[0])?;
+    let pubk = PublicKey::from_der(&vecs)?;
+    println!("{:?}",pubk);
+    Ok(())
+}
+
+#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -181,6 +229,12 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "modsquareroot<modsquareroot_handler>##anum pnum to modsquareroot##" : {
             "$" : 2
+        },
+        "expecpubkey<expecpubkey_handler>##ecname secnum [compresstype] [explicit]##" : {
+            "$" : "+"
+        },
+        "impecpubkey<impecpubkey_handler>##pubkeybin##" : {
+            "$" : 1
         }
     }
     "#;
