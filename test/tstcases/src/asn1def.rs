@@ -29,6 +29,8 @@ use rsa::padding::{PaddingScheme};
 use hmac::{Hmac,Mac};
 #[allow(unused_imports)]
 use sha2::{Sha256,Digest};
+use sha1::{Sha1};
+//use sha1::Digest as sha1gest;
 use super::cryptlib::{aes256_cbc_decrypt};
 
 
@@ -69,9 +71,33 @@ impl Sha256Digest {
 	}
 }
 
+
+pub struct Sha1Digest {}
+
+impl Sha1Digest {
+	pub fn calc(data :&[u8]) -> Vec<u8> {
+	    let mut hasher = Sha1::new();
+	    hasher.update(&data);
+	    let res = hasher.finalize();
+	    return res.to_vec();    
+	}	
+
+	pub fn new() -> Self {
+		Sha1Digest{}
+	}
+}
+
+
 impl Asn1DigestOp for Sha256Digest {
 	fn digest(&self, data :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
 		let retv = Sha256Digest::calc(data);
+		Ok(retv)
+	}
+}
+
+impl Asn1DigestOp for Sha1Digest {
+	fn digest(&self, data :&[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+		let retv = Sha1Digest::calc(data);
 		Ok(retv)
 	}
 }

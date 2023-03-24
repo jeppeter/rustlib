@@ -30,6 +30,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file_bytes,write_file_bytes};
 use super::strop::{parse_to_bigint};
+use super::asn1def::*;
 
 use ecsimple::arithmetics::*;
 use ecsimple::consts::*;
@@ -234,8 +235,8 @@ fn signdigestecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
     }
     privkey.set_rand_file(rname);
     let rdata :Vec<u8> = read_file_bytes(&sarr[2])?;
-
-    let sigv = privkey.sign_digest(&rdata)?;
+    let digdata :Vec<u8> = Sha1Digest::calc(&rdata);
+    let sigv = privkey.sign_digest(&digdata)?;
     let sigcode = sigv.to_der()?;
     let outf = ns.get_string("output");
     if outf.len() > 0 {
@@ -258,7 +259,8 @@ fn verifydigestecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Ar
     let signcode :Vec<u8> = read_file_bytes(&sarr[2])?;
     let pubkey :PublicKey = PublicKey::from_der(&pubcode)?;
     let sigv :ECCSignature = ECCSignature::from_der(&signcode)?;
-    let valid :bool = pubkey.verify_digest(&hashcode,&sigv);
+    let digcode = Sha1Digest::calc(&hashcode);
+    let valid :bool = pubkey.verify_digest(&digcode,&sigv);
     if valid {
         println!("verify {} ok", sarr[1]);
     } else {
