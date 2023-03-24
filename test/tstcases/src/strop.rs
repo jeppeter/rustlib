@@ -8,6 +8,9 @@ use extargsparse_worker::{extargs_error_class,extargs_new_error};
 
 use base64;
 use std::error::Error;
+use num_bigint::{BigInt};
+use num_traits::{zero};
+
 
 extargs_error_class!{StrOpError}
 
@@ -49,4 +52,75 @@ pub fn parse_u64(instr :&str) -> Result<u64,Box<dyn Error>> {
 	}
 	Ok(retv)
 }
+
+pub fn parse_to_bigint(instr :&str) -> Result<BigInt,Box<dyn Error>> {
+	let mut _cparse = format!("{}",instr);
+	let mut base :u32 = 10;
+	let mut retv :BigInt = zero();
+	let mut curv :BigInt ;
+	let mut curvi :i32;
+	let mut addi :i32 = 0;
+	let mut bbchar :String;
+	let cparse :Vec<u8>;
+	if _cparse.starts_with("0x") || _cparse.starts_with("0X") {
+		_cparse = _cparse[2..].to_string();
+		base = 16;
+		addi = 2;
+	} else if _cparse.starts_with("x") || _cparse.starts_with("X") {
+		_cparse = _cparse[1..].to_string();
+		base = 16;
+		addi = 1;
+	}
+	cparse = _cparse.as_bytes().to_vec();
+
+	if cparse.len() == 0 {
+		return Ok(retv);
+	}
+
+	let mut lasti :usize = cparse.len() - 1;
+	let mut idx :i32 = lasti as i32;
+	while idx >= 0 {
+		if base == 16 {
+			if cparse[lasti] >= ('0' as u8) && cparse[lasti] <= ('9' as u8) {
+				curvi = (cparse[lasti] - ('0' as u8)) as i32;
+			} else {
+				bbchar = "".to_string();
+				if cparse[lasti] >= 0x20 && cparse[lasti] <= 0x7e {
+					bbchar.push(cparse[lasti] as char);
+				} else {
+					bbchar.push_str(&format!("char[0x{:x}]",cparse[lasti]));
+				}
+				
+				extargs_new_error!{StrOpError,"[{}] character not valid [{}]", idx + addi,bbchar}
+			}
+				curv = curvi.into();
+			retv *= 10;
+			retv += curv;
+		} else {
+			if cparse[lasti] >= ('0'  as u8) && cparse[lasti] <= ('9' as u8) {
+				curvi = (cparse[lasti] - ('0' as u8)) as i32;
+			} else if cparse[lasti] >= ('a'  as u8) && cparse[lasti] <= ('f' as u8){
+				curvi = (cparse[lasti] - ('a' as u8)) as i32 + 10;
+			} else if cparse[lasti] >= ('A' as u8 ) && cparse[lasti] <= ('F' as u8)  { 
+				curvi = (cparse[lasti] - ('A' as u8)) as i32 + 10;
+			} else {
+				bbchar = "".to_string();
+				if cparse[lasti] >= 0x20 && cparse[lasti] <= 0x7e {
+					bbchar.push(cparse[lasti] as char);
+				} else {
+					bbchar.push_str(&format!("char[0x{:x}]",cparse[lasti]));
+				}
+
+				extargs_new_error!{StrOpError,"[{}] character not valid [{}]", idx + addi,bbchar}
+			}
+			curv = curvi.into();
+			retv *= 16;
+			retv += curv;
+		}
+		lasti -= 1;
+		idx -= 1;
+	}
+	Ok(retv)
+}
+
 

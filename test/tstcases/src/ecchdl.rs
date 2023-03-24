@@ -23,13 +23,13 @@ use std::any::Any;
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
-use hex::FromHex;
 
 #[allow(unused_imports)]
 use super::{debug_trace,debug_buffer_trace,format_buffer_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::fileop::{read_file_bytes,write_file_bytes};
+use super::strop::{parse_to_bigint};
 
 use ecsimple::arithmetics::*;
 use ecsimple::consts::*;
@@ -49,8 +49,7 @@ fn multecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
     if sarr.len() < 2 {
     	extargs_new_error!{EcchdlError,"need eccname and multval"}
     }
-    let v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
-    let multval :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let multval :BigInt = parse_to_bigint(&sarr[1])?;
     let mut cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
     let retcv :PointJacobi = cv.generator.mul_int(&multval);
     println!("PointJacobi\n{:?}",cv.generator);
@@ -66,15 +65,13 @@ fn addecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
     if sarr.len() < 2 {
     	extargs_new_error!{EcchdlError,"need eccname and multval"}
     }
-    let mut v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
-    let mut multval :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let mut multval :BigInt = parse_to_bigint(&sarr[1])?;
     let mut cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
     let mut retcv :PointJacobi = cv.generator.mul_int(&multval);
     let mut idx :usize = 2;
     while idx < sarr.len() {
 	    cv = get_ecc_curve_by_name(&sarr[0])?;
-        v8 = Vec::from_hex(&sarr[idx])?;
-        multval = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+        multval = parse_to_bigint(&sarr[idx])?;
 	    let curv :PointJacobi = cv.generator.mul_int(&multval);
 	    retcv = retcv.add_jacobi(&curv);
         idx += 1;
@@ -97,14 +94,11 @@ fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
     if ns.get_string("ecrandfile").len() > 0 {
         rname = Some(format!("{}",ns.get_string("ecrandfile")));
     }
-    let mut v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
-    let secnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let secnum :BigInt = parse_to_bigint(&sarr[1])?;
     let cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
-    v8 = Vec::from_hex(&sarr[2])?;
-    let hashnumber :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let hashnumber :BigInt = parse_to_bigint(&sarr[2])?;
     let (_,hashcode) = hashnumber.to_bytes_be();
-    v8 = Vec::from_hex(&sarr[3])?;
-    let randkey :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let randkey :BigInt = parse_to_bigint(&sarr[3])?;
     let mut privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
     privkey.set_rand_file(rname);
     let sig  =  privkey.sign_base(&hashcode,&randkey)?;
@@ -139,8 +133,7 @@ fn verifybaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
     }
     let inf :String = ns.get_string("input");
     let signcode :Vec<u8> = read_file_bytes(&inf)?;
-    let  v8 = Vec::from_hex(&sarr[0])?;
-    let hashnumber :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let hashnumber :BigInt = parse_to_bigint(&sarr[0])?;
     let (_,hashcode) = hashnumber.to_bytes_be();
     let pubcode :Vec<u8> = read_file_bytes(&sarr[1])?;
     let pubkey :PublicKey = PublicKey::from_der(&pubcode)?;
@@ -162,10 +155,8 @@ fn modsquareroot_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
     if sarr.len() < 2 {
         extargs_new_error!{EcchdlError,"need anum pnum"}
     }
-    let mut v8 :Vec<u8> = Vec::from_hex(&sarr[0])?;
-    let anum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
-    v8 = Vec::from_hex(&sarr[1])?;
-    let pnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let anum :BigInt = parse_to_bigint(&sarr[0])?;
+    let pnum :BigInt = parse_to_bigint(&sarr[1])?;
     let bnum :BigInt = square_root_mod_prime(&anum,&pnum)?;
     println!("0x{:x} = ( 0x{:x}) ** 2 % 0x{:x}",anum, bnum,pnum);
     Ok(())
@@ -186,8 +177,7 @@ fn expecpubkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
     if sarr.len() < 2 {
         extargs_new_error!{EcchdlError,"need eccname secnum"}
     }
-    let v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
-    let secnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
+    let secnum :BigInt = parse_to_bigint(&sarr[1])?;
     let cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
 
     if sarr.len() > 2 {
@@ -226,7 +216,58 @@ fn impecpubkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
     Ok(())
 }
 
-#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler)]
+fn signdigestecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    let mut rname :Option<String> = None;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 3 {
+        extargs_new_error!{EcchdlError,"eccname secnum binfile"}
+    }
+    let secnum :BigInt = parse_to_bigint(&sarr[1])?;
+    let cv : ECCCurve = get_ecc_curve_by_name(&sarr[0])?;
+
+
+    let mut privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
+    if ns.get_string("ecrandfile").len() > 0 {
+        rname = Some(format!("{}",ns.get_string("ecrandfile")));
+    }
+    privkey.set_rand_file(rname);
+    let rdata :Vec<u8> = read_file_bytes(&sarr[2])?;
+
+    let sigv = privkey.sign_digest(&rdata)?;
+    let sigcode = sigv.to_der()?;
+    let outf = ns.get_string("output");
+    if outf.len() > 0 {
+        let _ = write_file_bytes(&outf,&sigcode)?;
+    } else {
+        debug_buffer_trace!(sigcode.as_ptr(),sigcode.len(),"sig code");
+    }
+    Ok(())
+}
+
+fn verifydigestecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 3 {
+        extargs_new_error!{EcchdlError,"need pubkeybin contentbin signbin"}
+    }
+    let pubcode :Vec<u8> = read_file_bytes(&sarr[0])?;
+    let hashcode = read_file_bytes(&sarr[1])?;
+    let signcode :Vec<u8> = read_file_bytes(&sarr[2])?;
+    let pubkey :PublicKey = PublicKey::from_der(&pubcode)?;
+    let sigv :ECCSignature = ECCSignature::from_der(&signcode)?;
+    let valid :bool = pubkey.verify_digest(&hashcode,&sigv);
+    if valid {
+        println!("verify {} ok", sarr[1]);
+    } else {
+        extargs_new_error!{EcchdlError,"verify {} failed ",sarr[1]}
+    }
+    Ok(())}
+
+
+#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -252,6 +293,12 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "impecpubkey<impecpubkey_handler>##pubkeybin##" : {
             "$" : 1
+        },
+        "signdigestecc<signdigestecc_handler>##eccname secnum binfile to sign digest##" : {
+            "$" : 3
+        },
+        "verifydigestecc<verifydigestecc_handler>##pubkeybin binfile signbin to verify digest##" : {
+            "$" : 2
         }
     }
     "#;
