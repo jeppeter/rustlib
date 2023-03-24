@@ -88,10 +88,14 @@ fn addecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 
 fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
+    let mut rname :Option<String> = None;
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
     if sarr.len() < 4 {
         extargs_new_error!{EcchdlError,"need eccname secnum hashnumber randkey"}
+    }
+    if ns.get_string("ecrandfile").len() > 0 {
+        rname = Some(format!("{}",ns.get_string("ecrandfile")));
     }
     let mut v8 :Vec<u8> = Vec::from_hex(&sarr[1])?;
     let secnum :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
@@ -101,7 +105,7 @@ fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
     let (_,hashcode) = hashnumber.to_bytes_be();
     v8 = Vec::from_hex(&sarr[3])?;
     let randkey :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
-    let privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
+    let privkey :PrivateKey = PrivateKey::new(&cv,&secnum,rname)?;
     let sig  =  privkey.sign_base(&hashcode,&randkey)?;
     let outv8 = sig.to_der()?;
     let pubkey :PublicKey = privkey.get_public_key();
@@ -170,7 +174,13 @@ fn expecpubkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
     let sarr :Vec<String>;
     let mut types :String = "uncompressed".to_string();
     let mut paramstype :String = "".to_string();
+    let mut rname :Option<String> = None;
     init_log(ns.clone())?;
+
+    if ns.get_string("ecrandfile").len() > 0 {
+        rname = Some(format!("{}",ns.get_string("ecrandfile")));
+    }
+
     sarr = ns.get_array("subnargs");
     if sarr.len() < 2 {
         extargs_new_error!{EcchdlError,"need eccname secnum"}
@@ -187,7 +197,7 @@ fn expecpubkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
         paramstype = format!("{}",sarr[3]);
     }
 
-    let privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
+    let privkey :PrivateKey = PrivateKey::new(&cv,&secnum,rname)?;
     let pubkey :PublicKey = privkey.get_public_key();
     let outv8 = pubkey.to_der(&types,&paramstype)?;
 
@@ -219,6 +229,7 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
         "ecpubout" : null,
+        "ecrandfile" : null,
     	"multecc<multecc_handler>##eccname multval to multiple##" : {
     		"$" : 2
     	},
