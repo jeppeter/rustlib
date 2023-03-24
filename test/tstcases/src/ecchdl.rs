@@ -105,7 +105,8 @@ fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
     let (_,hashcode) = hashnumber.to_bytes_be();
     v8 = Vec::from_hex(&sarr[3])?;
     let randkey :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
-    let privkey :PrivateKey = PrivateKey::new(&cv,&secnum,rname)?;
+    let mut privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
+    privkey.set_rand_file(rname);
     let sig  =  privkey.sign_base(&hashcode,&randkey)?;
     let outv8 = sig.to_der()?;
     let pubkey :PublicKey = privkey.get_public_key();
@@ -197,7 +198,8 @@ fn expecpubkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
         paramstype = format!("{}",sarr[3]);
     }
 
-    let privkey :PrivateKey = PrivateKey::new(&cv,&secnum,rname)?;
+    let mut privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
+    privkey.set_rand_file(rname);
     let pubkey :PublicKey = privkey.get_public_key();
     let outv8 = pubkey.to_der(&types,&paramstype)?;
 
