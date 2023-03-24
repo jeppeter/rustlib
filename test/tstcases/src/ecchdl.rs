@@ -102,7 +102,7 @@ fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
     v8 = Vec::from_hex(&sarr[3])?;
     let randkey :BigInt = BigInt::from_bytes_be(num_bigint::Sign::Plus,&v8);
     let privkey :PrivateKey = PrivateKey::new(&cv,&secnum)?;
-    let sig  =  privkey.sign(&hashcode,&randkey)?;
+    let sig  =  privkey.sign_base(&hashcode,&randkey)?;
     let outv8 = sig.to_der()?;
     let pubkey :PublicKey = privkey.get_public_key();
 
@@ -140,7 +140,7 @@ fn verifybaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
     let pubcode :Vec<u8> = read_file_bytes(&sarr[1])?;
     let pubkey :PublicKey = PublicKey::from_der(&pubcode)?;
     let sigv :ECCSignature = ECCSignature::from_der(&signcode)?;
-    let valid :bool = pubkey.verify(&hashcode,&sigv);
+    let valid :bool = pubkey.verify_base(&hashcode,&sigv);
     if valid {
         println!("verify {} ok", inf);
     } else {
@@ -169,7 +169,7 @@ fn modsquareroot_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 fn expecpubkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
     let mut types :String = "uncompressed".to_string();
-    let mut paramstype :String = "explicit".to_string();
+    let mut paramstype :String = "".to_string();
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
     if sarr.len() < 2 {
