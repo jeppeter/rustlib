@@ -303,6 +303,8 @@ fn expecprivkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
         exps = format!("{}",sarr[4]);
     }
 
+    println!("{:?}", privkey);
+
     let privbin = privkey.to_der(&types,&asn1s,&exps)?;
     if ns.get_string("ecprivkey").len() > 0 {
         let fname = ns.get_string("ecprivkey");
@@ -321,8 +323,20 @@ fn expecprivkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
     Ok(())
 }
 
+fn impecprivkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 1 {
+        extargs_new_error!{EcchdlError,"need private key bin"}
+    }
+    let rdata = read_file_bytes(&sarr[0])?;
+    let privkey :PrivateKey = PrivateKey::from_der(&rdata)?;
+    println!("{:?}", privkey);
+    Ok(())
+}
 
-#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler,expecprivkey_handler)]
+#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler,expecprivkey_handler,impecprivkey_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -358,6 +372,9 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "expecprivkey<expecprivkey_handler>##ecname [secnum] [types] [asn1s] [exps] to export ec private key##" : {
             "$" : "+"
+        },
+        "impecprivkey<impecprivkey_handler>##privbin to import ec private key##" : {
+            "$" : 1
         }
     }
     "#;
