@@ -114,7 +114,7 @@ fn signbaseecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
         let _ = write_file_bytes(&outf,&outv8)?;
     }
     let outv8 = pubkey.to_der(EC_UNCOMPRESSED,EC_PARAMS_EXLICIT)?;
-    let pubout = ns.get_string("ecpubout");
+    let pubout = ns.get_string("ecpubkey");
     if pubout.len() > 0 {
         let _ = write_file_bytes(&pubout,&outv8)?;
     } else {
@@ -266,14 +266,68 @@ fn verifydigestecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Ar
     } else {
         extargs_new_error!{EcchdlError,"verify {} failed ",sarr[1]}
     }
-    Ok(())}
+    Ok(())
+}
+
+fn expecprivkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 1 {
+        extargs_new_error!{EcchdlError,"need ecname"}
+    }
+    let ecname = format!("{}",sarr[0]);
+    let privkey :PrivateKey;
+    let curve = get_ecc_curve_by_name(&ecname)?;
+    let mut types :String = EC_UNCOMPRESSED.to_string();
+    let mut asn1s :String = EC_SSLEAY_TYPE.to_string();
+    let mut exps :String = "".to_string();
+    let mut rname :Option<String> = None;
+    if ns.get_string("ecrandfile").len() > 0 {
+        rname = Some(format!("{}",ns.get_string("ecrandfile")));
+    }
+    if sarr.len() > 1 {
+        let secnum = parse_to_bigint(&sarr[1])?;
+        privkey = PrivateKey::new(&curve,&secnum)?;        
+    } else {
+        privkey = PrivateKey::generate(&curve,rname)?;
+    }
+    if sarr.len() > 2 {
+        types = format!("{}",sarr[2]);
+    }
+    if sarr.len() > 3 {
+        asn1s = format!("{}",sarr[3]);
+    }
+
+    if sarr.len() > 4 {
+        exps = format!("{}",sarr[4]);
+    }
+
+    let privbin = privkey.to_der(&types,&asn1s,&exps)?;
+    if ns.get_string("ecprivkey").len() > 0 {
+        let fname = ns.get_string("ecprivkey");
+        let _ = write_file_bytes(&fname,&privbin)?;
+    } else {
+        debug_buffer_trace!(privbin.as_ptr(),privbin.len(),"private key [{}] [{}] [{}]",types,asn1s,exps);
+    }
+
+    let pubbin = privkey.get_public_key().to_der(&types,&exps)?;
+    if ns.get_string("ecpubkey").len() > 0 {
+        let fname = ns.get_string("ecpubkey");
+        let _ = write_file_bytes(&fname,&pubbin)?;
+    } else {
+        debug_buffer_trace!(pubbin.as_ptr(),pubbin.len(),"public key [{}] [{}]",types,exps);
+    }
+    Ok(())
+}
 
 
-#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler)]
+#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler,expecprivkey_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
-        "ecpubout" : null,
+        "ecpubkey" : null,
+        "ecprivkey" : null,
         "ecrandfile" : null,
     	"multecc<multecc_handler>##eccname multval to multiple##" : {
     		"$" : 2
@@ -301,6 +355,9 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "verifydigestecc<verifydigestecc_handler>##pubkeybin binfile signbin to verify digest##" : {
             "$" : 2
+        },
+        "expecprivkey<expecprivkey_handler>##ecname [secnum] [types] [asn1s] [exps] to export ec private key##" : {
+            "$" : "+"
         }
     }
     "#;
