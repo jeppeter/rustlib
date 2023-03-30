@@ -74,6 +74,7 @@ impl Sha256Digest {
 
 pub struct Sha1Digest {}
 
+#[allow(dead_code)]
 impl Sha1Digest {
 	pub fn calc(data :&[u8]) -> Vec<u8> {
 	    let mut hasher = Sha1::new();

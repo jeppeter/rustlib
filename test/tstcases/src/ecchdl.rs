@@ -336,7 +336,31 @@ fn impecprivkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
     Ok(())
 }
 
-#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler,expecprivkey_handler,impecprivkey_handler)]
+fn testecenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 3 {
+        extargs_new_error!{EcchdlError,"need ecname secnum origfile"}
+    }
+    let ecname = format!("{}",sarr[0]);
+    let secnum :BigInt = parse_to_bigint(&sarr[1])?;
+    let rdata :Vec<u8> = read_file_bytes(&sarr[2])?;
+    let curve = get_ecc_curve_by_name(&ecname)?;
+    let privkey :PrivateKey = PrivateKey::new(&curve,&secnum)?;
+    let pubkey :PublicKey = privkey.get_public_key();
+
+    let sigv  = pubkey.encrypt(&rdata)?;
+    let data :Vec<u8> = privkey.decrypt(&sigv)?;
+
+    debug_buffer_trace!(rdata.as_ptr(),rdata.len(),"data origin");
+    debug_buffer_trace!(data.as_ptr(),data.len(),"data decrypt");
+
+    Ok(())
+}
+
+
+#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler,expecprivkey_handler,impecprivkey_handler,testecenc_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -375,6 +399,9 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "impecprivkey<impecprivkey_handler>##privbin to import ec private key##" : {
             "$" : 1
+        },
+        "testecenc<testecenc_handler>##ecname secnum origdata to encrypt and decrypt##" : {
+            "$" : 3
         }
     }
     "#;
