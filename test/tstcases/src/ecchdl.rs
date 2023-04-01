@@ -359,8 +359,27 @@ fn testecenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     Ok(())
 }
 
+fn ecdhgen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 3 {
+        extargs_new_error!{EcchdlError,"need ecname sec1 sec2"}
+    }
+    let ecname = format!("{}",sarr[0]);
+    let sec1 :BigInt = parse_to_bigint(&sarr[1])?;
+    let sec2 :BigInt = parse_to_bigint(&sarr[2])?;
+    let curve = get_ecc_curve_by_name(&ecname)?;
+    let priv1 :PrivateKey = PrivateKey::new(&curve,&sec1)?;
+    let priv2 :PrivateKey = PrivateKey::new(&curve,&sec2)?;
 
-#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler,expecprivkey_handler,impecprivkey_handler,testecenc_handler)]
+    let dhv :BigInt = priv1.ecdh_value(&priv2.get_public_key())?;
+    println!("dhv 0x{:x}", dhv);
+
+    Ok(())
+}
+
+#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler,expecprivkey_handler,impecprivkey_handler,testecenc_handler,ecdhgen_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -401,6 +420,9 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : 1
         },
         "testecenc<testecenc_handler>##ecname secnum origdata to encrypt and decrypt##" : {
+            "$" : 3
+        },
+        "ecdhgen<ecdhgen_handler>##ecname sec1 sec2 to generate ecdh##" : {
             "$" : 3
         }
     }
