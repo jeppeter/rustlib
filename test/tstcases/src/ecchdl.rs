@@ -220,6 +220,9 @@ fn impecpubkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 fn signdigestecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
     let mut rname :Option<String> = None;
+    let types :String = EC_UNCOMPRESSED.to_string();
+    let asn1s :String = EC_PKCS8_TYPE.to_string();
+    let paramstype :String = "".to_string();
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
     if sarr.len() < 3 {
@@ -244,6 +247,20 @@ fn signdigestecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
     } else {
         debug_buffer_trace!(sigcode.as_ptr(),sigcode.len(),"sig code");
     }
+
+    let ecpubfile :String = ns.get_string("ecpubkey");
+    let ecprivfile :String = ns.get_string("ecprivkey");
+
+    if ecpubfile.len() > 0 {
+        let pubbin :Vec<u8> = privkey.get_public_key().to_der(&types,&paramstype)?;
+        let _ = write_file_bytes(&ecpubfile,&pubbin)?;
+    }
+
+    if ecprivfile.len() > 0 {
+        let privbin :Vec<u8>= privkey.to_der(&types,&asn1s,&paramstype)?;
+        let _ = write_file_bytes(&ecprivfile,&privbin)?;
+    }
+
     Ok(())
 }
 
@@ -251,12 +268,18 @@ fn verifydigestecc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Ar
     let sarr :Vec<String>;
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
-    if sarr.len() < 3 {
-        extargs_new_error!{EcchdlError,"need pubkeybin contentbin signbin"}
+    if sarr.len() < 2 {
+        extargs_new_error!{EcchdlError,"need contentbin signbin"}
     }
-    let pubcode :Vec<u8> = read_file_bytes(&sarr[0])?;
-    let hashcode = read_file_bytes(&sarr[1])?;
-    let signcode :Vec<u8> = read_file_bytes(&sarr[2])?;
+
+    //let pubcode :Vec<u8> = read_file_bytes(&sarr[0])?;
+    let hashcode = read_file_bytes(&sarr[0])?;
+    let signcode :Vec<u8> = read_file_bytes(&sarr[1])?;
+    let ecpubfile :String = ns.get_string("ecpubkey");
+    if ecpubfile.len() == 0 {
+        extargs_new_error!{EcchdlError,"need ecpubkey"}
+    }
+    let pubcode = read_file_bytes(&ecpubfile)?;
     let pubkey :PublicKey = PublicKey::from_der(&pubcode)?;
     let sigv :ECCSignature = ECCSignature::from_der(&signcode)?;
     let digcode = Sha1Digest::calc(&hashcode);
