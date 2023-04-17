@@ -58,6 +58,8 @@ mod pkcs7;
 mod ossllib;
 mod osslhdl;
 mod ecchdl;
+#[cfg(windows)]
+mod winsetup;
 
 
 #[extargs_map_function()]
