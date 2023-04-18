@@ -86,6 +86,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	gpghdl::load_gpg_handler(parser.clone())?;
 	osslhdl::load_ossl_handler(parser.clone())?;
 	ecchdl::load_ecc_handler(parser.clone())?;
+	winsetup::load_ecc_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
