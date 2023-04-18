@@ -30,9 +30,12 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use winapi::shared::guiddef::{GUID};
 //use winapi::um::setupapi::{SetupDiGetClassDevsW,SetupDiDestroyDeviceInfoList,HDEVINFO,DIGCF_ALLCLASSES,DIGCF_DEVICEINTERFACE,DIGCF_PRESENT};
 use winapi::um::setupapi::*;
+use winapi::um::cfgmgr32::*;
 use winapi::um::handleapi::{INVALID_HANDLE_VALUE};
 use winapi::shared::minwindef::{DWORD,BOOL};
+use winapi::shared::devpropdef::*;
 use std::ptr::null_mut;
+use libc::{malloc,free,size_t,c_void};
 
 
 extargs_error_class!{WinSetupError}
@@ -135,13 +138,33 @@ fn parse_guid(ins :&str) -> Result<GUID,Box<dyn Error>> {
 unsafe fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<HwProp>,Box<dyn Error>> {
     let mut bret :BOOL;
     let mut requiresize :DWORD = 0;
+    let mut allocsize :DWORD = 0;
+    let propcnt :usize;
     let mut props :Vec<HwProp> = Vec::new();
-    let mut propguids :*DEVPROPKEY = null_mut();
+    let mut propguids :*mut DEVPROPKEY = null_mut();
+    let mut cfgret :CONFIGRET;
 
     bret = SetupDiGetDevicePropertyKeys(pinfo,pndata,null_mut(),0,&mut requiresize,0);
     if bret == 0 {
-        
+        propguids = malloc(requiresize as size_t) as *mut DEVPROPKEY;
+        if propguids == null_mut() {
+            extargs_new_error!{WinSetupError,"can not alloc [0x{:x}] size", requiresize}
+        }
+        allocsize = requiresize;
+        bret = SetupDiGetDevicePropertyKeys(pinfo,pndata,propguids,allocsize,&mut requiresize,0);
+        if bret == 0 {
+            free(propguids as *mut c_void);
+            propguids = null_mut();
+            extargs_new_error!{WinSetupError,"can not get property"}
+        }
     }
+
+    propcnt = (allocsize  as usize) / std::mem::size_of::<DEVPROPKEY>();
+    for i in 0..propcnt {
+        //cfgret = CM_Get_DevNode_PropertyW(pndata->DevInst,)
+    }
+    free(propguids as *mut c_void);
+    propguids = null_mut();
     Ok(props)
 }
 
