@@ -37,8 +37,9 @@ use winapi::shared::devpropdef::*;
 use std::ptr::null_mut;
 //use libc::{malloc,free,size_t,c_void};
 use crate::strop::{parse_u64};
-use crate::fileop::{write_file_bytes};
+//use crate::fileop::{write_file_bytes};
 use crate::automem::*;
+//use std::io::Write;
 
 
 extargs_error_class!{WinSetupError}
@@ -162,11 +163,9 @@ fn format_guid(pguid :&GUID) -> String {
     rets
 }
 
-#[allow(unused_assignments)]
 fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<HwProp>,Box<dyn Error>> {
     let mut bret :BOOL;
     let mut requiresize :DWORD = 0;
-    let mut allocsize :DWORD = 0;
     let mut props :Vec<HwProp> = Vec::new();
     let mut propguids :AutoMem<DEVPROPKEY> = AutoMem::new(0);
     let mut cfgret :CONFIGRET;
@@ -183,7 +182,7 @@ fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<HwProp>,
     if bret == 0 {
         debug_trace!("requiresize [{}]", requiresize);
         propguids.reset(requiresize as usize);
-        allocsize = requiresize;
+        let allocsize = requiresize;
         unsafe{
             bret = SetupDiGetDevicePropertyKeys(pinfo,pndata,propguids.ptr_mut(0),allocsize,&mut requiresize,0);    
         }        
@@ -248,10 +247,9 @@ fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<HwProp>,
     Ok(props)
 }
 
-#[allow(unused_assignments)]
 fn get_hw_infos(guid :* const GUID,flags :DWORD) -> Result<Vec<HwInfo>,Box<dyn Error>> {
     let mut retv :Vec<HwInfo> = Vec::new();
-    let mut pinfo :HDEVINFO;
+    let pinfo :HDEVINFO;
     unsafe {
         pinfo = SetupDiGetClassDevsW(guid,null_mut(),null_mut(),flags);    
     }
@@ -285,7 +283,6 @@ fn get_hw_infos(guid :* const GUID,flags :DWORD) -> Result<Vec<HwInfo>,Box<dyn E
                     SetupDiDestroyDeviceInfoList(pinfo);
                 }                
             }   
-            pinfo = INVALID_HANDLE_VALUE;
             return Err(ores.err().unwrap());
         }
         hwinfo.props = ores.unwrap();
@@ -298,26 +295,73 @@ fn get_hw_infos(guid :* const GUID,flags :DWORD) -> Result<Vec<HwInfo>,Box<dyn E
             SetupDiDestroyDeviceInfoList(pinfo);
         }        
     }   
-    pinfo = INVALID_HANDLE_VALUE;
-
     Ok(retv)        
 }
 
-fn output_hw_infos(hwinfos :&[HwInfo]) -> String {
+fn output_hw_infos<W : std::io::Write>(fout :&mut W,hwinfos :&[HwInfo])  {
     let mut rets :String = "".to_string();
     let mut idx :usize = 0;
     let mut jdx :usize;
+    let mut kidx :usize;
+    let mut lasti :usize;
 
     while idx < hwinfos.len() {
         jdx = 0;
         while jdx < hwinfos[idx].props.len() {
-            rets.push_str(&format!("nindex[{}].[{}] property[{}].[0x{:x}]\n", idx,jdx,hwinfos[idx].props[jdx].guid,hwinfos[idx].props[jdx].propidx));            
+            rets.push_str(&format!("nindex[{}].[{}] property[{}].[0x{:x}]", idx,jdx,hwinfos[idx].props[jdx].guid,hwinfos[idx].props[jdx].propidx));            
+            kidx = 0;
+            lasti = 0;
+            while kidx < hwinfos[idx].props[jdx].buf.len() {
+                if (kidx % 16) == 0 {
+                    if kidx != lasti {
+                        rets.push_str("    ");
+                        while lasti != kidx {
+                            let ch = hwinfos[idx].props[jdx].buf[lasti] ;
+                            if ch >= 0x20 && ch <= 0x7e {
+                                rets.push_str(&format!("{}",ch as char));
+                            } else {
+                                rets.push_str(".");
+                            }
+                            lasti += 1;
+                        }
+                    }
+                    rets.push_str(&format!("\n0x{:08x}", kidx));
+                }
+                rets.push_str(&format!(" 0x{:02x}", hwinfos[idx].props[jdx].buf[kidx]));
+                kidx += 1;
+            }
+
+            if kidx != lasti {
+                while (kidx % 16) != 0 {
+                    rets.push_str("     ");
+                    kidx += 1;
+                }
+                rets.push_str("    ");
+                while lasti < hwinfos[idx].props[jdx].buf.len() {
+                    let ch = hwinfos[idx].props[jdx].buf[lasti] ;
+                    if ch >= 0x20 && ch <= 0x7e {
+                        rets.push_str(&format!("{}",ch as char));
+                    } else {
+                        rets.push_str(".");
+                    }
+                    lasti += 1;                    
+                }
+                rets.push_str("\n");
+            }
             jdx += 1;
+        }
+        if rets.len() > 0x1000 {
+            let _ = fout.write_all(rets.as_bytes());
+            rets = "".to_string();
         }
         idx += 1;
     }
 
-    rets
+    if rets.len() > 0 {
+        let _ = fout.write_all(rets.as_bytes());
+        //rets = "".to_string();
+    }
+    return
 }
 
 fn lshwinfo_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
@@ -325,6 +369,7 @@ fn lshwinfo_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
     let mut ptrguid :* const GUID = null_mut();
     let mut guidget :GUID = GUID::default();
     let mut flags :DWORD = DIGCF_ALLCLASSES;
+
 
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
@@ -337,12 +382,14 @@ fn lshwinfo_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
     }
     debug_trace!("guid {:?}",guidget);
     let hwinfos = get_hw_infos(ptrguid,flags)?;
-    let outs = output_hw_infos(&hwinfos);
+
     if ns.get_string("output").len() > 0 {
-        let f = ns.get_string("output");
-        let _ = write_file_bytes(&f,outs.as_bytes())?;
+        let fname = ns.get_string("output");
+        let mut fout = std::fs::File::create(&fname)?;
+        output_hw_infos(&mut fout,&hwinfos);
     } else {
-        debug_trace!("{}",outs);
+        let mut of = std::io::stdout();
+        output_hw_infos(&mut of,&hwinfos);
     }
 
 
@@ -377,7 +424,6 @@ fn devpropset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
     }
 
 
-    ptr = cvobj.ptr_mut(0) as *mut u8;
     idx = 1;
     while idx < sarr.len() {
         if (idx + 3) > sarr.len() {

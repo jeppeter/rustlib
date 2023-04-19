@@ -97,13 +97,16 @@ impl WStrBuf {
 	fn to_string(&self) -> Result<String,Box<dyn Error>> {
 		let mut ss :String = "".to_string();
 		if self.bufv.len() > 0 {
-			let ostr = wstr_to_str(&self.bufv);
+			ss = wstr_to_str(&self.bufv);
+			/*
 			if ostr.is_none() {
 				extargs_new_error!{CredLibError,"can not parse {:?}", self.bufv}
 			}
 			let sv :Box<[u8]> = ostr.unwrap();
+
 			let s1 = unsafe{ std::str::from_utf8(&(*Box::into_raw(sv)))?};
 			ss = s1.to_string();
+			*/
 		}
 		return Ok(ss);
 	}
