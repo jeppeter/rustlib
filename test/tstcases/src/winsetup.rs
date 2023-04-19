@@ -174,9 +174,7 @@ unsafe fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<H
     let mut pbuf :*mut u8 = null_mut() as *mut u8;
     let mut cpropguids :*mut DEVPROPKEY;
 
-    debug_trace!(" ");
     bret = SetupDiGetDevicePropertyKeys(pinfo,pndata,null_mut(),0,&mut requiresize,0);
-    debug_trace!("bret [{}]",bret);
     if bret == 0 {
         propguids = malloc((std::mem::size_of::<DEVPROPKEY>() * (requiresize as usize)) as size_t) as *mut DEVPROPKEY;
         if propguids == null_mut() {
@@ -193,14 +191,11 @@ unsafe fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<H
         }
     }
 
-    debug_trace!("requiresize [{}]", requiresize);
     for i in 0..requiresize {
-        debug_trace!("read [{}]",i);
         proptype = 0;
         reqbufsize = 0;
         cpropguids = propguids.offset(i as isize);
         cfgret = CM_Get_DevNode_PropertyW((*pndata).DevInst,cpropguids,&mut proptype,null_mut(),&mut reqbufsize,0);
-        debug_trace!("ret [0x{:x}]", cfgret);
         if cfgret != CR_SUCCESS {
             if cfgret != CR_BUFFER_SMALL && cfgret != CR_NO_SUCH_VALUE {
                 if pbuf != null_mut() {
@@ -295,7 +290,6 @@ fn get_hw_infos(guid :* const GUID,flags :DWORD) -> Result<Vec<HwInfo>,Box<dyn E
             cv = SP_DEVINFO_DATA::default();
             cv.cbSize = std::mem::size_of::<SP_DEVINFO_DATA>() as u32;
             bret = SetupDiEnumDeviceInfo(pinfo,nindex,&mut cv);
-            debug_trace!("[{}] bret [{}]", nindex,bret);
             if bret == 0 {
                 break;
             }
