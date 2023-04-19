@@ -58,6 +58,7 @@ mod pkcs7;
 mod ossllib;
 mod osslhdl;
 mod ecchdl;
+mod automem;
 #[cfg(windows)]
 mod winsetup;
 

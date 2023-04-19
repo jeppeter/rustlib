@@ -35,12 +35,14 @@ use winapi::um::handleapi::{INVALID_HANDLE_VALUE};
 use winapi::shared::minwindef::{DWORD,BOOL,ULONG};
 use winapi::shared::devpropdef::*;
 use std::ptr::null_mut;
-use libc::{malloc,free,size_t,c_void};
+//use libc::{malloc,free,size_t,c_void};
 use crate::strop::{parse_u64};
 use crate::fileop::{write_file_bytes};
+use crate::automem::*;
 
 
 extargs_error_class!{WinSetupError}
+
 
 
 struct HwProp {
@@ -161,32 +163,31 @@ fn format_guid(pguid :&GUID) -> String {
 }
 
 #[allow(unused_assignments)]
-unsafe fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<HwProp>,Box<dyn Error>> {
+fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<HwProp>,Box<dyn Error>> {
     let mut bret :BOOL;
     let mut requiresize :DWORD = 0;
     let mut allocsize :DWORD = 0;
     let mut props :Vec<HwProp> = Vec::new();
-    let mut propguids :*mut DEVPROPKEY = null_mut() as *mut DEVPROPKEY;
+    let mut propguids :AutoMem<DEVPROPKEY> = AutoMem::new(0);
     let mut cfgret :CONFIGRET;
     let mut proptype :DEVPROPTYPE;
     let mut bufsize :ULONG = 0;
     let mut reqbufsize :ULONG;
-    let mut pbuf :*mut u8 = null_mut() as *mut u8;
+    let mut pbuf :AutoMem<u8> = AutoMem::new(0);
     let mut cpropguids :*mut DEVPROPKEY;
 
-    bret = SetupDiGetDevicePropertyKeys(pinfo,pndata,null_mut(),0,&mut requiresize,0);
+    unsafe {
+        bret = SetupDiGetDevicePropertyKeys(pinfo,pndata,null_mut(),0,&mut requiresize,0);    
+    }
+    
     if bret == 0 {
-        propguids = malloc((std::mem::size_of::<DEVPROPKEY>() * (requiresize as usize)) as size_t) as *mut DEVPROPKEY;
-        if propguids == null_mut() {
-            extargs_new_error!{WinSetupError,"can not alloc [0x{:x}] size", requiresize}
-        }
+        debug_trace!("requiresize [{}]", requiresize);
+        propguids.reset(requiresize as usize);
         allocsize = requiresize;
-        bret = SetupDiGetDevicePropertyKeys(pinfo,pndata,propguids,allocsize,&mut requiresize,0);
+        unsafe{
+            bret = SetupDiGetDevicePropertyKeys(pinfo,pndata,propguids.ptr_mut(0),allocsize,&mut requiresize,0);    
+        }        
         if bret == 0 {
-            if propguids != null_mut() {
-                free(propguids as *mut c_void);    
-            }            
-            propguids = null_mut() as *mut DEVPROPKEY;
             extargs_new_error!{WinSetupError,"can not get property"}
         }
     }
@@ -194,129 +195,112 @@ unsafe fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<H
     for i in 0..requiresize {
         proptype = 0;
         reqbufsize = 0;
-        cpropguids = propguids.offset(i as isize);
-        cfgret = CM_Get_DevNode_PropertyW((*pndata).DevInst,cpropguids,&mut proptype,null_mut(),&mut reqbufsize,0);
+        cpropguids = propguids.ptr_mut(i as usize);
+        unsafe{
+            cfgret = CM_Get_DevNode_PropertyW((*pndata).DevInst,cpropguids,&mut proptype,null_mut(),&mut reqbufsize,0);    
+        }
+        
         if cfgret != CR_SUCCESS {
             if cfgret != CR_BUFFER_SMALL && cfgret != CR_NO_SUCH_VALUE {
-                if pbuf != null_mut() {
-                    free(pbuf as *mut c_void);
-                }
-                pbuf= null_mut();
-                if propguids != null_mut() {
-                    free(propguids as *mut c_void);    
-                }            
-                propguids = null_mut() as *mut DEVPROPKEY;
                 extargs_new_error!{WinSetupError,"get property error 0x{:x}",cfgret}
             }
             if cfgret == CR_NO_SUCH_VALUE {
                 continue;
             }
 
-            if pbuf == null_mut() || reqbufsize > bufsize {
-                bufsize = reqbufsize;
-                if pbuf != null_mut() {
-                    free(pbuf as *mut c_void);
-                }
-                pbuf= null_mut();
-                pbuf = malloc(bufsize as usize) as *mut u8;
-                if pbuf == null_mut() {
-                    if pbuf != null_mut() {
-                        free(pbuf as *mut c_void);
-                    }
-                    pbuf= null_mut();
-                    if propguids != null_mut() {
-                        free(propguids as *mut c_void);    
-                    }            
-                    propguids = null_mut() as *mut DEVPROPKEY;
-                    extargs_new_error!{WinSetupError,"alloc buf 0x{:x} error",reqbufsize}
-                }
-            }
+            if reqbufsize > bufsize {
+                pbuf.reset(reqbufsize as usize);
+                bufsize = reqbufsize;    
+            }           
+
 
             proptype = 0;
             reqbufsize = bufsize;
-            cpropguids = propguids.offset(i as isize);
-            cfgret = CM_Get_DevNode_PropertyW((*pndata).DevInst,cpropguids,&mut proptype,pbuf,&mut reqbufsize,0);
+            cpropguids = propguids.ptr_mut(i as usize);
+            unsafe {
+                cfgret = CM_Get_DevNode_PropertyW((*pndata).DevInst,cpropguids,&mut proptype,pbuf.ptr_mut(0),&mut reqbufsize,0);
+            }            
             if cfgret != CR_SUCCESS {
-                if pbuf != null_mut() {
-                    free(pbuf as *mut c_void);
-                }
-                pbuf= null_mut();
-                if propguids != null_mut() {
-                    free(propguids as *mut c_void);    
-                }            
-                propguids = null_mut() as *mut DEVPROPKEY;
                 extargs_new_error!{WinSetupError,"get property error 0x{:x}",cfgret}
             }
 
             /*now we should */
-            cpropguids = propguids.offset(i as isize);
-            let mut curprop :HwProp = HwProp{
-                guid : format_guid(&((*cpropguids).fmtid)),
-                propidx : (*cpropguids).pid,
-                buf : Vec::new(),
-            };
+            cpropguids = propguids.ptr_mut(i as usize);
+            let mut curprop :HwProp;
+
+            unsafe {
+                curprop = HwProp{
+                    guid : format_guid(&((*cpropguids).fmtid)),
+                    propidx : (*cpropguids).pid,
+                    buf : Vec::new(),
+                };
+            }
             for j in 0..reqbufsize {
-                curprop.buf.push(*(pbuf.offset(j as isize)));
+                let vptr = pbuf.ptr(j as usize);
+                unsafe {
+                    curprop.buf.push(*vptr);    
+                }
+                
             }
             props.push(curprop);
         }
     }
-    if pbuf != null_mut() {
-        free(pbuf as *mut c_void);
-    }
-    pbuf= null_mut();
-
-    if propguids != null_mut() {
-        free(propguids as *mut c_void);    
-    }    
-    propguids = null_mut();
     Ok(props)
 }
 
 #[allow(unused_assignments)]
 fn get_hw_infos(guid :* const GUID,flags :DWORD) -> Result<Vec<HwInfo>,Box<dyn Error>> {
     let mut retv :Vec<HwInfo> = Vec::new();
+    let mut pinfo :HDEVINFO;
     unsafe {
-        let mut pinfo :HDEVINFO = SetupDiGetClassDevsW(guid,null_mut(),null_mut(),flags);
-        let mut bret:BOOL;
-        let mut cv :SP_DEVINFO_DATA ;
-        let mut nindex : DWORD = 0;
-
-        if pinfo == INVALID_HANDLE_VALUE{
-            extargs_new_error!{WinSetupError,"can not create DeviceInfoList"}
-        }
-
-        loop {
-            cv = SP_DEVINFO_DATA::default();
-            cv.cbSize = std::mem::size_of::<SP_DEVINFO_DATA>() as u32;
-            bret = SetupDiEnumDeviceInfo(pinfo,nindex,&mut cv);
-            if bret == 0 {
-                break;
-            }
-            let mut hwinfo = HwInfo {
-                props : Vec::new(),
-            };
-
-            let ores = get_hw_props(pinfo,&mut cv);
-            if ores.is_err() {
-                if pinfo != INVALID_HANDLE_VALUE {
-                    SetupDiDestroyDeviceInfoList(pinfo);    
-                }   
-                pinfo = INVALID_HANDLE_VALUE;
-                return Err(ores.err().unwrap());
-            }
-            hwinfo.props = ores.unwrap();
-            retv.push(hwinfo);
-            nindex += 1;
-        }
-
-        if pinfo != INVALID_HANDLE_VALUE {
-            SetupDiDestroyDeviceInfoList(pinfo);    
-        }   
-        pinfo = INVALID_HANDLE_VALUE;
-
-        Ok(retv)        
+        pinfo = SetupDiGetClassDevsW(guid,null_mut(),null_mut(),flags);    
     }
+
+    let mut bret:BOOL;
+    let mut cv :SP_DEVINFO_DATA ;
+    let mut nindex : DWORD = 0;
+
+    if pinfo == INVALID_HANDLE_VALUE{
+        extargs_new_error!{WinSetupError,"can not create DeviceInfoList"}
+    }
+
+    loop {
+        cv = SP_DEVINFO_DATA::default();
+        cv.cbSize = std::mem::size_of::<SP_DEVINFO_DATA>() as u32;
+        unsafe{
+            bret = SetupDiEnumDeviceInfo(pinfo,nindex,&mut cv);    
+        }
+        
+        if bret == 0 {
+            break;
+        }
+        let mut hwinfo = HwInfo {
+            props : Vec::new(),
+        };
+
+        let ores = get_hw_props(pinfo,&mut cv);
+        if ores.is_err() {
+            if pinfo != INVALID_HANDLE_VALUE {
+                unsafe{
+                    SetupDiDestroyDeviceInfoList(pinfo);
+                }                
+            }   
+            pinfo = INVALID_HANDLE_VALUE;
+            return Err(ores.err().unwrap());
+        }
+        hwinfo.props = ores.unwrap();
+        retv.push(hwinfo);
+        nindex += 1;
+    }
+
+    if pinfo != INVALID_HANDLE_VALUE {
+        unsafe {
+            SetupDiDestroyDeviceInfoList(pinfo);
+        }        
+    }   
+    pinfo = INVALID_HANDLE_VALUE;
+
+    Ok(retv)        
 }
 
 fn output_hw_infos(hwinfos :&[HwInfo]) -> String {
@@ -378,52 +362,40 @@ fn devpropset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
 
     maxsize =parse_u64(&sarr[0])? as usize;
 
-    unsafe {
-        let mut cv :*mut DEVPROPKEY = null_mut() as *mut DEVPROPKEY;
-        let mut cptr :*mut DEVPROPKEY ;
-        let mut ptr :*mut u8;
-        let mut curptr :*mut u8;
-        cv = malloc(std::mem::size_of::<DEVPROPKEY>() * maxsize) as *mut DEVPROPKEY;
-        if cv == null_mut() {
-            extargs_new_error!{WinSetupError,"can not alloc 0x{:x} size",std::mem::size_of::<DEVPROPKEY>()}
-        }
-        idx = 0 ;
-        while idx < maxsize {
-            cptr = cv.offset(idx as isize);
-            let _ = std::mem::take::<DEVPROPKEY>(&mut (*cptr));
-            idx += 1;
-        }
-        
-
-        ptr = cv as *mut u8;
-        idx = 1;
-        while idx < sarr.len() {
-            if (idx + 3) > sarr.len() {
-                if cv != null_mut() {
-                    free(cv as *mut c_void);
-                }
-                cv = null_mut() as *mut DEVPROPKEY;
-                extargs_new_error!{WinSetupError,"need vidx offset value"}
-            }
-            vidx = parse_u64(&sarr[idx])? as usize;
-            offset = parse_u64(&sarr[idx+1])? as usize;
-            val = parse_u64(&sarr[idx+2])? as u8;
-            vidx = vidx % maxsize;
-            cptr = cv.offset(vidx as isize);
-            ptr = cptr as *mut u8;
-            offset = offset % std::mem::size_of::<DEVPROPKEY>();
-            curptr = ptr.offset(offset as isize) as *mut u8;
-            let _ = std::mem::replace::<u8>(&mut (*curptr), val);
-            idx += 3;
+    let mut cptr :*mut DEVPROPKEY ;
+    let mut ptr :*mut u8;
+    let mut curptr :*mut u8;
+    let mut cvobj :AutoMem<DEVPROPKEY> = AutoMem::new(maxsize);
+    idx = 0 ;
+    while idx < maxsize {
+        cptr = cvobj.ptr_mut(idx);
+        unsafe {
+            let _ = std::mem::take::<DEVPROPKEY>(&mut (*cptr));    
         }
 
-        
-        if cv != null_mut() {
-            free(cv as *mut c_void);
-        }
-        
-        cv = null_mut() as *mut DEVPROPKEY;
+        idx += 1;
     }
+
+
+    ptr = cvobj.ptr_mut(0) as *mut u8;
+    idx = 1;
+    while idx < sarr.len() {
+        if (idx + 3) > sarr.len() {
+            extargs_new_error!{WinSetupError,"need vidx offset value"}
+        }
+        vidx = parse_u64(&sarr[idx])? as usize;
+        offset = parse_u64(&sarr[idx+1])? as usize;
+        val = parse_u64(&sarr[idx+2])? as u8;
+        vidx = vidx % cvobj.size();
+        cptr = cvobj.ptr_mut(vidx);
+        ptr = cptr as *mut u8;
+        offset = offset % std::mem::size_of::<DEVPROPKEY>();
+        unsafe {
+            curptr = ptr.offset(offset as isize) as *mut u8;
+            let _ = std::mem::replace::<u8>(&mut (*curptr), val);                
+        }
+        idx += 3;
+    }        
 
     Ok(())
 }
