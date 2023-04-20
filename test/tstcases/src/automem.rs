@@ -8,7 +8,6 @@ pub struct AutoMem<T> {
 	vlen :usize,
 }
 
-#[allow(dead_code)]
 impl<T : Sized>  AutoMem<T> {
 	pub fn new(vlen :usize) -> Self {
 		let mut tp :*mut T = null_mut();

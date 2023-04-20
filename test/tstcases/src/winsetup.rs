@@ -23,7 +23,7 @@ use lazy_static::lazy_static;
 use std::collections::HashMap;
 
 #[allow(unused_imports)]
-use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
+use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log,debug_error};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
@@ -39,6 +39,7 @@ use std::ptr::null_mut;
 use crate::strop::{parse_u64};
 //use crate::fileop::{write_file_bytes};
 use crate::automem::*;
+use crate::wchar_windows::wstr_to_str;
 //use std::io::Write;
 
 
@@ -46,14 +47,39 @@ extargs_error_class!{WinSetupError}
 
 
 
+#[derive(Clone)]
 struct HwProp {
     guid :String,
     propidx :u32,
     buf :Vec<u8>,
 }
 
+impl HwProp {
+    pub fn new(guid :&str , propidx :u32 , buf :&[u8]) -> Self {
+        Self {
+            guid :guid.to_string(),
+            propidx : propidx,
+            buf :buf.to_vec(),
+        }
+    }
+}
+
+#[derive(Clone)]
 struct HwInfo {
     props :Vec<HwProp>,
+}
+
+impl HwInfo {
+    pub fn get_prop(&self,guidstr :&str, propidx :u32) -> Option<HwProp> {
+        let mut retv :Option<HwProp> = None;
+        for p in self.props.iter() {
+            if p.guid == guidstr && propidx == p.propidx {
+                retv = Some(p.clone());
+                break;
+            }
+        }
+        return retv;
+    }
 }
 
 macro_rules! GET_HEX_VAL {
@@ -204,6 +230,9 @@ fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<HwProp>,
                 extargs_new_error!{WinSetupError,"get property error 0x{:x}",cfgret}
             }
             if cfgret == CR_NO_SUCH_VALUE {
+                unsafe{
+                    debug_error!("[{}].[0x:{:x}] no value", format_guid(&((*cpropguids).fmtid)), (*cpropguids).pid);    
+                }                
                 continue;
             }
 
@@ -226,13 +255,10 @@ fn get_hw_props(pinfo :HDEVINFO,pndata :PSP_DEVINFO_DATA) -> Result<Vec<HwProp>,
             /*now we should */
             cpropguids = propguids.ptr_mut(i as usize);
             let mut curprop :HwProp;
+            let empvec :Vec<u8> = Vec::new();
 
             unsafe {
-                curprop = HwProp{
-                    guid : format_guid(&((*cpropguids).fmtid)),
-                    propidx : (*cpropguids).pid,
-                    buf : Vec::new(),
-                };
+                curprop = HwProp::new(&format_guid(&((*cpropguids).fmtid)), (*cpropguids).pid,&empvec);
             }
             for j in 0..reqbufsize {
                 let vptr = pbuf.ptr(j as usize);
@@ -347,6 +373,27 @@ fn output_hw_infos<W : std::io::Write>(fout :&mut W,hwinfos :&[HwInfo])  {
                     lasti += 1;                    
                 }
                 rets.push_str("\n");
+            }
+
+            kidx = 0;
+            let mut nv16 :Vec<u16>= Vec::new();
+
+            while kidx < hwinfos[idx].props[jdx].buf.len() {
+                while (kidx + 1) < hwinfos[idx].props[jdx].buf.len() {
+                    let  mut curv :u16 = hwinfos[idx].props[jdx].buf[kidx] as u16 ;
+                    curv += (hwinfos[idx].props[jdx].buf[kidx + 1] as u16) << 8;
+                    if curv == 0 {
+                        break;
+                    }
+                    nv16.push(curv);
+                    kidx += 2;
+                } 
+
+                if nv16.len() > 0 {
+                    rets.push_str(&format!("PROP    [{}]\n",wstr_to_str(&nv16)));
+                }
+                nv16 = Vec::new();
+                kidx += 2;
             }
             jdx += 1;
         }
