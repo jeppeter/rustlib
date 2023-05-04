@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::cell::RefCell;
 use std::any::Any;
 use std::error::Error;
-
+use std::borrow::BorrowMut;
 
 #[derive(Clone,Default)]
 struct Duck {
@@ -15,7 +15,7 @@ struct Pig {
 	c : i32,
 }
 
-pub trait Fly where Self :Sized + Default  {
+pub trait Fly   {
 	fn fly(&self) -> bool;
 	fn ccfly(&mut self) -> bool;
 }
@@ -47,31 +47,26 @@ fn fly_static<T: Fly>(s :T) -> bool {
 	s.fly()
 }
 
-//fn fly_dyn(s :Box<dyn Fly>) -> bool {
-//	s.fly()
-//}
+fn fly_dyn(s :Box<dyn Fly>) -> bool {
+	s.fly()
+}
 
 fn fly_static_ptr<T: Fly>(s :&T) -> bool {
 	s.fly()
 }
 
+fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
+}
 
-fn call_Fly<T: Fly + 'static>(args : Option<Arc<RefCell<T>>>) -> Result<(),Box<dyn Error>> {
+
+fn call_Fly(args : Option<Arc<RefCell<dyn Fly>>>) -> Result<(),Box<dyn Error>> {
 	if args.is_some() {
 		println!("some _ctx");
 		let ctx = args.as_ref().unwrap().clone();
+		let mut cv :Box<dyn Any> = Box::new(args.as_ref().unwrap().clone());
 		{
-			let mut bctx;
-			unsafe{
-	         	bctx = (&mut ctx.take() as  *mut dyn Any as *mut Duck).as_mut().unwrap();
-			}
-	        {
-	        	println!("before Duck");
-	        	bctx.fly();
-	        	println!("after Duck");
-	        	bctx.ccfly();
-	        	println!("allover after Duck");
-	        }
+			print_type_of(&cv);
 		}
 		return Ok(());
 	} else {
