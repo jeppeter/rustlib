@@ -10,6 +10,7 @@ struct Duck {
 	c : i32,
 }
 
+#[allow(dead_code)]
 #[derive(Clone,Default)]
 struct Pig {
 	c : i32,
@@ -47,9 +48,11 @@ fn fly_static<T: Fly>(s :T) -> bool {
 	s.fly()
 }
 
+/*
 fn fly_dyn(s :Box<dyn Fly>) -> bool {
 	s.fly()
 }
+*/
 
 fn fly_static_ptr<T: Fly>(s :&T) -> bool {
 	s.fly()
@@ -60,19 +63,21 @@ fn print_type_of<T>(_: &T) {
 }
 
 
-fn call_Fly<T : Fly + Clone>(args : Option<Arc<RefCell<T>>>) -> Result<(),Box<dyn Error>> {
+fn call_fly(args : Option<Arc<RefCell<dyn Fly>>>) -> Result<(),Box<dyn Error>> {
 	if args.is_some() {
 		println!("some _ctx");
-		let mut ctx = args.as_ref().unwrap().clone();
-		let mut c  = ctx.as_ptr() as * mut RefCell<T>;
+		let ctx = args.as_ref().unwrap().clone();
+		let mut c  = ctx.as_ptr() as * mut RefCell<dyn Fly>;
 		print_type_of(&ctx);
-		let mut b = c.borrow_mut();
+		let b = c.borrow_mut();
 		//print_type_of(&c);
 		//print_type_of(&b);
 		let cc = *b as *mut Duck ;
 		let bbcref :&mut Duck = unsafe {cc.as_mut().unwrap()};
 		print_type_of(&cc);
 		println!("duck c {}",bbcref.c );
+		bbcref.fly();
+		bbcref.ccfly();
         //let mut bctx = ctx.borrow_mut();
         //print_type_of(&bctx);
         //let _ = bctx.get_mut().downcast_mut::<Duck>();
@@ -105,7 +110,7 @@ fn main() {
 	fly_static_ptr::<Duck>(&(*duck));
 	//fly_dyn(Box::new(pig));
 	//fly_dyn(Box::new(duck));
-	call_Fly(Some(cduck));
+	let _ = call_fly(Some(cduck));
 	return;
 
 }
