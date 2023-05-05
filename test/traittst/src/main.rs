@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::sync::Arc;
 use std::cell::RefCell;
-use std::any::Any;
+//use std::any::Any;
 use std::error::Error;
 use std::borrow::BorrowMut;
 
@@ -15,7 +15,7 @@ struct Pig {
 	c : i32,
 }
 
-pub trait Fly   {
+pub trait Fly  {
 	fn fly(&self) -> bool;
 	fn ccfly(&mut self) -> bool;
 }
@@ -60,15 +60,34 @@ fn print_type_of<T>(_: &T) {
 }
 
 
-fn call_Fly(args : Option<Arc<RefCell<dyn Fly>>>) -> Result<(),Box<dyn Error>> {
+fn call_Fly<T : Fly + Clone>(args : Option<Arc<RefCell<T>>>) -> Result<(),Box<dyn Error>> {
 	if args.is_some() {
 		println!("some _ctx");
-		let ctx = args.as_ref().unwrap().clone();
-		let mut cv :Box<dyn Any> = Box::new(args.as_ref().unwrap().clone());
-		{
-			print_type_of(&cv);
-		}
-		return Ok(());
+		let mut ctx = args.as_ref().unwrap().clone();
+		let mut c  = ctx.as_ptr() as * mut RefCell<T>;
+		print_type_of(&ctx);
+		let mut b = c.borrow_mut();
+		//print_type_of(&c);
+		//print_type_of(&b);
+		let cc = *b as *mut Duck ;
+		let bbcref :&mut Duck = unsafe {cc.as_mut().unwrap()};
+		print_type_of(&cc);
+		println!("duck c {}",bbcref.c );
+        //let mut bctx = ctx.borrow_mut();
+        //print_type_of(&bctx);
+        //let _ = bctx.get_mut().downcast_mut::<Duck>();
+        /*
+        match bctx.downcast_mut::<Duck>() {
+            Some(_v) => {
+            	println!("Duck");
+            	_v.fly();
+            	_v.ccfly();
+            },
+            _ => {
+            	eprintln!("not Duck");
+            }
+        }*/
+
 	} else {
 		println!("none of args");
 	}
@@ -79,7 +98,7 @@ fn call_Fly(args : Option<Arc<RefCell<dyn Fly>>>) -> Result<(),Box<dyn Error>> {
 fn main() {
 	let pig = Rc::new(Pig{c:20});
 	let duck = Rc::new(Duck{c:23});
-	let cduck = Arc::new(RefCell::new(Duck{c:99}));
+	let cduck = Arc::new(RefCell::new(Duck{c:799}));
 	fly_static::<Pig>((*pig).clone());
 	fly_static::<Duck>((*duck).clone());
 	fly_static_ptr::<Pig>(&(*pig));
