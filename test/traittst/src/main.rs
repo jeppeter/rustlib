@@ -78,6 +78,7 @@ fn call_fly(args : Option<Arc<RefCell<dyn Fly>>>) -> Result<(),Box<dyn Error>> {
 		println!("duck c {}",bbcref.c );
 		bbcref.fly();
 		bbcref.ccfly();
+		bbcref.c = 77;
         //let mut bctx = ctx.borrow_mut();
         //print_type_of(&bctx);
         //let _ = bctx.get_mut().downcast_mut::<Duck>();
@@ -110,7 +111,8 @@ fn main() {
 	fly_static_ptr::<Duck>(&(*duck));
 	//fly_dyn(Box::new(pig));
 	//fly_dyn(Box::new(duck));
-	let _ = call_fly(Some(cduck));
+	let _ = call_fly(Some(cduck.clone()));
+	println!("cduck {}", cduck.borrow().c);
 	return;
 
 }
