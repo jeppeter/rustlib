@@ -9,7 +9,7 @@ edition = "2021"
 tokio = { version =  "^1.21.2",  features = ["full","tracing"]}
 extargsparse_worker = "^0.1.4"
 #extargsparse_worker = {path = "../../../extargsparse-rs/extargsparse_worker"}
-extargsparse_codegen = "^0.1.2"
+extargsparse_codegen = "^0.1.4"
 lazy_static = "^1.4.0"
 log4rs = "^0.8.3"
 log = "^0.4.8"
