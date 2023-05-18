@@ -126,7 +126,7 @@ fn call_arg_set<T : ArgSetImpl>(cv :&mut T,ns :NameSpaceEx) -> Result<(),Box<dyn
 }
 
 
-#[extargs_map_function(opthelp=name_help,jsonfunc=name_json_set,actfunc=name_value_set,callbackfunc=parser_handler,call_handler)]
+#[extargs_map_function(opthelp=name_help,jsonfunc=name_json_set,optparse=name_value_set,callbackfunc=parser_handler,call_handler)]
 fn main() {
 	let mut cv = BBFunc::new();
 	let ns = NameSpaceEx::new();
