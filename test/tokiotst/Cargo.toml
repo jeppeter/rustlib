@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 tokio = { version =  "^1.21.2",  features = ["full","tracing"]}
-extargsparse_worker = "^0.1.4"
+extargsparse_worker = "^0.2.0"
 #extargsparse_worker = {path = "../../../extargsparse-rs/extargsparse_worker"}
 extargsparse_codegen = "^0.1.4"
 lazy_static = "^1.4.0"
