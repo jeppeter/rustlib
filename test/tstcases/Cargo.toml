@@ -30,8 +30,10 @@ cfb-mode = "^0.8.1"
 des = "^0.8.1"
 serde_json = "^1.0.42"
 rand_core = "^0.6.4"
-asn1obj = { path = "../../../asn1obj/asn1obj"}
-asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
+# asn1obj = { path = "../../../asn1obj/asn1obj"}
+asn1obj = "^0.1.0"
+# asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
+asn1obj_codegen = "^0.1.0"
 gpgobj = {path = "../../../gpgobj-rs/gpgobj"}
 ecsimple = {path = "../../../ecsimple/ecsimple"}
 num-bigint = "^0.4.3"
