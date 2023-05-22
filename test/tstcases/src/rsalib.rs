@@ -328,6 +328,7 @@ fn rsagen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 	let key :RsaPrivateKey;
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
+	debug_trace!(" ");
 
 	if sarr.len() > 0 {
 		match i64::from_str_radix(&sarr[0],10) {
@@ -354,18 +355,23 @@ fn rsagen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 	let mut f = std::io::stdout();
 
 	let mut outs :String;
+	debug_trace!(" ");
 
 	outs = format!("n {}\n{}",bits,get_bigints(key.n(),1));
 	f.write(outs.as_bytes())?;
+	debug_trace!(" ");
 	outs = format!("e {}\n{}",bits,get_bigints(key.e(),1));
 	f.write(outs.as_bytes())?;
+	debug_trace!(" ");
 	outs = format!("d {}\n{}",bits,get_bigints(key.d(),1));
 	f.write(outs.as_bytes())?;
+	debug_trace!(" ");
 	let primes = key.primes();
 	for i in 0..primes.len() {
 		outs = format!("primes[{}] {}\n{}",i,bits,get_bigints(&(primes[i].clone()),1));
 		f.write(outs.as_bytes())?;
 	}
+	debug_trace!(" ");
 
 	Ok(())
 }

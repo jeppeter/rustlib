@@ -38,17 +38,6 @@ num-bigint = "^0.4.3"
 num-bigint-dig = {version = "0.8.1", features = [    "i128",    "u64_digit",    "prime",    "zeroize"], default-features = false}
 libc = "0.2"
 
-#[dependencies.num-bigint]
-#version = "0.8.1"
-#features = [
-#    "i128",
-#    "u64_digit",
-#    "prime",
-#    "zeroize",
-#]
-#default-features = false
-#package = "num-bigint-dig"
-
 
 
 

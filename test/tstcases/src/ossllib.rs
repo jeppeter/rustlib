@@ -33,13 +33,14 @@ pub struct SpcSerializedObject {
 }
 
 #[derive(Clone)]
-#[asn1_int_choice(debug=3,selector=stype,url=0,moniker=1,file=2)]
+#[asn1_int_choice(selector=stype,url=0,moniker=1,file=2)]
 pub struct SpcLink {
 	pub stype :i32,
-	pub url :Asn1Imp<Asn1OctData,0>,
-	pub moniker :Asn1Imp<SpcSerializedObject,1>,
-	pub file :Asn1Imp<SpcString,2>,
+	pub url :Asn1ImpSet<Asn1OctData,0>,
+	pub moniker :Asn1ImpSet<SpcSerializedObject,1>,
+	pub file :Asn1ImpSet<SpcString,2>,
 }
+
 
 #[derive(Clone)]
 #[asn1_sequence()]
