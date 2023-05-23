@@ -35,7 +35,7 @@ asn1obj = "^0.1.0"
 # asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
 asn1obj_codegen = "^0.1.0"
 gpgobj = {path = "../../../gpgobj-rs/gpgobj"}
-ecsimple = {path = "../../../ecsimple/ecsimple"}
+ecsimple = {path = "../../../ecsimple"}
 num-bigint = "^0.4.3"
 num-bigint-dig = {version = "0.8.1", features = [    "i128",    "u64_digit",    "prime",    "zeroize"], default-features = false}
 libc = "0.2"

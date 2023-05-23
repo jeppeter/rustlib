@@ -359,6 +359,99 @@ fn impecprivkey_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
     Ok(())
 }
 
+fn signdigeccload_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    let mut types :String = EC_UNCOMPRESSED.to_string();
+    let mut asn1s :String = EC_PKCS8_TYPE.to_string();
+    let mut paramstype :String = "".to_string();
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 2 {
+        extargs_new_error!{EcchdlError,"ecprivbin binfile"}
+    }
+
+    let privdata = read_file_bytes(&sarr[0])?;
+    let mut privkey :PrivateKey =  PrivateKey::from_der(&privdata)?;
+    if ns.get_string("ecrandfile").len() > 0 {
+        privkey.set_rand_file(Some(ns.get_string("ecrandfile")));
+    }
+
+    if sarr.len() > 2 {
+        types = format!("{}",sarr[2]);
+    }
+
+    if sarr.len() > 3 {
+        asn1s = format!("{}",sarr[3]);
+    }
+
+    if sarr.len() > 4 {
+        paramstype = format!("{}", sarr[4]);
+    }
+
+    let rdata :Vec<u8> = read_file_bytes(&sarr[1])?;
+    let digdata :Vec<u8> = Sha1Digest::calc(&rdata);
+
+
+    loop {
+        let ores = privkey.sign_digest(&digdata);
+        if ores.is_ok() {
+            let sigv = ores.unwrap();
+            let sigcode = sigv.to_der()?;
+            let outf = ns.get_string("output");
+            if outf.len() > 0 {
+                let _ = write_file_bytes(&outf,&sigcode)?;
+            } else {
+                debug_buffer_trace!(sigcode.as_ptr(),sigcode.len(),"sig code");
+            }
+            break;
+        }
+    }
+
+    let ecpubfile :String = ns.get_string("ecpubkey");
+    let ecprivfile :String = ns.get_string("ecprivkey");
+
+    if ecpubfile.len() > 0 {
+        let pubbin :Vec<u8> = privkey.get_public_key().to_der(&types,&paramstype)?;
+        let _ = write_file_bytes(&ecpubfile,&pubbin)?;
+    }
+
+    if ecprivfile.len() > 0 {
+        let privbin :Vec<u8>= privkey.to_der(&types,&asn1s,&paramstype)?;
+        let _ = write_file_bytes(&ecprivfile,&privbin)?;
+    }
+
+    Ok(())
+}
+
+fn vfydigeccload_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 2 {
+        extargs_new_error!{EcchdlError,"need contentbin signaturebin"}
+    }
+
+
+    //let pubcode :Vec<u8> = read_file_bytes(&sarr[0])?;
+    let hashcode = read_file_bytes(&sarr[0])?;
+    let signcode :Vec<u8> = read_file_bytes(&sarr[1])?;
+    let ecpubfile :String = ns.get_string("ecpubkey");
+    if ecpubfile.len() == 0 {
+        extargs_new_error!{EcchdlError,"need ecpubkey"}
+    }
+    let pubcode = read_file_bytes(&ecpubfile)?;
+    let pubkey :PublicKey = PublicKey::from_der(&pubcode)?;
+    let sigv :ECCSignature = ECCSignature::from_der(&signcode)?;
+    let digcode = Sha1Digest::calc(&hashcode);
+    let valid :bool = pubkey.verify_digest(&digcode,&sigv);
+    if valid {
+        println!("verify {} ok", sarr[1]);
+    } else {
+        extargs_new_error!{EcchdlError,"verify {} failed ",sarr[1]}
+    }
+    Ok(())
+}
+
 fn testecenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
     let sarr :Vec<String>;
     init_log(ns.clone())?;
@@ -402,7 +495,7 @@ fn ecdhgen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
     Ok(())
 }
 
-#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler,expecprivkey_handler,impecprivkey_handler,testecenc_handler,ecdhgen_handler)]
+#[extargs_map_function(multecc_handler,addecc_handler,signbaseecc_handler,verifybaseecc_handler,modsquareroot_handler,expecpubkey_handler,impecpubkey_handler,signdigestecc_handler,verifydigestecc_handler,expecprivkey_handler,impecprivkey_handler,testecenc_handler,ecdhgen_handler,signdigeccload_handler,vfydigeccload_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -447,6 +540,12 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "ecdhgen<ecdhgen_handler>##ecname sec1 sec2 to generate ecdh##" : {
             "$" : 3
+        },
+        "signdigeccload<signdigeccload_handler>##ecprivkeybin binfile##" : {
+            "$" : "+"
+        },
+        "vfydigeccload<vfydigeccload_handler>##ecpubkeybin binfile##" : {
+            "$" : "+"
         }
     }
     "#;
