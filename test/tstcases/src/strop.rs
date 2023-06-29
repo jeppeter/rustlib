@@ -88,7 +88,7 @@ pub fn parse_to_bigint(instr :&str) -> Result<BigInt,Box<dyn Error>> {
 	let mut lasti :usize = 0;
 	let mut idx :i32 = 0;
 	while lasti < cparse.len() {
-		if base == 16 {
+		if base == 10 {
 			if cparse[lasti] >= ('0' as u8) && cparse[lasti] <= ('9' as u8) {
 				curvi = (cparse[lasti] - ('0' as u8)) as i32;
 			} else {
@@ -102,7 +102,7 @@ pub fn parse_to_bigint(instr :&str) -> Result<BigInt,Box<dyn Error>> {
 				extargs_new_error!{StrOpError,"[{}] character not valid [{}]", idx + addi,bbchar}
 			}
 			curv = curvi.into();
-			retv *= 16;
+			retv *= 10;
 			retv += curv;
 		} else {
 			if cparse[lasti] >= ('0'  as u8) && cparse[lasti] <= ('9' as u8) {
@@ -122,7 +122,7 @@ pub fn parse_to_bigint(instr :&str) -> Result<BigInt,Box<dyn Error>> {
 				extargs_new_error!{StrOpError,"[{}] character not valid [{}]", idx + addi,bbchar}
 			}
 			curv = curvi.into();
-			retv *= 10;
+			retv *= 16;
 			retv += curv;
 		}
 		lasti += 1;
