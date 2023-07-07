@@ -30,6 +30,16 @@ pub fn decode_base64(instr :&str) -> Result<Vec<u8>,Box<dyn Error>> {
 	Ok(bv)
 }
 
+pub fn split_lines(s :&str) -> Vec<String> {
+	let c : Vec<&str> = s.split("\n").collect();
+	let mut retv :Vec<String> = Vec::new();
+	for l in c.iter() {
+		let cs :String = format!("{}",l);
+		retv.push(format!("{}",cs.trim_end_matches('\r')));
+	}
+	return retv;
+}
+
 pub fn parse_u64(instr :&str) -> Result<u64,Box<dyn Error>> {
 	let mut cparse = format!("{}",instr);
 	let mut base :u32 = 10;
