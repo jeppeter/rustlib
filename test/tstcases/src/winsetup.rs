@@ -33,9 +33,11 @@ use winapi::um::setupapi::*;
 use winapi::um::cfgmgr32::*;
 use winapi::um::handleapi::{INVALID_HANDLE_VALUE};
 use winapi::shared::minwindef::{DWORD,BOOL,ULONG};
+use winapi::shared::ntdef::{UNICODE_STRING,HANDLE,NTSTATUS};
 use winapi::shared::devpropdef::*;
 use std::ptr::null_mut;
 //use libc::{malloc,free,size_t,c_void};
+use libc::{c_void,malloc,free};
 use crate::strop::{parse_u64};
 //use crate::fileop::{write_file_bytes};
 use crate::automem::*;
@@ -493,8 +495,115 @@ fn devpropset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
     Ok(())
 }
 
+#[repr(C)]
+#[allow(non_snake_case)]
+pub struct SYSTEM_PROCESS_INFORMATION {
+    pub NextEntryOffset: u32,
+    pub NumberOfThreads: u32,
+    pub Reserved1: [u8; 48],
+    pub ImageName: UNICODE_STRING,
+    pub BasePriority: i32,
+    pub UniqueProcessId: HANDLE,
+    pub Reserved2: *mut ::core::ffi::c_void,
+    pub HandleCount: u32,
+    pub SessionId: u32,
+    pub Reserved3: *mut ::core::ffi::c_void,
+    pub PeakVirtualSize: usize,
+    pub VirtualSize: usize,
+    pub Reserved4: u32,
+    pub PeakWorkingSetSize: usize,
+    pub WorkingSetSize: usize,
+    pub Reserved5: *mut ::core::ffi::c_void,
+    pub QuotaPagedPoolUsage: usize,
+    pub Reserved6: *mut ::core::ffi::c_void,
+    pub QuotaNonPagedPoolUsage: usize,
+    pub PagefileUsage: usize,
+    pub PeakPagefileUsage: usize,
+    pub PrivatePageCount: usize,
+    pub Reserved7: [i64; 6],
+}
 
-#[extargs_map_function(lshwinfo_handler,devpropset_handler)]
+extern "system" {
+    pub fn NtQuerySystemInformation ( clstype :i32, pinfo :* mut c_void,bufsize :ULONG, pretsize :&mut ULONG) -> NTSTATUS;
+}
+
+fn query_process() -> Result<(),Box<dyn Error>> {
+    let mut inputbuf :* mut c_void = null_mut();
+    let mut status :NTSTATUS ;
+    let mut retsize :ULONG = 0;
+    let inputsize :ULONG;
+    let mut curproc :*const SYSTEM_PROCESS_INFORMATION;
+    let mut cptr :*mut c_void;
+    let mut c16 :Vec<u16>;
+
+    status = unsafe{ NtQuerySystemInformation(5,inputbuf,0,&mut retsize)};
+    if retsize == 0 {
+        extargs_new_error!{WinSetupError,"can not get size"}
+    }
+
+    inputsize = retsize;
+    unsafe {
+        inputbuf = malloc(inputsize as usize);    
+    }    
+    if inputbuf == null_mut() {
+        extargs_new_error!{WinSetupError,"can not alloc size [{}]",retsize}
+    }
+
+
+    status = unsafe { NtQuerySystemInformation(5,inputbuf,inputsize,&mut retsize)};
+    if status != 0 {
+        unsafe {
+            free(inputbuf);    
+        }        
+        inputbuf = null_mut();
+        extargs_new_error!{WinSetupError,"can not query size [{}] error [0x{:x}]", inputsize,status}
+    }
+
+    curproc = inputbuf as *const SYSTEM_PROCESS_INFORMATION;
+    loop {
+        unsafe {
+            if (*curproc).NextEntryOffset == 0 {
+                break;
+            }            
+        }
+        c16 = Vec::new();
+        let mut idx :u16 = 0;
+        let mut c8ptr :*const u16;
+        unsafe {
+            c8ptr = (*curproc).ImageName.Buffer as *const u16;    
+            while idx < (*curproc).ImageName.Length  {
+                c16.push(*c8ptr);
+                c8ptr =  c8ptr.add(2);
+                idx += 1;
+            }            
+        }
+        let imgname = wstr_to_str(&c16);
+        println!("imgname {}",imgname);
+        cptr = curproc as *mut c_void;
+        unsafe {
+            cptr = cptr.add((*curproc).NextEntryOffset as usize);    
+        }        
+        curproc = cptr as *const SYSTEM_PROCESS_INFORMATION;
+    }
+
+    if inputbuf != null_mut() {
+        unsafe {
+            free(inputbuf);    
+        }        
+    }
+    inputbuf = null_mut();
+
+    Ok(())
+}
+
+#[allow(unused_variables)]
+fn queryproc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let _ = query_process()?;
+    Ok(())
+}
+
+
+#[extargs_map_function(lshwinfo_handler,devpropset_handler,queryproc_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -503,6 +612,9 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "devpropset<devpropset_handler>##maxsize offset val ... to set offset value##" : {
             "$" : "+"
+        },
+        "queryproc<queryproc_handler>##to query process information##" : {
+            "$" : 0
         }
     }
     "#;
