@@ -35,7 +35,7 @@ use winapi::um::handleapi::{INVALID_HANDLE_VALUE};
 use winapi::shared::minwindef::{DWORD,BOOL,ULONG};
 use winapi::shared::ntdef::{UNICODE_STRING,HANDLE,NTSTATUS};
 use winapi::shared::devpropdef::*;
-use std::ptr::null_mut;
+use std::ptr::{null_mut,null};
 //use libc::{malloc,free,size_t,c_void};
 use libc::{c_void,malloc,free};
 use crate::strop::{parse_u64};
@@ -523,8 +523,14 @@ pub struct SYSTEM_PROCESS_INFORMATION {
     pub Reserved7: [i64; 6],
 }
 
-extern "system" {
-    pub fn NtQuerySystemInformation ( clstype :i32, pinfo :* mut c_void,bufsize :ULONG, pretsize :&mut ULONG) -> NTSTATUS;
+type FnNtQuerySystemInformation = extern "stdcall" fn(clstype :i32, pinfo :* mut c_void,bufsize :ULONG, pretsize :&mut ULONG) -> NTSTATUS;
+
+lazy_static !{
+    #[allow(non_upper_case_globals)]
+    static ref NT_QUERY_SYSTEM_INFORMATION_POINTER : FnNtQuerySystemInformation = {
+        let p : *const c_void = null();
+        unsafe {std::mem::transmute::<_, FnNtQuerySystemInformation>(p)}
+    };
 }
 
 fn query_process() -> Result<(),Box<dyn Error>> {
@@ -536,7 +542,7 @@ fn query_process() -> Result<(),Box<dyn Error>> {
     let mut cptr :*mut c_void;
     let mut c16 :Vec<u16>;
 
-    status = unsafe{ NtQuerySystemInformation(5,inputbuf,0,&mut retsize)};
+    status = unsafe{ NT_QUERY_SYSTEM_INFORMATION_POINTER(5,inputbuf,0,&mut retsize)};
     if retsize == 0 {
         extargs_new_error!{WinSetupError,"can not get size"}
     }
@@ -550,7 +556,7 @@ fn query_process() -> Result<(),Box<dyn Error>> {
     }
 
 
-    status = unsafe { NtQuerySystemInformation(5,inputbuf,inputsize,&mut retsize)};
+    status = unsafe { NT_QUERY_SYSTEM_INFORMATION_POINTER(5,inputbuf,inputsize,&mut retsize)};
     if status != 0 {
         unsafe {
             free(inputbuf);    
