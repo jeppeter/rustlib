@@ -32,10 +32,13 @@ use winapi::shared::guiddef::{GUID};
 use winapi::um::setupapi::*;
 use winapi::um::cfgmgr32::*;
 use winapi::um::handleapi::{INVALID_HANDLE_VALUE};
-use winapi::shared::minwindef::{DWORD,BOOL,ULONG};
-use winapi::shared::ntdef::{UNICODE_STRING,HANDLE,NTSTATUS};
+use winapi::um::libloaderapi::{LoadLibraryA,FreeLibrary,GetProcAddress};
+use winapi::shared::minwindef::{DWORD,BOOL,ULONG,HMODULE};
+use winapi::shared::ntdef::{UNICODE_STRING,HANDLE,NTSTATUS,CHAR};
 use winapi::shared::devpropdef::*;
+use winapi::um::errhandlingapi::{GetLastError};
 use std::ptr::{null_mut,null};
+use std::ffi::{CStr};
 //use libc::{malloc,free,size_t,c_void};
 use libc::{c_void,malloc,free};
 use crate::strop::{parse_u64};
@@ -609,7 +612,56 @@ fn queryproc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 }
 
 
-#[extargs_map_function(lshwinfo_handler,devpropset_handler,queryproc_handler)]
+#[allow(unused_variables)]
+fn getprocaddr_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>;
+
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 2 {
+        extargs_new_error!{WinSetupError,"need dllname procname"}
+    }
+
+    let mut hdll :HMODULE;
+    let mut vp :Vec<u8> = Vec::new();
+    let mut idx :usize = 0;
+    let bs :&[u8] = sarr[0].as_bytes();
+    while idx < bs.len() {
+        vp.push(bs[idx]);
+        idx += 1;
+    }
+    vp.push(0);
+
+    hdll = unsafe {LoadLibraryA(vp.as_ptr() as *const CHAR)};
+    if hdll == null_mut() {
+        let errnum = unsafe{ GetLastError()};
+        extargs_new_error!{WinSetupError,"can not load [{}] error[{}]",sarr[0],errnum}
+    }
+
+    vp = Vec::new();
+    idx = 0;
+    let bs :&[u8] = sarr[1].as_bytes();
+    while idx < bs.len() {
+        vp.push(bs[idx]);
+        idx += 1;
+    }
+    vp.push(0);
+
+    let p = unsafe {GetProcAddress(hdll,vp.as_ptr() as *const CHAR)};
+    let pv :*const c_void = unsafe{std::mem::transmute(p)};
+    if pv == null() {
+        unsafe {FreeLibrary(hdll)};
+        hdll = null_mut();
+        extargs_new_error!{WinSetupError,"can not find [{}]:[{}]",sarr[0],sarr[1]}
+    }
+    println!("{}:{} = {:p}", sarr[0],sarr[1],pv );
+    unsafe {FreeLibrary(hdll)};
+    hdll = null_mut();
+
+    Ok(())
+}
+
+
+#[extargs_map_function(lshwinfo_handler,devpropset_handler,queryproc_handler,getprocaddr_handler)]
 pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -621,6 +673,9 @@ pub fn load_ecc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
         },
         "queryproc<queryproc_handler>##to query process information##" : {
             "$" : 0
+        },
+        "getprocaddr<getprocaddr_handler>##dllname funcname to load function##" : {
+            "$" : 2
         }
     }
     "#;
