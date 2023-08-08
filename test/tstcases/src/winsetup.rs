@@ -38,7 +38,6 @@ use winapi::shared::ntdef::{UNICODE_STRING,HANDLE,NTSTATUS,CHAR};
 use winapi::shared::devpropdef::*;
 use winapi::um::errhandlingapi::{GetLastError};
 use std::ptr::{null_mut,null};
-use std::ffi::{CStr};
 //use libc::{malloc,free,size_t,c_void};
 use libc::{c_void,malloc,free};
 use crate::strop::{parse_u64};
@@ -75,6 +74,7 @@ struct HwInfo {
 }
 
 impl HwInfo {
+    #[allow(dead_code)]
     pub fn get_prop(&self,guidstr :&str, propidx :u32) -> Option<HwProp> {
         let mut retv :Option<HwProp> = None;
         for p in self.props.iter() {
@@ -528,24 +528,94 @@ pub struct SYSTEM_PROCESS_INFORMATION {
 
 type FnNtQuerySystemInformation = extern "stdcall" fn(clstype :i32, pinfo :* mut c_void,bufsize :ULONG, pretsize :&mut ULONG) -> NTSTATUS;
 
+
+struct ProcAddress { 
+    hmod :HMODULE,
+    p : * const CHAR,
+}
+
+extargs_error_class!{ProcAddressError}
+
+impl Drop for ProcAddress {
+    fn drop(&mut self) {
+        if self.hmod != null_mut() {
+            unsafe {FreeLibrary(self.hmod)};
+        }
+        self.hmod = null_mut();
+        self.p = null();
+    }
+}
+
+impl ProcAddress {
+    #[allow(unused_assignments)]
+    pub fn new(dllname :&str, procname :&str) -> Result<Self,Box<dyn Error>> {
+        let mut hd :HMODULE;
+        let mut vp :Vec<u8> = Vec::new();
+        let mut idx :usize = 0;
+        let bs :&[u8] = dllname.as_bytes();
+        while idx < bs.len() {
+            vp.push(bs[idx]);
+            idx += 1;
+        }
+        vp.push(0);
+
+        hd = unsafe {LoadLibraryA(vp.as_ptr() as *const CHAR)};
+        if hd == null_mut() {
+            let ret = unsafe{ GetLastError()};
+            extargs_new_error!{ProcAddressError,"cannot load [{}] error [0x{:x}]",dllname,ret}
+        }
+
+        vp = Vec::new();
+        idx = 0;
+        let bs :&[u8]= procname.as_bytes();
+        while idx < bs.len() {
+            vp.push(bs[idx]);
+            idx += 1;
+        }
+        vp.push(0);
+
+        let p = unsafe {GetProcAddress(hd,vp.as_ptr() as *const CHAR) as *const CHAR};
+        if p == null_mut() {
+            let ret = unsafe{GetLastError()};
+            unsafe{FreeLibrary(hd)};
+            hd = null_mut();
+            extargs_new_error!{ProcAddressError,"cannot find [{}] in [{}] error[0x{:x}]", procname,dllname,ret}
+        }
+
+        Ok(ProcAddress{
+            hmod : hd,
+            p : p
+        })
+    }
+
+    pub fn get_procaddr(&self) -> *const CHAR {
+        return self.p;
+    }
+}
+
+unsafe impl Send for ProcAddress {}
+unsafe impl Sync for ProcAddress {}
+
+
 lazy_static !{
     #[allow(non_upper_case_globals)]
-    static ref NT_QUERY_SYSTEM_INFORMATION_POINTER : FnNtQuerySystemInformation = {
-        let p : *const c_void = null();
-        unsafe {std::mem::transmute::<_, FnNtQuerySystemInformation>(p)}
+    static ref NT_QUERY_SYSTEM_INFORMATION_POINTER : ProcAddress = {
+        ProcAddress::new("Ntdll.dll","NtQuerySystemInformation").unwrap()
     };
 }
 
+#[allow(unused_assignments)]
 fn query_process() -> Result<(),Box<dyn Error>> {
     let mut inputbuf :* mut c_void = null_mut();
     let mut status :NTSTATUS ;
     let mut retsize :ULONG = 0;
     let inputsize :ULONG;
     let mut curproc :*const SYSTEM_PROCESS_INFORMATION;
+    let queryfunc : FnNtQuerySystemInformation = unsafe {std::mem::transmute::<_,FnNtQuerySystemInformation>(NT_QUERY_SYSTEM_INFORMATION_POINTER.get_procaddr())};
     let mut cptr :*mut c_void;
     let mut c16 :Vec<u16>;
 
-    status = unsafe{ NT_QUERY_SYSTEM_INFORMATION_POINTER(5,inputbuf,0,&mut retsize)};
+    status = queryfunc(5,inputbuf,0,&mut retsize);
     if retsize == 0 {
         extargs_new_error!{WinSetupError,"can not get size"}
     }
@@ -559,7 +629,7 @@ fn query_process() -> Result<(),Box<dyn Error>> {
     }
 
 
-    status = unsafe { NT_QUERY_SYSTEM_INFORMATION_POINTER(5,inputbuf,inputsize,&mut retsize)};
+    status = queryfunc(5,inputbuf,inputsize,&mut retsize);
     if status != 0 {
         unsafe {
             free(inputbuf);    
@@ -580,12 +650,16 @@ fn query_process() -> Result<(),Box<dyn Error>> {
         let mut c8ptr :*const u16;
         unsafe {
             c8ptr = (*curproc).ImageName.Buffer as *const u16;    
-            while idx < (*curproc).ImageName.Length  {
+            while idx < ((*curproc).ImageName.Length >> 1)  {
+                if *c8ptr == 0 {
+                    break;
+                }
                 c16.push(*c8ptr);
                 c8ptr =  c8ptr.add(2);
                 idx += 1;
             }            
         }
+        debug_buffer_trace!(c16.as_ptr(),c16.len() * 2, "c16 buffer");
         let imgname = wstr_to_str(&c16);
         println!("imgname {}",imgname);
         cptr = curproc as *mut c_void;
@@ -601,12 +675,13 @@ fn query_process() -> Result<(),Box<dyn Error>> {
         }        
     }
     inputbuf = null_mut();
+    println!("all over");
 
     Ok(())
 }
 
-#[allow(unused_variables)]
 fn queryproc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    init_log(ns.clone())?;
     let _ = query_process()?;
     Ok(())
 }
@@ -621,41 +696,8 @@ fn getprocaddr_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
         extargs_new_error!{WinSetupError,"need dllname procname"}
     }
 
-    let mut hdll :HMODULE;
-    let mut vp :Vec<u8> = Vec::new();
-    let mut idx :usize = 0;
-    let bs :&[u8] = sarr[0].as_bytes();
-    while idx < bs.len() {
-        vp.push(bs[idx]);
-        idx += 1;
-    }
-    vp.push(0);
-
-    hdll = unsafe {LoadLibraryA(vp.as_ptr() as *const CHAR)};
-    if hdll == null_mut() {
-        let errnum = unsafe{ GetLastError()};
-        extargs_new_error!{WinSetupError,"can not load [{}] error[{}]",sarr[0],errnum}
-    }
-
-    vp = Vec::new();
-    idx = 0;
-    let bs :&[u8] = sarr[1].as_bytes();
-    while idx < bs.len() {
-        vp.push(bs[idx]);
-        idx += 1;
-    }
-    vp.push(0);
-
-    let p = unsafe {GetProcAddress(hdll,vp.as_ptr() as *const CHAR)};
-    let pv :*const c_void = unsafe{std::mem::transmute(p)};
-    if pv == null() {
-        unsafe {FreeLibrary(hdll)};
-        hdll = null_mut();
-        extargs_new_error!{WinSetupError,"can not find [{}]:[{}]",sarr[0],sarr[1]}
-    }
-    println!("{}:{} = {:p}", sarr[0],sarr[1],pv );
-    unsafe {FreeLibrary(hdll)};
-    hdll = null_mut();
+    let procaddr :ProcAddress = ProcAddress::new(&sarr[0],&sarr[1])?;
+    println!("{}:{} = {:p}", sarr[0],sarr[1],procaddr.get_procaddr());
 
     Ok(())
 }
