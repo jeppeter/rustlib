@@ -372,6 +372,7 @@ pub fn aes256_cfb_decrypt(encdata :&[u8],key :&[u8], iv :&[u8]) -> Result<Vec<u8
     Ok(retdata)
 }
 
+#[allow(dead_code)]
 pub fn opengpg_s2k_sha512(passv8 :&[u8],saltv8 :&[u8],iterations :usize,outlen :usize) -> Result<Vec<u8>,Box<dyn Error>> {
     let mut idx :usize = 0;
     let mut retv :Vec<u8> = Vec::new();
