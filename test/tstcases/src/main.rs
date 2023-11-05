@@ -57,7 +57,7 @@ mod asn1tst;
 mod pkcs7;
 mod ossllib;
 mod osslhdl;
-mod ecchdl;
+//mod ecchdl;
 mod automem;
 #[cfg(windows)]
 mod winsetup;
@@ -86,7 +86,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	pkcs7::load_pkcs7_handler(parser.clone())?;
 	//gpghdl::load_gpg_handler(parser.clone())?;
 	osslhdl::load_ossl_handler(parser.clone())?;
-	ecchdl::load_ecc_handler(parser.clone())?;
+	//ecchdl::load_ecc_handler(parser.clone())?;
 	winsetup::load_ecc_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
