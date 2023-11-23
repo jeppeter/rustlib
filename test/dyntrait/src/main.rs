@@ -3,13 +3,19 @@ use std::sync::Arc;
 //use std::thread;
 //use std::thread::JoinHandle;
 //use std::time;
-use std::cell::RefCell;
+//use std::cell::RefCell;
 //use std::sync::Arc;
 use std::error::Error;
 use std::collections::HashMap;
 
+pub const READ_EVENT :u32 = 0x1;
+pub const WRITE_EVENT :u32 = 0x2;
+pub const ERROR_EVENT :u32 = 0x4;
+pub const ET_TRIGGER  :u32 = 0x80;
+
 pub trait EvtCall {
 	fn get_evt(&self) -> u64;
+	fn get_evttype(&self) -> u32;
 	fn read(&mut self,evtmain :&mut EvtMain) -> Result<(),Box<dyn Error>>;
 	fn write(&mut self,evtmain :&mut EvtMain) -> Result<(),Box<dyn Error>>;
 	fn error(&mut self,evtmain :&mut EvtMain) -> Result<(),Box<dyn Error>>;
@@ -21,8 +27,8 @@ pub trait EvtTimer {
 
 
 pub struct EvtMain {	
-	evtmaps :HashMap<u64,Arc<RefCell<dyn EvtCall>>>,
-	evttimers :HashMap<u64,Arc<RefCell<dyn EvtTimer>>>,	
+	evtmaps :HashMap<u64,*mut dyn EvtCall>,
+	evttimers :HashMap<u64,*mut dyn EvtTimer>,	
 	guid :u64,
 	exited : i32,
 }
@@ -38,17 +44,28 @@ impl EvtMain {
 	}
 }
 
+impl Drop for EvtMain {
+	fn drop(&mut self) {
+		self.reset_all();
+		println!("Call EvtMain Free");
+	}
+}
+
 
 impl EvtMain {
-	pub fn add_timer(&mut self,bv :Arc<RefCell<dyn EvtTimer>>,_interval:i32,_conti:bool) -> Result<u64,Box<dyn Error>> {
+	pub fn add_timer(&mut self,bv :Arc<*mut dyn EvtTimer>,_interval:i32,_conti:bool) -> Result<u64,Box<dyn Error>> {
 		self.guid += 1;
-		self.evttimers.insert(self.guid,bv.clone());
+		unsafe {
+			self.evttimers.insert(self.guid,*(Arc::as_ptr(&bv)));	
+		}		
 		Ok(self.guid)
 	}
 
-	pub fn add_event<T : EvtCall>(&mut self,bv :&T>, _eventtype :u32) -> Result<(),Box<dyn Error>> {
+	pub fn add_event(&mut self,bv :Arc<*mut dyn EvtCall>) -> Result<(),Box<dyn Error>> {
 		self.guid += 1;
-		self.evtmaps.insert(self.guid, bv.clone());
+		unsafe {
+			self.evtmaps.insert(self.guid, *(Arc::as_ptr(&bv)));	
+		}		
 		Ok(())
 	}
 
@@ -57,12 +74,15 @@ impl EvtMain {
 		Ok(())
 	}
 
-	pub fn remove_event<T : EvtCall>(&mut self,bv :&T) -> Result<(),Box<dyn Error>> {
+	pub fn remove_event(&mut self,bv :Arc<*mut dyn EvtCall>) -> Result<(),Box<dyn Error>> {
 		let mut findguid :u64 = 0;
+		let b = Arc::as_ptr(&bv);
 		for (k,v) in self.evtmaps.iter() {
-			if  {
-				findguid = *k;
-				break;
+			unsafe {
+				if (&(*(*b))).get_evt() == (*(*v)).get_evt()  {
+					findguid = *k;
+					break;
+				}					
 			}
 		}
 		if findguid > 0 {
@@ -84,18 +104,42 @@ impl EvtMain {
 			}
 
 			for v in evtguids.iter() {
-				let mut findvk :Option<Arc<RefCell<dyn EvtCall>>> = None;
+				let mut findvk :Option<Arc<* mut dyn EvtCall>> = None;
 				match self.evtmaps.get(v) {
 					Some(vk) => {
-						findvk = Some(vk.clone());
+						findvk = Some(Arc::new(*vk));
 					},
 					None => {						
 					}
 				}
 				if findvk.is_some() {
-					let c :Arc<RefCell<dyn EvtCall>> = findvk.unwrap();
-					let mut b = c.borrow_mut();
-					b.read(self)?;
+					let c :Arc<* mut dyn EvtCall> = findvk.unwrap();
+					let b = Arc::as_ptr(&c);
+					let evttype :u32;
+
+					unsafe {
+						evttype = (&(*(*b))).get_evttype();
+					}
+					if (evttype & READ_EVENT) != 0 {
+						unsafe {
+
+							(&mut (*(*b))).read(self)?;
+						}						
+					} 
+					if (evttype & WRITE_EVENT) != 0 { 
+						unsafe {
+
+							(&mut (*(*b))).write(self)?;
+						}
+					} 
+
+					if (evttype & ERROR_EVENT) != 0 { 
+						unsafe {
+
+							(&mut (*(*b))).error(self)?;
+						}
+					} 
+					
 				}
 			}
 		}
@@ -106,6 +150,13 @@ impl EvtMain {
 		self.exited = 1;
 		Ok(())
 	}
+
+	pub fn reset_all(&mut self) {
+		self.evtmaps = HashMap::new();
+		self.evttimers = HashMap::new();
+		self.guid = 1;
+		self.exited = 0;
+	}
 }
 
 
@@ -115,6 +166,7 @@ pub struct SockCall {
 	rdcnt : i32,
 	wrcnt : i32,
 	errcnt : i32,
+	evttype : u32,
 }
 
 
@@ -125,6 +177,7 @@ impl SockCall {
 			rdcnt : 0,
 			wrcnt : 0,
 			errcnt : 0,
+			evttype : READ_EVENT,
 		}
 	}
 }
@@ -141,15 +194,21 @@ impl EvtCall for SockCall {
 		return 0;
 	}
 
+	fn get_evttype(&self) -> u32 {
+		return self.evttype;
+	}
+
 	fn read(&mut self,evtmain :&mut EvtMain) -> Result<(),Box<dyn Error>> {
 		self.rdcnt += 1;
 		println!("rdcnt {}", self.rdcnt);
-		if self.rdcnt >= self.maxcnt {
+		if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
 			evtmain.break_up()?;
 		} else {
-			let c :Arc<RefCell<dyn EvtCall>> = Arc::new(RefCell::new(self.clone()));
+			let c :Arc<*mut dyn EvtCall> = Arc::new(self as *mut dyn EvtCall);
 			evtmain.remove_event(c)?;
-			evtmain.add_event(c,0x2);
+			let c2 :Arc<*mut dyn EvtCall> = Arc::new(self as *mut dyn EvtCall);
+			self.evttype = WRITE_EVENT;
+			evtmain.add_event(c2)?;
 		}
 		Ok(())
 	}
@@ -157,8 +216,14 @@ impl EvtCall for SockCall {
 	fn write(&mut self,evtmain :&mut EvtMain) -> Result<(),Box<dyn Error>> {
 		self.wrcnt += 1;
 		println!("wrcnt {}", self.wrcnt);
-		if self.wrcnt >= self.maxcnt {
+		if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
 			evtmain.break_up()?;
+		} else {
+			let c :Arc<*mut dyn EvtCall> = Arc::new(self as *mut dyn EvtCall);
+			evtmain.remove_event(c)?;
+			let c2 :Arc<*mut dyn EvtCall> = Arc::new(self as *mut dyn EvtCall);
+			self.evttype = ERROR_EVENT;
+			evtmain.add_event(c2)?;
 		}
 		Ok(())
 	}
@@ -166,8 +231,14 @@ impl EvtCall for SockCall {
 	fn error(&mut self,evtmain :&mut EvtMain) -> Result<(),Box<dyn Error>> {
 		self.errcnt += 1;
 		println!("errcnt {}", self.errcnt);
-		if self.errcnt >= self.maxcnt {
+		if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
 			evtmain.break_up()?;
+		} else {
+			let c :Arc<*mut dyn EvtCall> = Arc::new(self as *mut dyn EvtCall);
+			evtmain.remove_event(c)?;
+			let c2 :Arc<*mut dyn EvtCall> = Arc::new(self as *mut dyn EvtCall);
+			self.evttype = READ_EVENT;
+			evtmain.add_event(c2)?;			
 		}
 		Ok(())
 	}
@@ -176,10 +247,13 @@ impl EvtCall for SockCall {
 
 
 fn  main() -> Result<(),Box<dyn Error>> {
-	let av :Arc<RefCell<SockCall>> = Arc::new(RefCell::new(SockCall::new(5)));
+	let mut ac :SockCall = SockCall::new(5);
+	let av :Arc<* mut dyn EvtCall> = Arc::new(&mut ac as * mut dyn EvtCall);
 	let mut evmain :EvtMain = EvtMain::new()?;
-	evmain.add_event(av,1)?;
+	evmain.add_event(av)?;
 	evmain.main_loop()?;
 	println!("call CC over");
+	drop(&evmain);
+	drop(&ac);
 	Ok(())
 }
