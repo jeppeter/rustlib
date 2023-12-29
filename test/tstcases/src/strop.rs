@@ -63,6 +63,7 @@ pub fn parse_u64(instr :&str) -> Result<u64,Box<dyn Error>> {
 	Ok(retv)
 }
 
+#[allow(dead_code)]
 pub fn parse_to_bigint(instr :&str) -> Result<BigInt,Box<dyn Error>> {
 	let mut _cparse = format!("{}",instr);
 	let mut base :u32 = 10;

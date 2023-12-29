@@ -57,6 +57,7 @@ mod asn1tst;
 mod pkcs7;
 mod ossllib;
 mod osslhdl;
+mod serdehdl;
 //mod ecchdl;
 mod automem;
 #[cfg(windows)]
@@ -88,6 +89,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	osslhdl::load_ossl_handler(parser.clone())?;
 	//ecchdl::load_ecc_handler(parser.clone())?;
 	winsetup::load_ecc_handler(parser.clone())?;
+	serdehdl::load_serde_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
