@@ -13,7 +13,7 @@ pub const WRITE_EVENT :u32 = 0x2;
 pub const ERROR_EVENT :u32 = 0x4;
 pub const ET_TRIGGER  :u32 = 0x80;
 
-/*
+
 
 #[cfg(target_os = "linux")]
 use libc::{clock_gettime,CLOCK_MONOTONIC_COARSE,timespec};
@@ -62,7 +62,7 @@ pub (crate) fn time_left(sticks : u64,cticks :u64, leftmills :i32) -> i32 {
 		}
 	}
 	return -1;
-}*/
+}
 
 
 fn get_logger_level() -> i64 {
@@ -111,9 +111,27 @@ pub trait EvtTimer {
 	fn close_timer(&mut self,timerguid :u64, evtmain :&mut EvtMain);
 }
 
+struct EvtTimerElem {
+	timer :Arc<RefCell<dyn EvtTimer>>,
+	startticks :u64,
+	_conti :bool,
+	mills :i32,
+}
+
+impl EvtTimerElem  {
+	fn new(bv :Arc<RefCell<dyn EvtTimer>>, conti :bool, interval :i32) -> Self {
+		Self {
+			timer : bv.clone(),
+			startticks : get_cur_ticks(),
+			_conti : conti,
+			mills : interval,
+		}
+	}
+}
+
 pub struct EvtMain {	
 	evtmaps :HashMap<u64,Arc<RefCell<dyn EvtCall>>>,
-	evttimers :HashMap<u64,Arc<RefCell<dyn EvtTimer>>>,	
+	evttimers :HashMap<u64,EvtTimerElem>,
 	guidevts :HashMap<u64,u64>,
 	evttypes :HashMap<u64,u32>,
 	guid :u64,
@@ -144,15 +162,12 @@ impl Drop for EvtMain {
 impl EvtMain {
 	pub fn add_timer(&mut self,bv :Arc<RefCell<dyn EvtTimer>>,_interval:i32,_conti:bool) -> Result<u64,Box<dyn Error>> {
 		self.guid += 1;
-		self.evttimers.insert(self.guid,bv.clone());
+		let gc = EvtTimerElem::new(bv.clone(),_conti,_interval);
+		self.evttimers.insert(self.guid,gc);
 		Ok(self.guid)
 	}
 
 	pub fn add_event(&mut self,bv :Arc<RefCell<dyn EvtCall>>,evthd :u64,evttype :u32) -> Result<(),Box<dyn Error>> {
-		{
-			//bv.borrow_mut().debug_mode(file!(),line!());	
-		}
-		
 		self.guid += 1;
 		self.evtmaps.insert(self.guid, bv.clone());	
 		self.guidevts.insert(evthd,self.guid);
@@ -196,54 +211,101 @@ impl EvtMain {
 		return retv;
 	}
 
+	fn get_timeout(&self, maxtime :u32) -> u32 {
+		let mut retv :u32 = maxtime;
+		let cticks :u64 = get_cur_ticks();
+		for (_,v) in self.evttimers.iter() {
+			let reti = time_left(v.startticks,cticks,v.mills);
+			if reti < 0 {
+				return 1;
+			}
+
+			if (reti as u32) < retv {
+				retv = reti as u32;
+			}
+		}
+
+		return retv;
+	}
+
+
+	fn get_time_guids(&self) -> Vec<u64> {
+		let cticks = get_cur_ticks();
+		let mut retv :Vec<u64> = Vec::new();
+		for (g,v) in self.evttimers.iter() {
+			let reti = time_left(v.startticks,cticks,v.mills);
+			if reti < 0 {
+				retv.push(*g);
+			}
+		}
+		return retv;
+	}
+
 	pub fn main_loop(&mut self) -> Result<(),Box<dyn Error>> {
 		while self.exited == 0 {
 			let mut evtguids :Vec<u64> = Vec::new();
-			let mut tmguids :Vec<u64> = Vec::new();
 			for (v,_) in self.evtmaps.iter() {
 				//debug_trace!("v 0x{:x}",*v);
 				evtguids.push(*v);
 			}
 
-			for (v,_) in self.evttimers.iter() {
-				tmguids.push(*v);
-			}
 
-			for pguid in evtguids.iter() {
-				let mut findvk :Option<Arc<RefCell<dyn EvtCall>>> = None;
-				match self.evtmaps.get(pguid) {
-					Some(vk) => {
-						findvk = Some(vk.clone());
-					},
-					None => {
-						debug_trace!("cannot find 0x{:x}",*pguid);
-					}
-				}
-				if findvk.is_some() {
-					let c :Arc<RefCell<dyn EvtCall>> = findvk.unwrap();
-					let evttype :u32;
-					let oevthd :Option<u64> = self._find_evthd(*pguid);
-					if oevthd.is_none() {
-						debug_trace!("cannot find evthd 0x{:x}",*pguid);
-						continue;
-					}
-
-					let evthd = oevthd.unwrap();
-					//debug_trace!("evthd 0x{:x} guid 0x{:x}",evthd,*pguid);
-
-					match self.evttypes.get(&evthd) {
-						Some(_v) => {
-							evttype = *_v;
+			if evtguids.len() > 0 {
+				for pguid in evtguids.iter() {
+					let mut findvk :Option<Arc<RefCell<dyn EvtCall>>> = None;
+					match self.evtmaps.get(pguid) {
+						Some(vk) => {
+							findvk = Some(vk.clone());
 						},
 						None => {
-							debug_trace!("cannot find evttype 0x{:x}",evthd);
-							continue;
+							debug_trace!("cannot find 0x{:x}",*pguid);
 						}
 					}
-					c.borrow_mut().debug_mode(file!(),line!());
-					c.borrow_mut().handle(evthd,evttype,self)?;					
+					if findvk.is_some() {
+						let c :Arc<RefCell<dyn EvtCall>> = findvk.unwrap();
+						let evttype :u32;
+						let oevthd :Option<u64> = self._find_evthd(*pguid);
+						if oevthd.is_none() {
+							debug_trace!("cannot find evthd 0x{:x}",*pguid);
+							continue;
+						}
+
+						let evthd = oevthd.unwrap();
+						//debug_trace!("evthd 0x{:x} guid 0x{:x}",evthd,*pguid);
+
+						match self.evttypes.get(&evthd) {
+							Some(_v) => {
+								evttype = *_v;
+							},
+							None => {
+								debug_trace!("cannot find evttype 0x{:x}",evthd);
+								continue;
+							}
+						}
+						c.borrow_mut().debug_mode(file!(),line!());
+						c.borrow_mut().handle(evthd,evttype,self)?;					
+					}
+				}
+			} else {				
+				std::thread::sleep(std::time::Duration::from_millis(100));
+				let tmguids = self.get_time_guids();
+				for pguid in tmguids.iter() {
+					let mut findvk :Option<Arc<RefCell<dyn EvtTimer>>> = None;
+					match self.evttimers.get(pguid) {
+						Some(vk) => {
+							findvk = Some(vk.timer.clone());
+						},
+						None => {
+							debug_trace!("cannot find 0x{:x}",*pguid);
+						}
+					}
+					if findvk.is_some() {
+						let c :Arc<RefCell<dyn EvtTimer>> = findvk.unwrap();
+						c.borrow_mut().timer(*pguid,self)?;
+					}
 				}
 			}
+
 
 
 		}
