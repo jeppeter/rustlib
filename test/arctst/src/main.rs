@@ -25,12 +25,13 @@ fn  main()  {
 		thread::sleep(time::Duration::from_millis(1));
 	}
 
+	for i in 0..thrs.len() {
+		println!("[{}]=[{:?}]",i,thrs[i]);
+	}
+
 	for v in thrs {
 		v.join().unwrap();
 	}
 
-	for i in 0..thrs.len() {
-		println!("[{}]=[{:?}]",i,thrs[i]);
-	}
 	return;
 }

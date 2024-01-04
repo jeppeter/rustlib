@@ -296,8 +296,10 @@ impl SockCall {
 impl Drop for SockCall {
 	fn drop(&mut self) {
 		println!("call SockCall Free");
+		self.close();
 	}
 }
+
 
 impl EvtCall for SockCall {
 	fn handle(&mut self,evthd :u64,_evttype :u32,evtmain :&mut EvtMain) -> Result<(),Box<dyn Error>> {
