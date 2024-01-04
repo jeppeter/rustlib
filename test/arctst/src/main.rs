@@ -2,6 +2,11 @@ use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 use std::time;
+use std::cell::RefCell;
+
+struct SockCall {
+	inner :Arc<RefCell<SockCallInner>>,
+}
 
 fn  main()  {
 	let foo = Arc::new(vec![3.2,63.2,500.2,31.11]);
@@ -32,6 +37,8 @@ fn  main()  {
 	for v in thrs {
 		v.join().unwrap();
 	}
+
+
 
 	return;
 }

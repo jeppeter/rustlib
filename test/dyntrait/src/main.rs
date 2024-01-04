@@ -99,7 +99,7 @@ impl EvtMain {
 
 	pub fn add_event(&mut self,bv :Arc<RefCell<dyn EvtCall>>,evthd :u64,evttype :u32) -> Result<(),Box<dyn Error>> {
 		{
-			bv.borrow_mut().debug_mode(file!(),line!());	
+			//bv.borrow_mut().debug_mode(file!(),line!());	
 		}
 		
 		self.guid += 1;
@@ -117,12 +117,13 @@ impl EvtMain {
 
 	pub fn remove_event(&mut self,evthd :u64) -> i32 {
 		let guid :u64 ;
-		debug_trace!("remove evthd 0x{:x}",evthd);
+		//debug_trace!("remove evthd 0x{:x}",evthd);
 		match self.guidevts.get(&evthd) {
 			Some(_v) => {
 				guid = *_v;
 			},
 			None => {
+				debug_trace!("not used 0x{:x}",evthd);
 				return 0;
 			}
 		}
@@ -149,10 +150,9 @@ impl EvtMain {
 			let mut evtguids :Vec<u64> = Vec::new();
 			let mut tmguids :Vec<u64> = Vec::new();
 			for (v,_) in self.evtmaps.iter() {
-				debug_trace!("v 0x{:x}",*v);
+				//debug_trace!("v 0x{:x}",*v);
 				evtguids.push(*v);
 			}
-			debug_trace!(" ");
 
 			for (v,_) in self.evttimers.iter() {
 				tmguids.push(*v);
@@ -178,7 +178,7 @@ impl EvtMain {
 					}
 
 					let evthd = oevthd.unwrap();
-					debug_trace!("evthd 0x{:x} guid 0x{:x}",evthd,*pguid);
+					//debug_trace!("evthd 0x{:x} guid 0x{:x}",evthd,*pguid);
 
 					match self.evttypes.get(&evthd) {
 						Some(_v) => {
@@ -256,7 +256,7 @@ impl EvtMain {
 
 
 
-pub struct SockCall {
+pub struct SockCallInner {
 	maxcnt : i32,
 	rdhd : u64,
 	wrhd : u64,
@@ -266,9 +266,22 @@ pub struct SockCall {
 	errcnt : i32,
 }
 
+#[derive(Clone)]
+pub struct SockCall {
+	inner :Arc<RefCell<SockCallInner>>,
+}
 
-impl SockCall {
-	fn new(max :i32,evtmain :&mut EvtMain) -> Result<Arc<RefCell<Self>>,Box<dyn Error>> {
+impl Drop for SockCallInner {
+	fn drop(&mut self) {
+		self.close();
+		self.maxcnt = 0;
+		self.rdcnt = 0;
+	}
+}
+
+
+impl SockCallInner {
+	fn new(max :i32,_evtmain :&mut EvtMain) -> Result<Arc<RefCell<Self>>,Box<dyn Error>> {
 		let iretv :Self = Self{
 			maxcnt : max,
 			rdhd : 1,
@@ -280,16 +293,72 @@ impl SockCall {
 		};
 		debug_trace!("iretv {:p}",&iretv);
 		let retv  = Arc::new(RefCell::new(iretv));
-		debug_trace!(" ");
-		let mut hd:u64 = retv.borrow().rdhd;
-		evtmain.add_event(retv.clone(),hd,READ_EVENT)?;
-		hd = retv.borrow().wrhd;
-		evtmain.add_event(retv.clone(),hd,READ_EVENT)?;
-		hd = retv.borrow().errhd;
-		evtmain.add_event(retv.clone(),hd,READ_EVENT)?;
 		Ok(retv)
 	}
 
+	fn new_after(&mut self, evtmain :&mut EvtMain,parent :SockCall) -> Result<(),Box<dyn Error>> {
+		debug_trace!(" ");
+		evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.rdhd,READ_EVENT)?;
+		evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.wrhd,READ_EVENT)?;
+		evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.errhd,READ_EVENT)?;
+		Ok(())
+	}
+
+	fn close(&mut self) {
+		println!("SockCallInner close {:p}",self );
+	}
+}
+
+impl SockCallInner {
+	fn handle(&mut self,evthd :u64,_evttype :u32,evtmain :&mut EvtMain,parent :SockCall) -> Result<(),Box<dyn Error>> {
+		debug_trace!("evthd 0x{:x} rdhd 0x{:x} wrhd 0x{:x} errhd 0x{:x} self {:p}",evthd,self.rdhd,self.wrhd,self.errhd,self);
+		debug_trace!("rdcnt {} wrcnt {} errcnt {} maxcnt {}",self.rdcnt,self.wrcnt,self.errcnt,self.maxcnt);
+		if evthd == self.rdhd {
+			self.rdcnt += 1;
+			println!("rdcnt {}", self.rdcnt);
+			if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
+				evtmain.break_up()?;
+			} else {
+				evtmain.remove_event(self.rdhd);
+				evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.wrhd,READ_EVENT)?;
+			}			
+		} else if evthd == self.wrhd {
+			self.wrcnt += 1;
+			println!("wrcnt {}", self.wrcnt);
+			if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
+				evtmain.break_up()?;
+			} else {
+				evtmain.remove_event(self.wrhd);
+				evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.errhd,READ_EVENT)?;
+			}
+		} else if evthd == self.errhd {
+			self.errcnt += 1;
+			println!("errcnt {}", self.errcnt);
+			if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
+				evtmain.break_up()?;
+			} else {
+				evtmain.remove_event(self.errhd);
+				evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.rdhd,READ_EVENT)?;
+			}
+		}
+		Ok(())
+	}
+
+	fn close_event(&mut self,_evthd :u64, _evttype :u32,evtmain :&mut EvtMain, _parent :SockCall) {
+		debug_trace!("close_event");
+		evtmain.remove_event(self.rdhd);
+		evtmain.remove_event(self.wrhd);
+		evtmain.remove_event(self.errhd);
+		self.errcnt = 0;
+		self.rdcnt = 0;
+		self.wrcnt = 0;
+		return;
+	}
+
+	fn debug_mode(&mut self,_fname :&str,_lineno:u32,_parent :SockCall) {
+		debug_trace!("{}:{} self {:p}",_fname,_lineno,self);
+		return;
+	}	
 }
 
 
@@ -300,56 +369,44 @@ impl Drop for SockCall {
 	}
 }
 
+impl SockCall {
+	fn new(maxcnt :i32, evtmain :&mut EvtMain) -> Result<Self,Box<dyn  Error>> {
+		let iretv :Arc<RefCell<SockCallInner>> = SockCallInner::new(maxcnt,evtmain)?;
+		let retv :SockCall = SockCall {
+			inner : iretv,
+		};
+		retv.inner.borrow_mut().new_after(evtmain,retv.clone())?;
+		Ok(retv)
+	}
+
+	fn close(&mut self) {
+		println!("free SockCall");
+	}
+}
+
 
 impl EvtCall for SockCall {
 	fn handle(&mut self,evthd :u64,_evttype :u32,evtmain :&mut EvtMain) -> Result<(),Box<dyn Error>> {
-		debug_trace!("evthd 0x{:x} rdhd 0x{:x} wrhd 0x{:x} errhd 0x{:x} self {:p}",evthd,self.rdhd,self.wrhd,self.errhd,self);
-		debug_trace!("rdcnt {} wrcnt {} errcnt {} maxcnt {}",self.rdcnt,self.wrcnt,self.errcnt,self.maxcnt);
-		if evthd == self.rdhd {
-			self.rdcnt += 1;
-			println!("rdcnt {}", self.rdcnt);
-			if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
-				evtmain.break_up()?;
-			}			
-		} else if evthd == self.wrhd {
-			self.wrcnt += 1;
-			println!("wrcnt {}", self.wrcnt);
-			if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
-				evtmain.break_up()?;
-			}
-		} else if evthd == self.errhd {
-			self.errcnt += 1;
-			println!("errcnt {}", self.errcnt);
-			if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
-				evtmain.break_up()?;
-			}			
-		}
-		Ok(())
+		let p = self.clone();
+		return self.inner.borrow_mut().handle(evthd,_evttype,evtmain,p);
 	}
 
 	fn close_event(&mut self,_evthd :u64, _evttype :u32,evtmain :&mut EvtMain) {
-
-		evtmain.remove_event(self.rdhd);
-		evtmain.remove_event(self.wrhd);
-		evtmain.remove_event(self.errhd);
-
-		self.errcnt = 0;
-		self.rdcnt = 0;
-		self.wrcnt = 0;
-		return;
+		let p = self.clone();
+		return self.inner.borrow_mut().close_event(_evthd,_evttype,evtmain,p);
 	}
 
 	fn debug_mode(&mut self,_fname :&str,_lineno:u32) {
-		debug_trace!("{}:{} self {:p}",_fname,_lineno,self);
-		return;
-	}
+		let p = self.clone();
+		return self.inner.borrow_mut().debug_mode(_fname,_lineno,p);
+	}	
 }
 
 
 
 fn  main() -> Result<(),Box<dyn Error>> {
 	let mut evmain :EvtMain = EvtMain::new()?;
-	let  _ac :Arc<RefCell<SockCall>> = SockCall::new(5,&mut evmain)?;
+	let  _ac :SockCall = SockCall::new(5,&mut evmain)?;
 	evmain.main_loop()?;
 	println!("call CC over");
 	//drop(&evmain);
