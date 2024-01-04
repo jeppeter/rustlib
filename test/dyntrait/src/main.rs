@@ -13,6 +13,57 @@ pub const WRITE_EVENT :u32 = 0x2;
 pub const ERROR_EVENT :u32 = 0x4;
 pub const ET_TRIGGER  :u32 = 0x80;
 
+/*
+
+#[cfg(target_os = "linux")]
+use libc::{clock_gettime,CLOCK_MONOTONIC_COARSE,timespec};
+
+#[cfg(target_os = "windows")]
+use winapi::um::sysinfoapi::{GetTickCount64};
+
+const MAX_U64_VAL :u64 = 0xffffffffffffffff;
+
+#[cfg(target_os = "linux")]
+pub (crate) fn get_cur_ticks() -> u64 {
+	let mut  curtime = timespec {
+		tv_sec : 0,
+		tv_nsec : 0,
+	};
+	unsafe {clock_gettime(CLOCK_MONOTONIC_COARSE,&mut curtime);};
+	let mut retmills : u64 = 0;
+	retmills += (curtime.tv_sec as u64 )  * 1000;
+	retmills += ((curtime.tv_nsec as u64) % 1000000000) / 1000000;
+	return retmills;
+}
+
+#[cfg(target_os = "windows")]
+pub (crate) fn get_cur_ticks() -> u64 {
+	let retv :u64;
+	unsafe {
+		retv = GetTickCount64() as u64;
+	}
+	return retv;
+}
+
+
+pub (crate) fn time_left(sticks : u64,cticks :u64, leftmills :i32) -> i32 {
+	let eticks = sticks + leftmills as u64;
+	if cticks < eticks && cticks >= sticks {
+		return (eticks - cticks) as i32;
+	}
+
+	if (MAX_U64_VAL - sticks) < (leftmills as u64) {
+		if cticks > 0 && cticks < (leftmills as u64 - (MAX_U64_VAL - sticks)) {
+			return ((leftmills as u64) - (MAX_U64_VAL - sticks) - cticks) as i32;
+		}
+
+		if cticks >= sticks && cticks < MAX_U64_VAL {
+			return ((leftmills as u64) - (cticks - sticks)) as i32;
+		}
+	}
+	return -1;
+}*/
+
 
 fn get_logger_level() -> i64 {
 	return 60;
@@ -123,7 +174,7 @@ impl EvtMain {
 				guid = *_v;
 			},
 			None => {
-				debug_trace!("not used 0x{:x}",evthd);
+				debug_trace!("maybe deleted 0x{:x}",evthd);
 				return 0;
 			}
 		}
@@ -212,6 +263,7 @@ impl EvtMain {
 		for (k,v) in self.guidevts.iter() {
 			guids.push(*v);
 			evthds.push(*k);
+			debug_trace!("evthds 0x{:x} guid 0x{:x}",*k,*v);
 		}
 
 		let mut idx :usize;
@@ -281,12 +333,12 @@ impl Drop for SockCallInner {
 
 
 impl SockCallInner {
-	fn new(max :i32,_evtmain :&mut EvtMain) -> Result<Arc<RefCell<Self>>,Box<dyn Error>> {
+	fn new(max :i32,startcode :u64,_evtmain :&mut EvtMain) -> Result<Arc<RefCell<Self>>,Box<dyn Error>> {
 		let iretv :Self = Self{
 			maxcnt : max,
-			rdhd : 1,
-			wrhd : 2,
-			errhd : 3,
+			rdhd : startcode,
+			wrhd : startcode + 1,
+			errhd : startcode + 2,
 			rdcnt : 0,
 			wrcnt : 0,
 			errcnt : 0,
@@ -299,13 +351,13 @@ impl SockCallInner {
 	fn new_after(&mut self, evtmain :&mut EvtMain,parent :SockCall) -> Result<(),Box<dyn Error>> {
 		debug_trace!(" ");
 		evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.rdhd,READ_EVENT)?;
-		evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.wrhd,READ_EVENT)?;
-		evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.errhd,READ_EVENT)?;
+		//evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.wrhd,READ_EVENT)?;
+		//evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.errhd,READ_EVENT)?;
 		Ok(())
 	}
 
 	fn close(&mut self) {
-		println!("SockCallInner close {:p}",self );
+		debug_trace!("SockCallInner close {:p}",self );
 	}
 }
 
@@ -315,27 +367,30 @@ impl SockCallInner {
 		debug_trace!("rdcnt {} wrcnt {} errcnt {} maxcnt {}",self.rdcnt,self.wrcnt,self.errcnt,self.maxcnt);
 		if evthd == self.rdhd {
 			self.rdcnt += 1;
-			println!("rdcnt {}", self.rdcnt);
+			//println!("rdcnt {}", self.rdcnt);
 			if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
-				evtmain.break_up()?;
+				//evtmain.break_up()?;
+				evtmain.remove_event(self.rdhd);
 			} else {
 				evtmain.remove_event(self.rdhd);
 				evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.wrhd,READ_EVENT)?;
 			}			
 		} else if evthd == self.wrhd {
 			self.wrcnt += 1;
-			println!("wrcnt {}", self.wrcnt);
+			//println!("wrcnt {}", self.wrcnt);
 			if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
-				evtmain.break_up()?;
+				//evtmain.break_up()?;
+				evtmain.remove_event(self.wrhd);
 			} else {
 				evtmain.remove_event(self.wrhd);
 				evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.errhd,READ_EVENT)?;
 			}
 		} else if evthd == self.errhd {
 			self.errcnt += 1;
-			println!("errcnt {}", self.errcnt);
+			//println!("errcnt {}", self.errcnt);
 			if self.rdcnt >= self.maxcnt && self.wrcnt >= self.maxcnt && self.errcnt >= self.maxcnt {
-				evtmain.break_up()?;
+				//evtmain.break_up()?;
+				evtmain.remove_event(self.errhd);
 			} else {
 				evtmain.remove_event(self.errhd);
 				evtmain.add_event(Arc::new(RefCell::new(parent.clone())),self.rdhd,READ_EVENT)?;
@@ -364,14 +419,13 @@ impl SockCallInner {
 
 impl Drop for SockCall {
 	fn drop(&mut self) {
-		println!("call SockCall Free");
 		self.close();
 	}
 }
 
 impl SockCall {
-	fn new(maxcnt :i32, evtmain :&mut EvtMain) -> Result<Self,Box<dyn  Error>> {
-		let iretv :Arc<RefCell<SockCallInner>> = SockCallInner::new(maxcnt,evtmain)?;
+	fn new(maxcnt :i32,startcode :u64, evtmain :&mut EvtMain) -> Result<Self,Box<dyn  Error>> {
+		let iretv :Arc<RefCell<SockCallInner>> = SockCallInner::new(maxcnt,startcode,evtmain)?;
 		let retv :SockCall = SockCall {
 			inner : iretv,
 		};
@@ -380,7 +434,7 @@ impl SockCall {
 	}
 
 	fn close(&mut self) {
-		println!("free SockCall");
+		debug_trace!("close SockCall {:p}",self);
 	}
 }
 
@@ -404,12 +458,115 @@ impl EvtCall for SockCall {
 
 
 
+struct TimerOutEventInner {
+	guid :u64,
+	insertguid : bool,
+}
+
+#[derive(Clone)]
+struct TimerOutEvent {
+	inner :Arc<RefCell<TimerOutEventInner>>
+}
+
+impl Drop for TimerOutEventInner {
+	fn drop(&mut self) {
+		self.close();
+	}
+}
+
+impl TimerOutEventInner {
+	fn timer(&mut self,guid :u64,evtmain :&mut EvtMain,_parent :TimerOutEvent) -> Result<(),Box<dyn Error>> {
+		if self.insertguid {
+			evtmain.remove_timer(guid);
+			self.insertguid = false;	
+		}
+		evtmain.break_up()?;
+		Ok(())
+	}
+
+	fn close_timer(&mut self,guid:u64,evtmain :&mut EvtMain, _parent :TimerOutEvent) {
+		debug_trace!("close_timer");
+		if guid == self.guid && self.insertguid {
+			evtmain.remove_timer(self.guid);
+			self.insertguid = false;	
+		}
+		
+		return;
+	}
+
+	fn new_after(&mut self,maxmills : i32,evtmain :&mut EvtMain,parent :TimerOutEvent) -> Result<(),Box<dyn Error>> {
+		if !self.insertguid {
+			self.guid = evtmain.add_timer(Arc::new(RefCell::new(parent.clone())),maxmills,false)?;
+			self.insertguid = true;
+		}		
+		Ok(())
+	}
+
+	fn new() -> Result<Arc<RefCell<TimerOutEventInner>>,Box<dyn Error>> {
+		Ok(Arc::new(RefCell::new(Self {
+			guid : 0,
+			insertguid : false,
+		})))
+	}
+
+	fn close(&mut self) {
+		debug_trace!("close TimerOutEventInner {:p}",self);
+	}
+}
+
+
+impl Drop for TimerOutEvent {
+	fn drop(&mut self) {
+		self.close();
+	}
+}
+
+impl TimerOutEvent {
+	fn new(maxmills :i32, evtmain :&mut EvtMain) -> Result<Self,Box<dyn Error>> {
+		let ninner = TimerOutEventInner::new()?;
+		let retv :Self = Self {
+			inner : ninner,
+		};
+		let _ = retv.inner.borrow_mut().new_after(maxmills,evtmain,retv.clone())?;
+		Ok(retv)
+	}
+
+	fn close(&mut self) {
+		debug_trace!("close TimerOutEvent {:p}",self);
+	}
+}
+
+impl EvtTimer for TimerOutEvent {
+	fn timer(&mut self,timerguid :u64,evtmain :&mut EvtMain) -> Result<(),Box<dyn Error>> {
+		let p = self.clone();
+		return self.inner.borrow_mut().timer(timerguid,evtmain,p);
+	}
+	fn close_timer(&mut self,timerguid :u64, evtmain :&mut EvtMain) {
+		let p = self.clone();
+		return self.inner.borrow_mut().close_timer(timerguid,evtmain,p);
+	}
+
+}
+
+
+
 fn  main() -> Result<(),Box<dyn Error>> {
 	let mut evmain :EvtMain = EvtMain::new()?;
-	let  _ac :SockCall = SockCall::new(5,&mut evmain)?;
+	{
+		let  av = SockCall::new(5,0x10,&mut evmain)?;
+		let  bv = SockCall::new(10,0x20,&mut evmain)?;
+		let  cv = SockCall::new(20,0x30,&mut evmain)?;
+		let dv = TimerOutEvent::new(5000,&mut evmain)?;
+		println!("av {:p}", &av);
+		println!("bv {:p}", &bv);
+		println!("cv {:p}", &cv);
+		println!("dv {:p}", &dv);
+	}
+	
 	evmain.main_loop()?;
 	println!("call CC over");
-	//drop(&evmain);
+	drop(&evmain);
+	println!("after exit evmain");
 	//drop(&ac);
 	Ok(())
 }
