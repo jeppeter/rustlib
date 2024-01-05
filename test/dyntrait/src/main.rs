@@ -211,7 +211,7 @@ impl EvtMain {
 		return retv;
 	}
 
-	fn get_timeout(&self, maxtime :u32) -> u32 {
+	pub fn get_timeout(&self, maxtime :u32) -> u32 {
 		let mut retv :u32 = maxtime;
 		let cticks :u64 = get_cur_ticks();
 		for (_,v) in self.evttimers.iter() {
@@ -618,7 +618,7 @@ fn  main() -> Result<(),Box<dyn Error>> {
 		let  av = SockCall::new(5,0x10,&mut evmain)?;
 		let  bv = SockCall::new(10,0x20,&mut evmain)?;
 		let  cv = SockCall::new(20,0x30,&mut evmain)?;
-		let dv = TimerOutEvent::new(5000,&mut evmain)?;
+		let dv = TimerOutEvent::new(500,&mut evmain)?;
 		println!("av {:p}", &av);
 		println!("bv {:p}", &bv);
 		println!("cv {:p}", &cv);
