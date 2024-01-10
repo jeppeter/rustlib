@@ -15,6 +15,7 @@ use num_traits::{zero};
 extargs_error_class!{StrOpError}
 
 
+#[allow(dead_code)]
 pub fn encode_base64(bb :&[u8]) -> String {
 	return base64::encode(bb);
 }
@@ -30,6 +31,7 @@ pub fn decode_base64(instr :&str) -> Result<Vec<u8>,Box<dyn Error>> {
 	Ok(bv)
 }
 
+#[allow(dead_code)]
 pub fn split_lines(s :&str) -> Vec<String> {
 	let c : Vec<&str> = s.split("\n").collect();
 	let mut retv :Vec<String> = Vec::new();
