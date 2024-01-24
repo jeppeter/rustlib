@@ -42,7 +42,7 @@ fn logtest_thread(arg :logarg) {
 		debug_info!("{:?} thread {} info",std::thread::current().id(),i);
 		debug_warn!("{:?} thread {} warn",std::thread::current().id(),i);
 		debug_error!("{:?} thread {} error",std::thread::current().id(),i);
-		std::thread::sleep(std::time::Duration::from_millis(1 * 100));
+		//std::thread::sleep(std::time::Duration::from_millis(1 * 100));
 	}
 	arg.stopsig.signal();
 	return;
@@ -82,7 +82,7 @@ fn logtstthr_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 		debug_info!("main thread {} info",i);
 		debug_warn!("main thread {} warn",i);
 		debug_error!("main thread {} error",i);
-		std::thread::sleep(std::time::Duration::from_millis(1 * 100));
+		//std::thread::sleep(std::time::Duration::from_millis(1 * 100));
 	}
 
 	loop {
@@ -102,6 +102,10 @@ fn logtstthr_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 			stopvec.remove(fidx as usize);
 			let h = handles.remove(fidx as usize);
 			h.join().unwrap();
+		}
+
+		if stopvec.len() > 0 {
+			std::thread::sleep(std::time::Duration::from_millis(1 * 100));
 		}
 	}
 
