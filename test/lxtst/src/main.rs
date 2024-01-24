@@ -38,6 +38,7 @@ mod loglib;
 mod netlib;
 mod nethdl;
 mod sighdl;
+mod logtst;
 
 
 #[extargs_map_function()]
@@ -53,6 +54,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	loglib::prepare_log(parser.clone())?;
 	nethdl::load_net_handler(parser.clone())?;
 	sighdl::load_sig_handler(parser.clone())?;
+	logtst::load_logtst_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
