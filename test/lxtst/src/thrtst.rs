@@ -35,6 +35,9 @@ struct logarg {
 	stopsig :Arc<SignalEvent>,
 }
 
+
+
+
 fn logtest_thread(arg :logarg) {
 	for i in 0..arg.num {
 		debug_trace!("{:?} thread {} trace",std::thread::current().id(),i);
