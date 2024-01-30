@@ -26,7 +26,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 #[allow(unused_imports)]
-use super::fileop::{read_file_bytes,read_file};
+use super::fileop::{read_file_bytes,read_file,write_file_bytes};
 #[allow(unused_imports)]
 use super::strop::{parse_u64,decode_base64};
 use std::any::Any;
@@ -60,7 +60,9 @@ fn jpmergejup_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
     
     let _ = jp.merge_unpack(&jup,&sarr[2..])?;
     let data = jp.pack()?;
+    let output = ns.get_string("output");
     debug_buffer_trace!(data.as_ptr(),data.len(),"json pack");
+    let _ = write_file_bytes(&output,&data)?;
     Ok(())
 }
 
@@ -77,7 +79,9 @@ fn jupmergejp_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
     let jp :JSonPack = JSonPack::new(&us)?;
     let _ = jup.merge_pack(&jp,&sarr[2..])?;
     let data = jup.pack()?;
+    let output = ns.get_string("output");
     debug_buffer_trace!(data.as_ptr(),data.len(),"json unpack");
+    let _ = write_file_bytes(&output,&data)?;
     Ok(())
 }
 

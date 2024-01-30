@@ -57,6 +57,8 @@ impl JSonPackInner {
 	fn pack(&self) -> Result<Vec<u8>,Box<dyn Error>> {
 		let s = json!(self.vals).to_string();
 		let mut retv = s.as_bytes().to_vec();
+		/*for last one*/
+		//retv.push(0);
 		let clen :usize = retv.len() + 8;
 		let mut idx :usize = 0;
 		while idx < 4 {
@@ -177,6 +179,7 @@ impl JSonUnpackInner {
 	fn pack(&self) -> Result<Vec<u8>,Box<dyn Error>> {
 		let s = json!(self.vals).to_string();
 		let mut retv = s.as_bytes().to_vec();
+		//retv.push(0);
 		let clen :usize = retv.len() + 8;
 		let mut idx :usize = 0;
 		while idx < 4 {
