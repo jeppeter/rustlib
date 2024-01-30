@@ -62,6 +62,8 @@ mod serdehdl;
 mod automem;
 #[cfg(windows)]
 mod winsetup;
+mod jsondata;
+mod jsonhandle;
 
 
 #[extargs_map_function()]
@@ -90,6 +92,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	//ecchdl::load_ecc_handler(parser.clone())?;
 	winsetup::load_ecc_handler(parser.clone())?;
 	serdehdl::load_serde_handler(parser.clone())?;
+	jsonhandle::load_json_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
