@@ -49,12 +49,44 @@ fn serdeperson_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 	Ok(())
 }
 
-#[extargs_map_function(serdeperson_handler)]
+#[derive(Debug, Deserialize, Serialize)]
+struct FlatternInfo {
+	addr :String,
+	
+	#[serde(flatten)]
+	pers :Person,
+}
+
+
+fn serdeflattern_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let s = read_file(f)?;
+		let p :FlatternInfo = serde_json::from_str(&s)?;
+
+		//let p :Person = ores.unwrap();
+		println!("{}\n{:?}",f, p);
+		let j :String = serde_json::to_string(&p)?;
+		println!("to_string\n{}", j);
+	}
+	Ok(())
+}
+
+
+#[extargs_map_function(serdeperson_handler,serdeflattern_handler)]
 pub fn load_serde_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"serdeperson<serdeperson_handler>##inputname ...##" : {
 			"$" : "*"
+		},
+		"serdeflattern<serdeflattern_handler>##inputname ...##" : {
+			"$" : "+"
 		}
 	}
 	"#;
