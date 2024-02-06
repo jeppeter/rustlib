@@ -24,6 +24,8 @@ use extargsparse_worker::{extargs_error_class,extargs_new_error};
 
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::*;
+use std::io::Read;
+use std::io::Seek;
 
 extargs_error_class!{FileHdlError}
 
@@ -56,10 +58,10 @@ impl FdStruct {
 			msgs :Vec::new(),
 		};
 
-		let fp :std::fs:File;
+		let mut fp :std::fs::File;
 
 		let mut fres :std::io::Result<std::fs::File>; 
-		fres = std::fs::OpenOptions::new().read(true).write(true).open(logfile);
+		fres = std::fs::OpenOptions::new().read(true).write(true).open(fname);
 		if fres.is_ok(){
 			{
 				let fip = fres.unwrap();
@@ -67,7 +69,7 @@ impl FdStruct {
 				let mut rets :String = String::new();
 				let res = fin.read_to_string(&mut rets);
 				if res.is_err() {
-					extargs_new_error!{FileHdlError,"read [{}] error {}",logfile,res.err().unwrap()}
+					extargs_new_error!{FileHdlError,"read [{}] error {}",fname,res.err().unwrap()}
 				}
 				let sarr : Vec<&str> = rets.split("\n").collect();
 				for s in sarr.iter() {
@@ -77,16 +79,16 @@ impl FdStruct {
 
 			}
 
-			fres = std::fs::OpenOptions::new().read(true).write(true).open(logfile);
+			fres = std::fs::OpenOptions::new().read(true).write(true).open(fname);
 			fp = fres.unwrap();
 			let bres = fp.seek(std::io::SeekFrom::End(0));
 			if bres.is_err() {
-				extargs_new_error!{FileHdlError,"seek [{}] error {}",logfile,bres.err().unwrap()}
+				extargs_new_error!{FileHdlError,"seek [{}] error {}",fname,bres.err().unwrap()}
 			}
 		} else {
-			fres = std::fs::File::create(logfile);
+			fres = std::fs::File::create(fname);
 			if fres.is_err() {
-				extargs_new_error!{FileHdlError,"create [{}] error {}",logfile,fres.err().unwrap()}
+				extargs_new_error!{FileHdlError,"create [{}] error {}",fname,fres.err().unwrap()}
 			}
 			fp = fres.unwrap();
 		}
@@ -99,18 +101,15 @@ impl FdStruct {
 
 fn reopen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>  = ns.get_array("subnargs");
-	let port :u32;
-	let ipaddr :String;
-	let retv :libc::sockaddr_in;
 
 	init_log(ns.clone())?;
 	if sarr.len() < 1 {
-		extargs_new_error!{NetHdlError,"need file ..."}
+		extargs_new_error!{FileHdlError,"need file ..."}
 	}
 
 	for f in sarr.iter() {
 		let fd = FdStruct::new(f)?;
-		println!("{:?}", fd);
+		println!("open succ {}\n{:?}",f, fd);
 	}
 	Ok(())
 }

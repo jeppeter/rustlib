@@ -56,7 +56,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	"#;
 	extargs_load_commandline!(parser,commandline)?;
 	loglib::prepare_log(parser.clone())?;
-	filehdl::load_file_handler(parse.clone())?;
+	filehdl::load_file_handler(parser.clone())?;
 	nethdl::load_net_handler(parser.clone())?;
 	sighdl::load_sig_handler(parser.clone())?;
 	thrtst::load_logtst_handler(parser.clone())?;
