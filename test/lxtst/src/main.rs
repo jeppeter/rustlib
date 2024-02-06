@@ -36,6 +36,7 @@ mod wchar_windows;
 mod loglib_windows;
 mod strop;
 mod fileop;
+mod filehdl;
 mod loglib;
 mod netlib;
 mod nethdl;
@@ -55,6 +56,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	"#;
 	extargs_load_commandline!(parser,commandline)?;
 	loglib::prepare_log(parser.clone())?;
+	filehdl::load_file_handler(parse.clone())?;
 	nethdl::load_net_handler(parser.clone())?;
 	sighdl::load_sig_handler(parser.clone())?;
 	thrtst::load_logtst_handler(parser.clone())?;
