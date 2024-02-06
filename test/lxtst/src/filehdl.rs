@@ -26,6 +26,7 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::*;
 use std::io::Read;
 use std::io::Seek;
+use std::io::Write;
 
 extargs_error_class!{FileHdlError}
 
@@ -50,6 +51,18 @@ impl FdStruct {
 		}
 		self.fp = None;
 		self.fname = format!("");
+	}
+
+	fn add_line(&mut self,lines :&[String]) -> Result<(),Box<dyn Error>>  {
+		for l in lines.iter() {
+			let c = format!("{}\n",l);
+			if self.fp.is_some() {
+				let p = self.fp.as_mut().unwrap();
+				let _ = p.write_all(c.as_bytes())?;
+			}
+			self.msgs.push(c);
+		}
+		Ok(())
 	}
 	fn new(fname :&str) -> Result<Self,Box<dyn Error>> {
 		let mut retv :Self = Self {
@@ -107,10 +120,13 @@ fn reopen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 		extargs_new_error!{FileHdlError,"need file ..."}
 	}
 
-	for f in sarr.iter() {
-		let fd = FdStruct::new(f)?;
-		println!("open succ {}\n{:?}",f, fd);
-	}
+	let fname = format!("{}",sarr[0]);
+	let mut fd = FdStruct::new(&fname)?;
+
+	let _ = fd.add_line(&sarr[1..])?;
+
+	println!("fd\n{:?}",fd);
+
 	Ok(())
 }
 
@@ -119,7 +135,7 @@ fn reopen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 pub fn load_file_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
-		"reopen<reopen_handler>##file... to reopen file##" : {
+		"reopen<reopen_handler>##file lines... to reopen file##" : {
 			"$" : "+"
 		}
 	}
