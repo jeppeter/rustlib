@@ -55,7 +55,7 @@ impl FdStruct {
 
 	fn add_line(&mut self,lines :&[String]) -> Result<(),Box<dyn Error>>  {
 		for l in lines.iter() {
-			let c = format!("{}\n",l);
+			let c = format!("{}\r\n",l);
 			if self.fp.is_some() {
 				let p = self.fp.as_mut().unwrap();
 				let _ = p.write_all(c.as_bytes())?;
@@ -87,7 +87,10 @@ impl FdStruct {
 				let sarr : Vec<&str> = rets.split("\n").collect();
 				for s in sarr.iter() {
 					let cs :String = format!("{}",s);
-					retv.msgs.push(format!("{}",cs.trim_end_matches('\r')));
+					let bs :String = format!("{}",cs.trim_end_matches('\r'));
+					if bs.len() > 0 {
+						retv.msgs.push(bs);
+					}					
 				}
 
 			}
