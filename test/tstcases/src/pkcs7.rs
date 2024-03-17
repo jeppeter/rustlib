@@ -520,11 +520,11 @@ fn get_pkcs12kdf_sha256(passin :&[u8],salt :&[u8], idval :u8, iterval :usize,tot
     }
 
     for i in 0..slen {
-        Iarr.push(salt[ (i % salt.len()) ]);
+        Iarr.push(salt[i % salt.len()]);
     }
 
     for i in 0..plen {
-        Iarr.push(passin[(i % passin.len())]);
+        Iarr.push(passin[i % passin.len()]);
     }
 
     for  _ in 0..(v + 1) {
@@ -572,7 +572,7 @@ fn get_pkcs12kdf_sha256(passin :&[u8],salt :&[u8], idval :u8, iterval :usize,tot
         }
 
         for j in 0..v {
-            Barr[j] = Aiarr[(j % u)];
+            Barr[j] = Aiarr[j % u];
         }
         let mut jdx :usize = 0;
         while jdx < ilen {
@@ -580,8 +580,8 @@ fn get_pkcs12kdf_sha256(passin :&[u8],salt :&[u8], idval :u8, iterval :usize,tot
             let mut c :u16 = 1;
             while k > 0 {
                 k -= 1;
-                c += Iarr[(k+jdx)] as u16 + Barr[k] as u16;
-                Iarr[(k + jdx)] = c as u8;
+                c += Iarr[k+jdx] as u16 + Barr[k] as u16;
+                Iarr[k + jdx] = c as u8;
                 c >>= 8;
             }
             jdx += v;

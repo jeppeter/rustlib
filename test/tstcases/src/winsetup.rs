@@ -146,7 +146,7 @@ fn parse_guid(ins :&str) -> Result<GUID,Box<dyn Error>> {
     for i in 20..24 {
         GET_HEX_VAL!(cv,bs[i]);
         if (i % 2) != 0 {
-            retv.Data4[((i- 20) / 2)] = cv as u8;
+            retv.Data4[(i- 20) / 2] = cv as u8;
             cv = 0;         
         }
     }
