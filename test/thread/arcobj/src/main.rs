@@ -1,5 +1,6 @@
 use std::sync::{RwLock,Arc};
 use std::time::Instant;
+use std::backtrace::Backtrace;
 
 
 
@@ -28,6 +29,7 @@ impl CallInner {
 		println!("[{}:{}]CallInner [{}]  [{:p}]",fname,line,self.name,self);
 	}
 	pub fn close(&mut self) {
+		println!("{}", Backtrace::force_capture());
 		self.debug_self(file!(),line!());
 		println!("CallInner close {:p}", self);
 	}
