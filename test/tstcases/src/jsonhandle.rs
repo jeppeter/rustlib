@@ -31,6 +31,8 @@ use super::fileop::{read_file_bytes,read_file,write_file_bytes};
 use super::strop::{parse_u64,decode_base64};
 use std::any::Any;
 use super::jsondata::{JSonPack,JSonUnpack};
+use serde::{Deserialize, Serialize};
+
 
 
 asn1obj_error_class!{JsonHdlError}
@@ -85,9 +87,147 @@ fn jupmergejp_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
     Ok(())
 }
 
+#[derive(Clone,Serialize,Deserialize)]
+struct ExecCmd {
+    #[serde(default = "cmds_default")]
+    cmds :Vec<String>,
+    #[serde(default = "vals_default")]
+    vals :Vec<Vec<String>>,
+}
+
+impl Default for ExecCmd {
+    fn default() -> Self {
+        Self {
+            cmds : Vec::new(),
+            vals : Vec::new(),
+        }
+    }
+}
+
+fn cmds_default() -> Vec<String> {
+    return Vec::new();
+}
+
+fn vals_default() -> Vec<Vec<String>> {
+    return Vec::new();
+}
+
+#[derive(Clone)]
+enum FuncCall {
+    CallFunc(Rc<dyn Fn(String,Vec<String>) -> Result<(),Box<dyn Error>>>),
+}
 
 
-#[extargs_map_function(jpmergejup_handler,jupmergejp_handler)]
+#[derive(Clone)]
+struct ExecCmdHandler {
+    fname :String,
+    cmd : ExecCmd,
+    runcmds : Rc<RefCell<HashMap<String,FuncCall>>>,
+}
+
+
+
+impl ExecCmdHandler {
+    fn _handle_exec(&mut self, cmd :&str, vals :&[String]) -> Result<(),Box<dyn Error>> {
+        self.cmd.cmds.push(format!("{}",cmd));
+        let mut insertvals :Vec<String> = Vec::new();
+        let mut idx :usize = 0;
+        debug_trace!("run _handle_exec");
+        while idx < vals.len() {
+            insertvals.push(format!("{}",vals[idx]));
+            idx += 1;
+        }
+        self.cmd.vals.push(insertvals);
+        Ok(())
+    }
+
+    fn _handle_run(&mut self,cmd :&str, vals :&[String]) -> Result<(),Box<dyn Error>>{
+        self.cmd.cmds.push(format!("{}",cmd));
+        let mut insertvals :Vec<String> = Vec::new();
+        let mut idx :usize = 0;
+        debug_trace!("run _handle_run");
+        while idx < vals.len() {
+            insertvals.push(format!("{}",vals[idx]));
+            idx += 1;
+        }
+        self.cmd.vals.push(insertvals);
+        Ok(())
+    }
+
+    fn _insert_funcs(&mut self) -> Result<(),Box<dyn Error>> {
+        let b = Arc::new(UnsafeCell::new(self.clone()));
+        let mut bmut = self.runcmds.borrow_mut();
+        let s1 = bmut.clone();
+        s1.insert(format!("run"),Rc::new(RefCell::new(FuncCall::CallFunc(move |k,v| {
+            let  c :&mut ExecCmdHandler = unsafe {&mut *s1.get()};
+            c._handle_run(k,v);
+        }))));
+        s1.insert(format!("exec"),Rc::new(RefCell::new(FuncCall::CallFunc(move |k,v| {
+            let  c :&mut ExecCmdHandler = unsafe {&mut *s1.get()};
+            c._handle_exec(k,v);
+        }))));
+        Ok(())
+    }
+
+    fn new(fname :&str) -> Result<Self,Box<dyn Error>> {
+        let mut retv :Self = Self {
+            fname : format!("{}",fname),
+            cmd : ExecCmd::default(),
+            runcmds : Rc::new(RefCell::new(HashMap::new())),
+        };
+        let s = read_file(fname)?;
+        retv.cmd = serde_json::from_str(&s)?;
+        retv._insert_funcs()?;
+        Ok(retv)
+    }
+
+    fn call_funcs(&mut self,cmd :&str , vals :&[String]) -> Result<(),Box<dyn Error>> {
+        let cv :Option<FuncCall> = self.runcmds.get(cmd);
+        if cv.is_none() {
+            extargs_new_error!{JsonHdlError,"not get {} func",cmd}
+        }
+        let f2 :&FuncCall = cv.unwrap();
+        match f2 {
+            FuncCall::CallFunc(f) => {
+                return f(cmd,vals);
+            },
+            _ => {extargs_new_error!{JsonHdlError,"not match func"}}
+        }
+    }
+
+    fn flush_file(&self) -> Result<(),Box<dyn Error>> {
+        let s = serde_json::to_string(&self.cmd)?;
+        write_file(&s,&self.fname)?;
+        Ok(())
+    }
+
+}
+
+
+fn callfunc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+    let sarr :Vec<String>;
+    let mut cmd :String;
+    let mut vals :Vec<String> = Vec::new();
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 1 {
+        extargs_new_error!{JsonHdlError,"need cmd"}
+    }
+    let fname = ns.get_string("input");
+    let mut cv = ExecCmdHandler::new(&fname)?;
+    cmd = format!("{}",sarr[0]);
+    let mut idx :usize = 1;
+    while idx < sarr.len() {
+        vals.push(format!("{}",sarr[idx]));
+        idx += 1;
+    }
+    cv.call_funcs(&cmd,&vals)?;
+    cv.flush_file()?;
+    Ok(())
+}
+
+
+#[extargs_map_function(jpmergejup_handler,jupmergejp_handler,callfunc_handler)]
 pub fn load_json_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -95,6 +235,9 @@ pub fn load_json_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : "+"
         },
         "jupmergejp<jupmergejp_handler>##from files to input and to output##" : {
+            "$" : "+"
+        },
+        "callfunc<callfunc_handler>##cmd vals ... to call funcs##" : {
             "$" : "+"
         }
 	}
