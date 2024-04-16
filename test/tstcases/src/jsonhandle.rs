@@ -17,6 +17,8 @@ use std::sync::Arc;
 //use std::io::Write;
 use std::error::Error;
 use std::boxed::Box;
+use std::rc::Rc;
+use std::cell::UnsafeCell;
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
@@ -114,7 +116,7 @@ fn vals_default() -> Vec<Vec<String>> {
 
 #[derive(Clone)]
 enum FuncCall {
-    CallFunc(Rc<dyn Fn(String,Vec<String>) -> Result<(),Box<dyn Error>>>),
+    CallFunc(Rc<dyn Fn(&str,&[String]) -> Result<(),Box<dyn Error>>>),
 }
 
 
@@ -122,7 +124,7 @@ enum FuncCall {
 struct ExecCmdHandler {
     fname :String,
     cmd : ExecCmd,
-    runcmds : Rc<RefCell<HashMap<String,FuncCall>>>,
+    runcmds : Rc<RefCell<HashMap<String,Rc<RefCell<FuncCall>>>>>,
 }
 
 
@@ -138,6 +140,7 @@ impl ExecCmdHandler {
             idx += 1;
         }
         self.cmd.vals.push(insertvals);
+        debug_trace!("cmd [{:?}] vals [{:?}] self {:p}",self.cmd.cmds,self.cmd.vals,self);
         Ok(())
     }
 
@@ -151,21 +154,21 @@ impl ExecCmdHandler {
             idx += 1;
         }
         self.cmd.vals.push(insertvals);
+        debug_trace!("cmd [{:?}] vals [{:?}] self {:p}",self.cmd.cmds,self.cmd.vals,self);
         Ok(())
     }
 
     fn _insert_funcs(&mut self) -> Result<(),Box<dyn Error>> {
         let b = Arc::new(UnsafeCell::new(self.clone()));
         let mut bmut = self.runcmds.borrow_mut();
-        let s1 = bmut.clone();
-        s1.insert(format!("run"),Rc::new(RefCell::new(FuncCall::CallFunc(move |k,v| {
-            let  c :&mut ExecCmdHandler = unsafe {&mut *s1.get()};
-            c._handle_run(k,v);
-        }))));
-        s1.insert(format!("exec"),Rc::new(RefCell::new(FuncCall::CallFunc(move |k,v| {
-            let  c :&mut ExecCmdHandler = unsafe {&mut *s1.get()};
-            c._handle_exec(k,v);
-        }))));
+        let s1 = b.clone();
+        bmut.insert(format!("run"),Rc::new(RefCell::new(FuncCall::CallFunc(Rc::new(move |k,v| {let  c :&mut ExecCmdHandler = unsafe {&mut *s1.get()};
+            c._handle_run(k,v)
+        } )))));
+        let s1 = b.clone();
+        bmut.insert(format!("exec"),Rc::new(RefCell::new(FuncCall::CallFunc(Rc::new(move |k,v| {let  c :&mut ExecCmdHandler = unsafe {&mut *s1.get()};
+            c._handle_exec(k,v)
+        } )))));
         Ok(())
     }
 
@@ -182,22 +185,28 @@ impl ExecCmdHandler {
     }
 
     fn call_funcs(&mut self,cmd :&str , vals :&[String]) -> Result<(),Box<dyn Error>> {
-        let cv :Option<FuncCall> = self.runcmds.get(cmd);
-        if cv.is_none() {
-            extargs_new_error!{JsonHdlError,"not get {} func",cmd}
+        let cv :Option<FuncCall>;
+        match self.runcmds.borrow().get(cmd) {
+            Some(f1) => {
+                let f2 :&FuncCall = &f1.borrow();
+                cv = Some(f2.clone());
+            },
+            None => {
+                extargs_new_error!{JsonHdlError,"get function [{}] error",cmd}
+            }
         }
-        let f2 :&FuncCall = cv.unwrap();
-        match f2 {
+        let f3 = cv.unwrap();
+        match f3 {
             FuncCall::CallFunc(f) => {
                 return f(cmd,vals);
-            },
-            _ => {extargs_new_error!{JsonHdlError,"not match func"}}
+            },            
         }
     }
 
     fn flush_file(&self) -> Result<(),Box<dyn Error>> {
         let s = serde_json::to_string(&self.cmd)?;
-        write_file(&s,&self.fname)?;
+        write_file_bytes(&self.fname,s.as_bytes())?;
+        debug_trace!("self {:p}",self);
         Ok(())
     }
 
@@ -206,7 +215,7 @@ impl ExecCmdHandler {
 
 fn callfunc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
     let sarr :Vec<String>;
-    let mut cmd :String;
+    let cmd :String;
     let mut vals :Vec<String> = Vec::new();
     init_log(ns.clone())?;
     sarr = ns.get_array("subnargs");
