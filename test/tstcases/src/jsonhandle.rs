@@ -120,17 +120,21 @@ enum FuncCall {
 }
 
 
-#[derive(Clone)]
-struct ExecCmdHandler {
+struct ExecCmdHandlerInner {
     fname :String,
     cmd : ExecCmd,
     runcmds : Rc<RefCell<HashMap<String,Rc<RefCell<FuncCall>>>>>,
 }
 
+#[derive(Clone)]
+struct ExecCmdHandler {
+    inner :Arc<UnsafeCell<ExecCmdHandlerInner>>,
+}
 
 
-impl ExecCmdHandler {
-    fn _handle_exec(&mut self, cmd :&str, vals :&[String]) -> Result<(),Box<dyn Error>> {
+
+impl ExecCmdHandlerInner {
+    fn handle_exec(&mut self, cmd :&str, vals :&[String]) -> Result<(),Box<dyn Error>> {
         self.cmd.cmds.push(format!("{}",cmd));
         let mut insertvals :Vec<String> = Vec::new();
         let mut idx :usize = 0;
@@ -144,7 +148,7 @@ impl ExecCmdHandler {
         Ok(())
     }
 
-    fn _handle_run(&mut self,cmd :&str, vals :&[String]) -> Result<(),Box<dyn Error>>{
+    fn handle_run(&mut self,cmd :&str, vals :&[String]) -> Result<(),Box<dyn Error>>{
         self.cmd.cmds.push(format!("{}",cmd));
         let mut insertvals :Vec<String> = Vec::new();
         let mut idx :usize = 0;
@@ -158,16 +162,16 @@ impl ExecCmdHandler {
         Ok(())
     }
 
-    fn _insert_funcs(&mut self) -> Result<(),Box<dyn Error>> {
-        let b = Arc::new(UnsafeCell::new(self.clone()));
+    fn insert_funcs(&mut self, parent :ExecCmdHandler) -> Result<(),Box<dyn Error>> {
+        let b = Arc::new(UnsafeCell::new(parent));
         let mut bmut = self.runcmds.borrow_mut();
         let s1 = b.clone();
         bmut.insert(format!("run"),Rc::new(RefCell::new(FuncCall::CallFunc(Rc::new(move |k,v| {let  c :&mut ExecCmdHandler = unsafe {&mut *s1.get()};
-            c._handle_run(k,v)
+            c.handle_run(k,v)
         } )))));
         let s1 = b.clone();
         bmut.insert(format!("exec"),Rc::new(RefCell::new(FuncCall::CallFunc(Rc::new(move |k,v| {let  c :&mut ExecCmdHandler = unsafe {&mut *s1.get()};
-            c._handle_exec(k,v)
+            c.handle_exec(k,v)
         } )))));
         Ok(())
     }
@@ -180,7 +184,6 @@ impl ExecCmdHandler {
         };
         let s = read_file(fname)?;
         retv.cmd = serde_json::from_str(&s)?;
-        retv._insert_funcs()?;
         Ok(retv)
     }
 
@@ -208,6 +211,39 @@ impl ExecCmdHandler {
         write_file_bytes(&self.fname,s.as_bytes())?;
         debug_trace!("self {:p}",self);
         Ok(())
+    }
+
+}
+
+impl ExecCmdHandler {
+    fn handle_exec(&mut self, cmd :&str, vals :&[String]) -> Result<(),Box<dyn Error>> {
+        let s1 :&mut ExecCmdHandlerInner = unsafe {&mut *self.inner.get()};
+        return s1.handle_exec(cmd,vals);
+    }
+
+    fn handle_run(&mut self,cmd :&str, vals :&[String]) -> Result<(),Box<dyn Error>>{
+        let s1 :&mut ExecCmdHandlerInner = unsafe {&mut *self.inner.get()};
+        return s1.handle_run(cmd,vals);
+    }
+
+
+    fn new(fname :&str) -> Result<Self,Box<dyn Error>> {
+        let retv :Self = Self {
+            inner : Arc::new(UnsafeCell::new(ExecCmdHandlerInner::new(fname)?)),
+        };
+        let s1 :&mut ExecCmdHandlerInner = unsafe {&mut *retv.inner.get()};
+        s1.insert_funcs(retv.clone())?;
+        Ok(retv)
+    }
+
+    fn call_funcs(&mut self,cmd :&str , vals :&[String]) -> Result<(),Box<dyn Error>> {
+        let s1 :&mut ExecCmdHandlerInner = unsafe {&mut *self.inner.get()};
+        return s1.call_funcs(cmd,vals);        
+    }
+
+    fn flush_file(&self) -> Result<(),Box<dyn Error>> {
+        let s1 :&mut ExecCmdHandlerInner = unsafe {&mut *self.inner.get()};
+        return s1.flush_file();
     }
 
 }
