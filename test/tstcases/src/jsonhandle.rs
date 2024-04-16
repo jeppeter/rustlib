@@ -188,21 +188,18 @@ impl ExecCmdHandlerInner {
     }
 
     fn call_funcs(&mut self,cmd :&str , vals :&[String]) -> Result<(),Box<dyn Error>> {
-        let cv :Option<FuncCall>;
         match self.runcmds.borrow().get(cmd) {
             Some(f1) => {
                 let f2 :&FuncCall = &f1.borrow();
-                cv = Some(f2.clone());
+                match f2 {
+                    FuncCall::CallFunc(f) => {
+                        return f(cmd,vals);
+                    },
+                }
             },
             None => {
                 extargs_new_error!{JsonHdlError,"get function [{}] error",cmd}
             }
-        }
-        let f3 = cv.unwrap();
-        match f3 {
-            FuncCall::CallFunc(f) => {
-                return f(cmd,vals);
-            },            
         }
     }
 
