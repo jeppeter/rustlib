@@ -34,6 +34,7 @@ use super::strop::{parse_u64,decode_base64};
 use std::any::Any;
 use super::jsondata::{JSonPack,JSonUnpack};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as serdeValue;
 
 
 
@@ -269,7 +270,25 @@ fn callfunc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 }
 
 
-#[extargs_map_function(jpmergejup_handler,jupmergejp_handler,callfunc_handler)]
+fn jsonhashmap_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+    let sarr :Vec<String>;
+    let mut maps :HashMap<String,serdeValue>;
+    init_log(ns.clone())?;
+    sarr = ns.get_array("subnargs");
+    if sarr.len() < 1 {
+        extargs_new_error!{JsonHdlError,"need file"}
+    }
+    for f in sarr.iter() {
+        let s = read_file(f)?;
+        maps = serde_json::from_str(&s)?;
+        let outs = serde_json::to_string(&maps)?;
+        write_file_bytes("",outs.as_bytes())?;
+    }
+    Ok(())
+}
+
+
+#[extargs_map_function(jpmergejup_handler,jupmergejp_handler,callfunc_handler,jsonhashmap_handler)]
 pub fn load_json_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -280,6 +299,9 @@ pub fn load_json_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : "+"
         },
         "callfunc<callfunc_handler>##cmd vals ... to call funcs##" : {
+            "$" : "+"
+        },
+        "jsonhashmap<jsonhashmap_handler>##files ... to list jsonhashmap##" : {
             "$" : "+"
         }
 	}
