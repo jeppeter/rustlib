@@ -60,7 +60,11 @@ fn nicstate_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 
 	for s in sarr.iter() {
 		let dev :NetDevFd = NetDevFd::new(s)?;
-		println!("[{}]ipaddr [{}] netmask [{}] defgate [{}] dns {:?}",s,dev.get_ipaddr()?,dev.get_netmask()?,dev.get_default_gateway()?,dev.get_dns()?);
+		print!("{}", s);
+		print!(" netmask [{}]",dev.get_netmask()?);
+		print!(" ipaddr [{}]",dev.get_ipaddr()?);
+		print!(" gateway [{}]",dev.get_default_gateway()?);
+		print!(" dns {:?}\n",dev.get_dns()?);
 	}
 
 	Ok(())
