@@ -108,10 +108,6 @@ impl NetDevFd {
 	pub (crate) fn get_default_gateway(&self) -> Result<String,Box<dyn Error>> {
 		let s = read_file("/proc/net/route")?;
 		let sarr :Vec<&str> = s.split("\n").collect();
-		let nsarr :Vec<String> = Vec::new();
-		for vs in sarr.iter() {
-			nsarr.push(format!("{}",vs));
-		}
 		let matchs = format!("^{}\\s+([0-9a-fA-F]+)\\s+([0-9a-fA-F]+)\\s+.*",self.ethname);
 		let ores = Regex::new(&matchs);
 		let matchexpr :Regex;
@@ -120,14 +116,57 @@ impl NetDevFd {
 		}
 		matchexpr = ores.unwrap();
 
-
-		for l in nsarr {
-
+		for l in sarr {
+			let ob = matchexpr.captures(l);
+			if ob.is_some() {
+				let ov = ob.unwrap();
+				if ov.len() >= 3 {
+					let destres = u32::from_str_radix(&ov[1],16);
+					let gateres = u32::from_str_radix(&ov[2],16);
+					if destres.is_ok() && gateres.is_ok() {
+						let destaddr :u32 = destres.unwrap();
+						let gateaddr :u32 = gateres.unwrap();
+						if destaddr == 0 {
+							let mut rets :String = "".to_string();
+							let mut idx :usize = 0;
+							while idx < 4 {
+								let cv :u8 = ((gateaddr >> (idx * 8)) & 0xff) as u8;
+								if idx > 0 {
+									rets.push_str(".");
+								}
+								rets.push_str(&format!("{}",cv));
+								idx += 1;
+							}
+							return Ok(rets);
+						}
+					}
+				}
+			}
 		}
+		extargs_new_error!{NetLibError,"can not get gateway"}
 	}
 
 	pub (crate) fn get_dns(&self) -> Result<Vec<String>,Box<dyn Error>> {
-		let retv :Vec<String> = Vec::new();
+		let mut retv :Vec<String> = Vec::new();
+		let s = read_file("/etc/resolv.conf")?;
+		let sarr :Vec<&str> = s.split("\n").collect();
+		let matchs = format!("^nameserver\\s+([0-9\\.]+)");
+		let ores = Regex::new(&matchs);
+		let matchexpr :Regex;
+		if ores.is_err() {
+			extargs_new_error!{NetLibError,"compile [{}] error [{:?}]",matchs,ores.err().unwrap()}
+		}
+		matchexpr = ores.unwrap();
+		for l in sarr.iter() {
+			let ob = matchexpr.captures(l);
+			if ob.is_some() {
+				let ov = ob.unwrap();
+				if ov.len() >= 2 {
+					retv.push(format!("{}",&ov[1]));
+				}
+			}
+		}
+
 		Ok(retv)
 	}
 
