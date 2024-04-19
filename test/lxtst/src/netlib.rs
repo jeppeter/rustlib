@@ -7,8 +7,9 @@ use super::*;
 
 extargs_error_class!{NetLibError}
 
-struct NetDevFd {
+pub (crate) struct NetDevFd {
 	fd :i32,
+	ethname :String,
 }
 
 impl Drop for NetDevFd {
@@ -27,9 +28,10 @@ impl NetDevFd {
 		}
 	}
 
-	pub (crate) fn new() -> Result<Self,Box<dyn Error>> {
+	pub (crate) fn new(s :&str) -> Result<Self,Box<dyn Error>> {
 		let mut retv :Self = Self {
 			fd : -1,
+			ethname :format!("{}",s),
 		};
 		unsafe {
 			retv.fd = libc::socket(libc::AF_INET,libc::SOCK_DGRAM,0);
@@ -41,27 +43,26 @@ impl NetDevFd {
 		Ok(retv)
 	}
 
-	pub (crate) fn get_fd(&self) -> i32 {
-		return self.fd
+
+	pub (crate) fn get_netmask(&self) -> Result<String,Box<dyn Error>> {
+		Ok("".to_string())
 	}
-}
 
-fn _get_netdev_netmask(fd :i32) -> Result<String,Box<dyn Error>> {
-	let mut rets :String;
-}
+	pub (crate) fn get_ipaddr(&self) -> Result<String,Box<dyn Error>> {
+		Ok("".to_string())
+	}
 
+	pub (crate) fn get_default_gateway(&self) -> Result<String,Box<dyn Error>> {
+		Ok("".to_string())
+	}
 
-pub fn get_netdev_netmask(ethname :&str) -> Result<String,Box<dyn Error>> {
-
-}
-
-pub fn get_netdev_gateway(ethname :&str) -> Result<String,Box<dyn Error>> {
-
-}
-
-pub fn get_netdev_ipaddr(ethname :&str) -> Result<String,Box<dyn Error>> {
+	pub (crate) fn get_dns(&self) -> Result<Vec<String>,Box<dyn Error>> {
+		let retv :Vec<String> = Vec::new();
+		Ok(retv)
+	}
 
 }
+
 
 pub fn format_sinaddr_in(ipaddr :&str,port :u32) -> Result<libc::sockaddr_in,Box<dyn Error>> {
 	let mut retv :libc::sockaddr_in = unsafe {std::mem::zeroed()};

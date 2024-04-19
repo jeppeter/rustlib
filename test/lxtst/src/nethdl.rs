@@ -24,7 +24,7 @@ use extargsparse_worker::{extargs_error_class,extargs_new_error};
 
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::strop::{parse_u64};
-use super::netlib::{format_sinaddr_in};
+use super::netlib::{format_sinaddr_in,NetDevFd};
 use super::*;
 
 extargs_error_class!{NetHdlError}
@@ -50,13 +50,32 @@ fn sockaddrinfmt_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	Ok(())
 }
 
+fn nicstate_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>  = ns.get_array("subnargs");
 
-#[extargs_map_function(sockaddrinfmt_handler)]
+	init_log(ns.clone())?;
+	if sarr.len() < 1 {
+		extargs_new_error!{NetHdlError,"need ethname ..."}
+	}
+
+	for s in sarr.iter() {
+		let dev :NetDevFd = NetDevFd::new(s)?;
+		println!("[{}]ipaddr [{}] netmask [{}] defgate [{}] dns {:?}",s,dev.get_ipaddr()?,dev.get_netmask()?,dev.get_default_gateway()?,dev.get_dns()?);
+	}
+
+	Ok(())
+}
+
+
+#[extargs_map_function(sockaddrinfmt_handler,nicstate_handler)]
 pub fn load_net_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"sockaddrinfmt<sockaddrinfmt_handler>##ip port to format##" : {
 			"$" : 2
+		},
+		"nicstate<nicstate_handler>##ethname ... to get state##" : {
+			"$" : "+"
 		}
 	}
 	"#;
