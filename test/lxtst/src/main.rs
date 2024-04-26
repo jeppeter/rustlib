@@ -41,6 +41,7 @@ mod loglib;
 mod netlib;
 mod nethdl;
 mod sighdl;
+mod timehdl;
 mod eventfd;
 mod thrtst;
 
@@ -60,6 +61,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	nethdl::load_net_handler(parser.clone())?;
 	sighdl::load_sig_handler(parser.clone())?;
 	thrtst::load_logtst_handler(parser.clone())?;
+	timehdl::load_time_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
