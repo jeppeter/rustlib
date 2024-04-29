@@ -11,6 +11,7 @@ use serde_json::{json,Value};
 use super::strop::{format_tabs};
 use super::fileop::{read_file};
 use super::logtrans::{init_log};
+use serde::{Deserialize, Serialize};
 
 #[allow(unused_imports)]
 use extargsparse_worker::{extargs_error_class,extargs_new_error};
@@ -254,9 +255,92 @@ fn parse_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>
 	Ok(())
 }
 
+#[derive(Clone,Serialize,Deserialize)]
+#[serde(untagged)]
+pub enum DnsValue {
+	Str(String),
+	Arr(Vec<String>),
+}
+
+pub const NICSTATE_DHCP :&str = "dhcp";
 
 
-#[extargs_map_function(enumerate_handler,add_handler,del_handler,parse_handler)]
+#[derive(Clone,Deserialize,Serialize)]
+pub struct ProtoNicStat {
+	#[serde(default = "nic_stat_state_default")]
+	pub state :String,
+	#[serde(default = "nic_stat_ip_default")]
+	pub ip :String,
+	#[serde(default = "nic_stat_netmask_default")]
+	pub netmask :String,
+	#[serde(default = "nic_stat_gateway_default")]
+	pub gateway :String,
+	#[serde(default = "nic_stat_dns_default")]
+	pub dns :DnsValue,
+}
+
+impl Default for ProtoNicStat {
+	fn default() -> Self {
+		Self {
+			state : format!("{}",NICSTATE_DHCP),
+			ip :format!(""),
+			netmask :format!(""),
+			gateway : format!(""),
+			dns : DnsValue::Arr(Vec::new()),
+		}
+	}
+}
+
+fn nic_stat_state_default() -> String {
+	format!("{}",NICSTATE_DHCP)
+}
+
+fn nic_stat_ip_default() -> String {
+	format!("")
+}
+
+fn nic_stat_netmask_default() -> String {
+	format!("")
+}
+
+fn nic_stat_gateway_default() -> String {
+	format!("")
+}
+
+fn nic_stat_dns_default() -> DnsValue {
+	DnsValue::Arr(Vec::new())
+}
+
+
+fn enumdns_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 1 {
+		extargs_new_error!{JsonLibError,"need json value"}
+	}
+	let s = read_file(&sarr[0])?;
+	let mut nval :ProtoNicStat = serde_json::from_str(&s)?;
+	if sarr.len() == 2 {
+		nval.dns = DnsValue::Str(format!("{}",sarr[1]));
+	} else if sarr.len() > 2 {
+		let mut cval :Vec<String> = vec![];
+		let mut idx :usize = 1;
+		while idx < sarr.len() {
+			cval.push(format!("{}", sarr[idx]));
+			idx += 1;
+		}
+		nval.dns = DnsValue::Arr(cval.clone());
+	}
+
+	let outs = serde_json::to_string(&nval)?;
+	println!("{}", outs);
+	Ok(())
+}
+
+
+#[extargs_map_function(enumerate_handler,add_handler,del_handler,parse_handler,enumdns_handler)]
 pub fn load_json_cmd(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"{
 		"enumerate<enumerate_handler>##file ... to enumerate json values##" : {
@@ -269,6 +353,9 @@ pub fn load_json_cmd(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"parse<parse_handler>##str ... to parse values##" : {
+			"$" : "+"
+		},
+		"enumdns<enumdns_handler>##jsonfile dns ... ... to make dns value##" : {
 			"$" : "+"
 		}
 	}"#;
