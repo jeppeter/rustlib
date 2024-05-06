@@ -339,8 +339,83 @@ fn enumdns_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	Ok(())
 }
 
+pub trait AckProto {
+	fn new_from_cmd(cmd :&ProtoCmd, res :i32) -> Self;
+}
 
-#[extargs_map_function(enumerate_handler,add_handler,del_handler,parse_handler,enumdns_handler)]
+#[derive(Clone,Deserialize,Serialize)]
+pub struct ProtoCmd {
+	pub command :String,
+	pub uid :u32,
+}
+
+#[derive(Clone,Deserialize,Serialize)]
+pub struct ProtoAck {
+	pub ack :String,
+	pub uid :u32,
+	pub res :i32,
+}
+
+impl Default for ProtoAck {
+	fn default() -> Self {
+		Self {
+			ack : format!(""),
+			uid : 1,
+			res : 1,
+		}
+	}
+}
+
+
+#[derive(Clone,Deserialize,Serialize)]
+pub struct ProtoCmdJsonFruSet {
+	#[serde(flatten)]
+	pub cmd :ProtoCmd,
+	#[serde(flatten,default = "json_fru_set_map_default")]
+	pub map :HashMap<String,serde_json::Value>,
+}
+
+fn json_fru_set_map_default() -> HashMap<String,serde_json::Value> {
+	HashMap::new()
+}
+
+
+#[derive(Clone,Deserialize,Serialize)]
+pub struct ProtoAckJsonFruSet {
+	#[serde(flatten)]
+	pub ack :ProtoAck,
+}
+
+impl AckProto for ProtoAckJsonFruSet {
+	fn new_from_cmd(cmd :&ProtoCmd, res :i32) -> Self {
+		Self {
+			ack : ProtoAck {
+				ack : format!("{}",cmd.command),
+				uid : cmd.uid,
+				res : res,
+			},
+		}
+	}
+}
+
+fn hashenum_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 1 {
+		extargs_new_error!{JsonLibError,"need json value"}
+	}
+	let s = read_file(&sarr[0])?;
+	let nval :ProtoCmdJsonFruSet = serde_json::from_str(&s)?;
+	for (k,v) in nval.map.iter() {
+		println!("[{}]=[{:?}]",k,v);
+	}
+	Ok(())
+}
+
+
+#[extargs_map_function(enumerate_handler,add_handler,del_handler,parse_handler,enumdns_handler,hashenum_handler)]
 pub fn load_json_cmd(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"{
 		"enumerate<enumerate_handler>##file ... to enumerate json values##" : {
@@ -357,6 +432,9 @@ pub fn load_json_cmd(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"enumdns<enumdns_handler>##jsonfile dns ... ... to make dns value##" : {
 			"$" : "+"
+		},
+		"hashenum<hashenum_handler>##jsonfile to list keys values##" : {
+			"$" : 1
 		}
 	}"#;
 	extargs_load_commandline!(parser,cmdline)?;
