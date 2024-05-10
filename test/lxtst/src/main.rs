@@ -63,6 +63,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	sighdl::load_sig_handler(parser.clone())?;
 	thrtst::load_logtst_handler(parser.clone())?;
 	timehdl::load_time_handler(parser.clone())?;
+	proctst::load_proc_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();

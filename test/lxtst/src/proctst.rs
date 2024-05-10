@@ -6,7 +6,7 @@ use extargsparse_worker::parser::{ExtArgsParser};
 use extargsparse_worker::funccall::{ExtArgsParseFunc};
 
 
-use std::cell::RefCell;
+use std::cell::{RefCell,UnsafeCell};
 use std::sync::Arc;
 use std::error::Error;
 use std::boxed::Box;
@@ -27,8 +27,10 @@ use super::loglib::{log_get_timestamp,log_output_function,init_log};
 //use std::io::Read;
 //use std::io::Seek;
 //use std::io::Write;
-use chrono::prelude::*;
-use crate::strop::{parse_u64};
+//use chrono::prelude::*;
+//use crate::strop::{parse_u64};
+use evtcall::defer::*;
+use crate::*;
 
 extargs_error_class!{ProcHdlError}
 
@@ -37,9 +39,9 @@ struct ErrorResultInner {
 }
 
 impl ErrorResultInner {
-	fn new() -> Result<Self,Box<dyn Error>> {
+	fn new(val :i32) -> Result<Self,Box<dyn Error>> {
 		Ok(Self {
-			res : 1,
+			res : val,
 		})
 	}
 
@@ -60,9 +62,9 @@ struct ErrorResult {
 }
 
 impl ErrorResult {
-	fn new() -> Result<Self, Box<dyn Error>> {
+	fn new(val :i32) -> Result<Self, Box<dyn Error>> {
 		Ok(Self {
-			inner : Arc::new(UnsafeCell::new(ErrorResultInner::new()?)),
+			inner : Arc::new(UnsafeCell::new(ErrorResultInner::new(val)?)),
 		})
 	}
 
@@ -77,16 +79,42 @@ impl ErrorResult {
 	}
 }
 
+const DEV_NULL :&str = "/dev/null";
+
+#[allow(unused_assignments)]
 fn daemon_proc(infile:&str ,outfile :&str,errfile :&str, note :&str) -> Result<(),Box<dyn Error>> {
 	debug_trace!("{} daemon",note);
 	let mut infd :i32 = -1;
 	let mut outfd :i32 = -1;
 	let mut errfd :i32 = -1;
 	let mut defercall :DeferCall = DeferCall::new();
-	let mut resval :ErrorResult = ErrorResult::new()?;
+	let mut resval :ErrorResult = ErrorResult::new(1)?;
 	let nval = resval.clone();
+	let mut rawinbytes :Vec<u8> = DEV_NULL.as_bytes().to_vec().clone();
+	let mut rawoutbytes :Vec<u8> = DEV_NULL.as_bytes().to_vec().clone();
+	let mut rawerrbytes :Vec<u8> = DEV_NULL.as_bytes().to_vec().clone();
+	let mut reti :libc::c_int;
 
-	defercall.push(move || {
+	if infile.len() > 0 {
+		rawinbytes = infile.as_bytes().to_vec().clone();
+	}
+
+	if outfile.len() > 0 {
+		rawoutbytes = outfile.as_bytes().to_vec().clone();
+	}
+
+	if errfile.len() > 0 {
+		rawerrbytes = errfile.as_bytes().to_vec().clone();
+	}
+
+	/*to make string '\0'*/
+	rawinbytes.push(0);
+	rawoutbytes.push(0);
+	rawerrbytes.push(0);
+
+
+
+	defercall.push_call(move || {
 		let getval = nval.get_value();
 		if getval != 0 {
 			if infd >= 0 {
@@ -112,6 +140,86 @@ fn daemon_proc(infile:&str ,outfile :&str,errfile :&str, note :&str) -> Result<(
 		}
 	});
 
+	unsafe {
+		let _ptr = rawinbytes.as_ptr() as *const libc::c_char;
+		infd = libc::open(_ptr,libc::O_RDONLY,0);
+	}
+
+	if infd < 0 {
+		reti = get_errno!();
+		extargs_new_error!{ProcHdlError,"open [{}] error [{}]",infile,reti}
+	}
+
+	unsafe {
+		let _ptr = rawoutbytes.as_ptr() as *const libc::c_char;
+		outfd = libc::open(_ptr,libc::O_RDWR,0);
+	}
+
+	if outfd < 0 {
+		reti = get_errno!();
+		extargs_new_error!{ProcHdlError,"open [{}] error [{}]",outfile,reti}
+	}
+
+
+	unsafe {
+		let _ptr = rawerrbytes.as_ptr() as *const libc::c_char;
+		errfd = libc::open(_ptr,libc::O_RDWR,0);
+	}
+
+	if errfd < 0 {
+		reti = get_errno!();
+		extargs_new_error!{ProcHdlError,"open [{}] error [{}]",errfile,reti}
+	}
+
+	unsafe {
+		reti = libc::dup2(infd,0);
+	}
+	if reti < 0 {
+		extargs_new_error!{ProcHdlError,"can not dup2 [{}] to stdin",infile}
+	}
+
+
+	unsafe {
+		reti = libc::dup2(outfd,1);
+	}
+	if reti < 0 {
+		extargs_new_error!{ProcHdlError,"can not dup2 [{}] to stdout",outfile}
+	}
+
+	unsafe {
+		reti = libc::dup2(errfd,2);
+	}
+	if reti < 0 {
+		extargs_new_error!{ProcHdlError,"can not dup2 [{}] to stderr",errfile}
+	}
+
+	unsafe {
+		reti = libc::fork();
+	}
+
+	if reti < 0 {
+		extargs_new_error!{ProcHdlError,"can not fork"}
+	} else if reti > 0 {
+		/*we exit*/
+		unsafe {
+			libc::exit(0);
+		}
+	}
+
+	unsafe {
+		libc::close(infd);
+		libc::close(outfd);
+		libc::close(errfd);		
+	}
+
+	infd = -1;
+	outfd = -1;
+	errfd = -1;
+
+	/*ok all is ok*/
+
+
+	resval.set_value(0);
 
 	Ok(())
 }
@@ -140,6 +248,9 @@ fn daemonize_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	let _ = daemon_proc(&infile,&outfile,&errfile,"daemonize")?;
 
 	loop {
+		if cnt > 100 {
+			break;
+		}
 		std::thread::sleep(std::time::Duration::from_millis(500));
 		debug_trace!("cnt [{}]",cnt);
 		cnt += 1;
@@ -150,7 +261,7 @@ fn daemonize_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 }
 
 
-#[extargs_map_function(timeval_handler)]
+#[extargs_map_function(daemonize_handler)]
 pub fn load_proc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
