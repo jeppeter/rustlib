@@ -44,6 +44,7 @@ mod sighdl;
 mod timehdl;
 mod eventfd;
 mod thrtst;
+mod proctst;
 
 
 #[extargs_map_function()]
