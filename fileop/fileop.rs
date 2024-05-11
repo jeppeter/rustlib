@@ -139,3 +139,11 @@ pub fn delete_file(infile :&str) -> Result<(),Box<dyn Error>> {
 	}
 	Ok(())
 }
+
+pub fn exists_file(infile :&str) -> bool {
+	let fpath = std::path::Path::new(infile);
+	if fpath.exists() {
+		return true;
+	}
+	return false;
+}

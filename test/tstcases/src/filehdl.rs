@@ -27,7 +27,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
-use super::fileop::{read_file_bytes,write_file_bytes,read_file,touch_file,delete_file};
+use super::fileop::{read_file_bytes,write_file_bytes,read_file,touch_file,delete_file,exists_file};
 use super::strop::{encode_base64,split_lines};
 
 
@@ -78,7 +78,12 @@ fn touch_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>
 	sarr = ns.get_array("subnargs");
 
 	for f in sarr.iter() {
-		let _ = touch_file(f)?;
+		if !exists_file(f) {
+			let _ = touch_file(f)?;	
+		} else {
+			println!("exist {}",f);
+		}
+		
 	}
 
 	Ok(())
@@ -92,7 +97,12 @@ fn delfile_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	sarr = ns.get_array("subnargs");
 
 	for f in sarr.iter() {
-		let _ = delete_file(f)?;
+		if exists_file(f) {
+			let _ = delete_file(f)?;	
+		} else {
+			println!("not exist {}", f);
+		}
+		
 	}
 
 	Ok(())
