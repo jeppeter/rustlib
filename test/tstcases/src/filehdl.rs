@@ -27,7 +27,7 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
-use super::fileop::{read_file_bytes,write_file_bytes,read_file};
+use super::fileop::{read_file_bytes,write_file_bytes,read_file,touch_file,delete_file};
 use super::strop::{encode_base64,split_lines};
 
 
@@ -70,7 +70,36 @@ fn splitlines_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetI
 	Ok(())
 }
 
-#[extargs_map_function(fileencbase64_handler,splitlines_handler)]
+fn touch_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+
+	for f in sarr.iter() {
+		let _ = touch_file(f)?;
+	}
+
+	Ok(())
+}
+
+fn delfile_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+
+	for f in sarr.iter() {
+		let _ = delete_file(f)?;
+	}
+
+	Ok(())
+}
+
+
+#[extargs_map_function(fileencbase64_handler,splitlines_handler,touch_handler,delfile_handler)]
 pub fn load_file_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -78,6 +107,12 @@ pub fn load_file_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"splitlines<splitlines_handler>##fname ... to split lines##" : {
+			"$" : "+"
+		},
+		"touch<touch_handler>##files ... to touch file##" : {
+			"$" : "+"
+		},
+		"delfile<delfile_handler>##files ... to delete file##" : {
 			"$" : "+"
 		}
 	}
