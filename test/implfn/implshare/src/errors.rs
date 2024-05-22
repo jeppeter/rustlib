@@ -1,10 +1,11 @@
 
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_error_class {
 	($type:ident) => {
 		#[derive(Clone)]
-		pub struct $type {
+		struct $type {
 			msg :String,
 			fname :String,
 			lineno :u32,
@@ -78,7 +79,8 @@ macro_rules! implfn_error_class {
 	};
 }
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_new_error {
 	($type:ty,$($a:expr),*) => {
 		{
@@ -93,7 +95,8 @@ macro_rules! implfn_new_error {
 }
 
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_error_create {
 	($type:ty,$($a:expr),*) => {
 		{

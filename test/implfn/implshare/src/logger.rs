@@ -140,7 +140,8 @@ pub (crate) fn implfn_log_get_timestamp() -> String {
 	return format!("{}/{}/{} {}:{}:{}",now.year(),now.month(),now.day(),now.hour(),now.minute(),now.second());
 }
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_log_error {
 	($($arg:tt)+) => {
 		let mut c :String= format!("[IMPLFN]<ERROR>{}[{}:{}]  ",implfn_log_get_timestamp(),file!(),line!());
@@ -149,7 +150,8 @@ macro_rules! implfn_log_error {
 	}
 }
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_log_warn {
 	($($arg:tt)+) => {
 		let mut c :String= format!("[IMPLFN]<WARN>{}[{}:{}]  ",implfn_log_get_timestamp(),file!(),line!());
@@ -159,7 +161,8 @@ macro_rules! implfn_log_warn {
 }
 
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_log_info {
 	($($arg:tt)+) => {
 		let mut c :String= format!("[IMPLFN]<INFO>{}[{}:{}]  ",implfn_log_get_timestamp(),file!(),line!());
@@ -168,17 +171,10 @@ macro_rules! implfn_log_info {
 	}
 }
 
-#[macro_export]
-macro_rules! implfn_log_trace {
-	($($arg:tt)+) => {
-		let mut _c :String= format!("[IMPLFN]<TRACE>{}[{}:{}]  ",implfn_log_get_timestamp(),file!(),line!());
-		_c.push_str(&(format!($($arg)+)[..]));
-		implfn_debug_out(40, &_c);
-	}
-}
 
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_assert {
 	($v:expr , $($arg:tt)+) => {
 		if !($v) {
@@ -190,7 +186,8 @@ macro_rules! implfn_assert {
 }
 
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_format_buffer_log {
 	($buf:expr,$len:expr,$info:tt,$iv:expr,$($arg:tt)+) => {
 		let mut c :String = format!("[IMPLFN][{}:{}]",file!(),line!());
@@ -252,39 +249,56 @@ macro_rules! implfn_format_buffer_log {
 	}
 }
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_debug_buffer_error {
 	($buf:expr,$len:expr,$($arg:tt)+) => {
 		implfn_format_buffer_log!($buf,$len,"<ERROR>",0,$($arg)+);
 	}
 }
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_debug_buffer_warn {
 	($buf:expr,$len:expr,$($arg:tt)+) => {
 		implfn_format_buffer_log!($buf,$len,"<WARN>",10,$($arg)+);
 	}
 }
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_debug_buffer_info {
 	($buf:expr,$len:expr,$($arg:tt)+) => {
 		implfn_format_buffer_log!($buf,$len,"<INFO>",20,$($arg)+);
 	}
 }
 
-#[macro_export]
+
+#[allow(unused_macros)]
 macro_rules! implfn_debug_buffer_debug {
 	($buf:expr,$len:expr,$($arg:tt)+) => {
 		implfn_format_buffer_log!($buf,$len,"<DEBUG>",30,$($arg)+);
 	}
 }
 
-#[macro_export]
+
+
+
+#[allow(unused_macros)]
+macro_rules! implfn_log_trace {
+	($($arg:tt)+) => {
+		let mut _c :String= format!("[IMPLFN]<TRACE>{}[{}:{}]  ",implfn_log_get_timestamp(),file!(),line!());
+		_c.push_str(&(format!($($arg)+)[..]));
+		implfn_debug_out(40, &_c);
+	}
+}
+
+
+
+#[allow(unused_macros)]
 macro_rules! implfn_debug_buffer_trace {
 	($buf:expr,$len:expr,$($arg:tt)+) => {
 		implfn_format_buffer_log!($buf,$len,"<TRACE>",40,$($arg)+);
 	}
 }
-
 
