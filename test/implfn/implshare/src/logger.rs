@@ -84,7 +84,6 @@ fn implfn_proc_log_init(prefix :&str) -> LogVar {
 	};
 }
 
-
 lazy_static! {
 	static ref IMPLFN_LOG_LEVEL : RwLock<LogVar> = {
 	 	RwLock::new(implfn_proc_log_init("IMPLFN"))

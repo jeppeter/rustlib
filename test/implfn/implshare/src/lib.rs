@@ -38,12 +38,59 @@ impl ImplAttrs {
 	}
 }
 
+macro_rules! syn_error_fmt {
+	($($a:expr),*) => {
+		let cerr = format!($($a),*);
+		eprintln!("{}",cerr);
+		implfn_log_error!("{}",cerr);
+		return cerr.parse().unwrap();
+		//return syn::Error::new(
+        //            Span::call_site(),
+        //            $cerr,
+        //        ).to_compile_error().to_string().parse().unwrap();
+    }
+}
+
+
 #[proc_macro_attribute]
-pub fn impl_fn(_args :TokenStream , input :TokenStream) -> TokenStream {
+pub fn impl_share_fn(_args :TokenStream , input :TokenStream) -> TokenStream {
 	let mut code :String = "".to_string();
 	let nargs = _args.clone();
 	let attrs  = syn::parse_macro_input!(nargs as ImplAttrs);
+	let co :syn::ItemImpl;
 	implfn_log_trace!("attrs [{:?}]",attrs);
+
+	match syn::parse::<syn::ItemImpl>(input.clone()) {
+		Ok(v) => {
+			co = v.clone();
+		},
+		Err(e) => {
+			syn_error_fmt!("can not parse {:?}",e);
+		}
+	}
+
+	for v in co.items {
+		match v {
+			syn::ImplItem::Fn(fnitem) => {
+				match fnitem.vis {
+					syn::Visibility::Public(v) =>  {
+						implfn_log_trace!("");
+					},
+					syn::Visibility::Restricted(rv) => {
+
+					},
+					syn::Visibility::Inherited => {
+
+					},
+				}
+
+
+			},
+			_ => {},
+		}
+	}
+
+
 
 
 	/**/
