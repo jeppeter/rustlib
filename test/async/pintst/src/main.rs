@@ -47,4 +47,9 @@ pub fn main() {
 
     println!("a: {}, b: {}", Test::a(test1.as_ref()), Test::b(test1.as_ref()));
     println!("a: {}, b: {}", Test::a(test2.as_ref()), Test::b(test2.as_ref()));
+
+    /**********************************************
+    will error on 
+    
+    **********************************************/
 }
