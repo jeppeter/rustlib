@@ -152,7 +152,11 @@ fn wrrsnull_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	let ins = read_file(&sarr[1])?;
 	let sins :Vec<&str> = ins.split("\n").collect();
 
+
 	let fd :FileFd = FileFd::open(&outf,libc::O_WRONLY)?;
+	if mills > 0 {
+		std::thread::sleep(std::time::Duration::from_millis(mills as u64));
+	}
 	for s in sins {
 		fd.write(s.as_bytes())?;
 		if mills > 0 {

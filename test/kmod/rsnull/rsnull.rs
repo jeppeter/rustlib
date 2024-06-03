@@ -40,10 +40,8 @@ unsafe extern "C" fn null_llseek(_arg1 :*mut bindings::file,_arg2 :bindings::lof
 
 unsafe extern "C" fn null_write(_arg1 :*mut bindings::file, _arg2 :* const core::ffi::c_char, _arg3 : usize,_arg4 : *mut bindings::loff_t) -> isize {
     pr_info!("null_write");
-    if _arg4 != core::ptr::null_mut() {
-        unsafe {
-            *_arg4 = 0;    
-        }
+    unsafe {
+        *_arg4 += _arg3 as bindings::loff_t;
     }
     return _arg3 as isize;
 }
@@ -65,6 +63,7 @@ fn new_null_fop() -> Option<bindings::file_operations> {
     retv.llseek = Some(null_llseek);
     retv.write = Some(null_write);
     retv.release = Some(null_release);
+    pr_info!("retv {:p}",&retv);
     return Some(retv);
 }
 
@@ -89,6 +88,7 @@ impl kernel::Module for RsNullMod {
         let reti :core::ffi::c_int;
         unsafe {
             let retop = retv.fop.as_ref().unwrap();
+            pr_info!("retop {:p}",retop);
             reti = bindings::__register_chrdev(RS_NULL_MAJOR,RS_NULL_MINOR,1,rsnullname.as_char_ptr(),retop);
         }
 
