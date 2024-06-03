@@ -32,6 +32,7 @@ use crate::strop::{parse_u64};
 
 extargs_error_class!{TimeHdlError}
 
+#[allow(deprecated)]
 fn time_trans_value(tmval :i64) -> String {
 	let rets :String;
 	let onative = NaiveDateTime::from_timestamp_opt(tmval,0);

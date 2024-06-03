@@ -24,6 +24,8 @@ use extargsparse_worker::{extargs_error_class,extargs_new_error};
 
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::*;
+use super::strop::{parse_u64};
+use super::fileop::*;
 use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
@@ -135,8 +137,6 @@ fn reopen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 
 fn wrrsnull_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>  = ns.get_array("subnargs");
-	let ins :String;
-	let sins :Vec<String>;
 	let mut mills :i32 = 0;
 
 	init_log(ns.clone())?;
@@ -152,11 +152,11 @@ fn wrrsnull_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	let ins = read_file(&sarr[1])?;
 	let sins :Vec<&str> = ins.split("\n").collect();
 
-	let fd :FileFd = FileFd::open(&outf,libc::WR_ONLY)?;
+	let fd :FileFd = FileFd::open(&outf,libc::O_WRONLY)?;
 	for s in sins {
 		fd.write(s.as_bytes())?;
 		if mills > 0 {
-			std::thread::sleep(std::time::Duration::from_millis(mills));
+			std::thread::sleep(std::time::Duration::from_millis(mills as u64));
 		}
 	}
 
