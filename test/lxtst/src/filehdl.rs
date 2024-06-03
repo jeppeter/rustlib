@@ -133,12 +133,49 @@ fn reopen_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 	Ok(())
 }
 
+fn wrrsnull_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>  = ns.get_array("subnargs");
+	let ins :String;
+	let sins :Vec<String>;
+	let mut mills :i32 = 0;
 
-#[extargs_map_function(reopen_handler)]
+	init_log(ns.clone())?;
+	if sarr.len() < 2 {
+		extargs_new_error!{FileHdlError,"need file infile..."}
+	}
+
+	if sarr.len() > 2 {
+		mills = parse_u64(&sarr[2])? as i32;
+	}
+
+	let outf = format!("{}",sarr[0]);
+	let ins = read_file(&sarr[1])?;
+	let sins :Vec<&str> = ins.split("\n").collect();
+
+	let fd :FileFd = FileFd::open(&outf,libc::WR_ONLY)?;
+	for s in sins {
+		fd.write(s.as_bytes())?;
+		if mills > 0 {
+			std::thread::sleep(std::time::Duration::from_millis(mills));
+		}
+	}
+
+	debug_trace!("write ok {}",sarr[0]);
+
+
+	Ok(())
+}
+
+
+
+#[extargs_map_function(reopen_handler,wrrsnull_handler)]
 pub fn load_file_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"reopen<reopen_handler>##file lines... to reopen file##" : {
+			"$" : "+"
+		},
+		"wrrsnull<wrrsnull_handler>##file infile [mills] to write infile to file in mills ##" : {
 			"$" : "+"
 		}
 	}

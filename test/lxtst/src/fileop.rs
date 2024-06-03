@@ -110,3 +110,59 @@ pub fn get_sha256_data(ind :&[u8]) -> Vec<u8> {
     let res = hasher.finalize();
     return res.to_vec();    
 }
+
+
+pub const FILE_READ :i32 = 1;
+pub const FILE_WRITE :i32 = 2;
+pub const FILE_CREATE :i32 = 4;
+pub struct FileFd {
+	fd :i32,
+	name :String,
+}
+
+impl FileFd {
+	pub fn open(fname :&str,flags :libc::c_int) -> Result<Self,Box<dyn Error>> {
+		let mut retv :Self = Self {
+			fd :-1,
+			name : format!("{}",fname);
+		};
+		let mut fstr :Vec<u8> = fname.as_bytes().collect();
+		fstr.push(0);
+
+		unsafe {
+			let _fname = fstr.as_ptr();
+			retv.fd = libc::open(_fname,flags);
+		}
+
+		if retv.fd < 0 {
+			let reti = get_errno!();
+			extargs_new_error!{FileOpError,"can not open {} error {}",fname,reti}
+		}
+		Ok(retv)
+	}
+
+	pub fn write(&self, bs :&[u8]) -> Result<isize,Box<dyn Error>> {
+		let mut reti :libc::c_int;
+		unsafe {
+			reti = libc::write(self.fd,bs.as_bytes(),bs.len());
+		}
+		if reti < 0 {
+			reti = get_errno!();
+			extargs_new_error!{FileOpError,"write {} error {}",self.name,reti}
+		}
+		Ok(reti)
+	}
+
+}
+
+impl Drop for FileFd {
+	fn drop(&mut self) {
+		if self.fd >= 0 {
+			unsafe {
+				libc::close(self.fd);
+			}
+			self.fd = -1;
+		}
+		return;
+	}
+}

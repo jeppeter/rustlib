@@ -29,20 +29,28 @@ unsafe impl Sync for RsNullMod{}
 unsafe impl Send for RsNullMod{}
 
 unsafe extern "C" fn null_open(_arg1 :*mut bindings::inode, _arg2 :*mut bindings::file) -> core::ffi::c_int {
+    pr_info!("null_open");
     return 0;
 }
 
 unsafe extern "C" fn null_llseek(_arg1 :*mut bindings::file,_arg2 :bindings::loff_t,_arg3 : core::ffi::c_int) -> bindings::loff_t {
+    pr_info!("null_llseek");
     return 0;
 }
 
 unsafe extern "C" fn null_write(_arg1 :*mut bindings::file, _arg2 :* const core::ffi::c_char, _arg3 : usize,_arg4 : *mut bindings::loff_t) -> isize {
+    pr_info!("null_write");
     if _arg4 != core::ptr::null_mut() {
         unsafe {
             *_arg4 = 0;    
         }
     }
     return _arg3 as isize;
+}
+
+unsafe extern "C" fn null_release(_arg1 :*mut bindings::inode, _arg2 :*mut bindings::file)  -> core::ffi::c_int {
+    pr_info!("null_release");
+    return 0;
 }
 
 
@@ -56,6 +64,7 @@ fn new_null_fop() -> Option<bindings::file_operations> {
     retv.open = Some(null_open);
     retv.llseek = Some(null_llseek);
     retv.write = Some(null_write);
+    retv.release = Some(null_release);
     return Some(retv);
 }
 
