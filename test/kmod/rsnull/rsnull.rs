@@ -93,7 +93,7 @@ impl kernel::Module for RsNullMod {
         let reti :core::ffi::c_int;
         unsafe {
             let retop = RSNULL_FOP.as_ref().unwrap() as *const bindings::file_operations;
-            pr_info!("retop {:p} open {:p}",retop,*((*retop).open.as_ref().unwrap()));
+            //pr_info!("retop {:p} open {:p}",retop,*((*retop).open.as_ref().unwrap()));
             reti = bindings::__register_chrdev(RS_NULL_MAJOR,RS_NULL_MINOR,1,rsnullname.as_char_ptr(),retop);
         }
 
@@ -113,23 +113,23 @@ impl Drop for RsNullMod {
         let rsnullname = kernel::c_str!("rsnull");
         pr_info!("Rust Null (exit)\n");
         if self.register {
-            pr_info!("bindings::__unregister_chrdev before");
+            //pr_info!("bindings::__unregister_chrdev before");
             unsafe {
                 bindings::__unregister_chrdev(RS_NULL_MAJOR,RS_NULL_MINOR,1,rsnullname.as_char_ptr());    
             }
-            pr_info!("bindings::__unregister_chrdev");
+            //pr_info!("bindings::__unregister_chrdev");
         }
 
-
+        /*
         if unsafe {RSNULL_FOP.is_some()} {
-            pr_info!("is_some before self {:p}", self as *const RsNullMod);
-            let retop = unsafe {RSNULL_FOP.as_ref().unwrap()} as *const bindings::file_operations;
-            pr_info!("retop {:p}",retop);
-            let p = unsafe {*((*retop).open.as_ref().unwrap())};
-            pr_info!("retop {:p} open {:p}",retop,p);
+            //pr_info!("is_some before self {:p}", self as *const RsNullMod);
+            //let retop = unsafe {RSNULL_FOP.as_ref().unwrap()} as *const bindings::file_operations;
+            //pr_info!("retop {:p}",retop);
+            //let p = unsafe {*((*retop).open.as_ref().unwrap())};
+            //pr_info!("retop {:p} open {:p}",retop,p);
         } else {
-            pr_info!("fop none self {:p}",self as *const RsNullMod);
-        }
+            //pr_info!("fop none self {:p}",self as *const RsNullMod);
+        }*/
         self.register = false;
         unsafe {
             RSNULL_FOP = None;
