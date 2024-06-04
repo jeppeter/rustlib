@@ -3,6 +3,7 @@
 //! Rust minimal sample.
 
 use kernel::prelude::*;
+#[allow(unused_imports)]
 use kernel::error;
 use kernel::types::{Opaque};
 use kernel::bindings;
@@ -21,7 +22,6 @@ struct RsNullFile(Opaque<bindings::file>);
 
 
 struct RsNullMod{
-    fop : Option<bindings::file_operations>,
     register : bool,
 }
 
@@ -52,6 +52,8 @@ unsafe extern "C" fn null_release(_arg1 :*mut bindings::inode, _arg2 :*mut bindi
 }
 
 
+#[allow(dead_code)]
+static mut RSNULL_FOP :Option<bindings::file_operations> = None;
 
 fn new_null_fop() -> Option<bindings::file_operations> {
     let mut retv : bindings::file_operations = unsafe {core::mem::zeroed()};
@@ -63,7 +65,7 @@ fn new_null_fop() -> Option<bindings::file_operations> {
     retv.llseek = Some(null_llseek);
     retv.write = Some(null_write);
     retv.release = Some(null_release);
-    pr_info!("retv {:p}",&retv);
+    pr_info!("retv {:p} open fn {:p}",&retv,(*retv.open.as_ref().unwrap()));
     return Some(retv);
 }
 
@@ -75,20 +77,23 @@ impl kernel::Module for RsNullMod {
         pr_info!("Rust Null (init)\n");
         pr_info!("Am I built-in? {}\n", !cfg!(MODULE));
         let mut retv :RsNullMod = RsNullMod {
-            fop : None,
             register : false,
         };
         let rsnullname = kernel::c_str!("rsnull");
 
-        retv.fop = new_null_fop();
-        if retv.fop.is_none() {
+        unsafe {
+            RSNULL_FOP = new_null_fop();    
+        }
+        
+        if unsafe {RSNULL_FOP.is_none()} {
             return Err(error::code::ENOMEM);
         }
+        //retv.setfop = true;
 
         let reti :core::ffi::c_int;
         unsafe {
-            let retop = retv.fop.as_ref().unwrap();
-            pr_info!("retop {:p}",retop);
+            let retop = RSNULL_FOP.as_ref().unwrap() as *const bindings::file_operations;
+            pr_info!("retop {:p} open {:p}",retop,*((*retop).open.as_ref().unwrap()));
             reti = bindings::__register_chrdev(RS_NULL_MAJOR,RS_NULL_MINOR,1,rsnullname.as_char_ptr(),retop);
         }
 
@@ -97,6 +102,7 @@ impl kernel::Module for RsNullMod {
             return Err(kernel::error::to_result(reti).err().unwrap());
         }
         retv.register = true;
+        pr_info!("insert MAJOR {} MINOR {} retv {:p}",RS_NULL_MAJOR,RS_NULL_MINOR,&retv as *const RsNullMod);
 
         Ok(retv)
     }
@@ -107,12 +113,28 @@ impl Drop for RsNullMod {
         let rsnullname = kernel::c_str!("rsnull");
         pr_info!("Rust Null (exit)\n");
         if self.register {
+            pr_info!("bindings::__unregister_chrdev before");
             unsafe {
                 bindings::__unregister_chrdev(RS_NULL_MAJOR,RS_NULL_MINOR,1,rsnullname.as_char_ptr());    
-            }            
+            }
+            pr_info!("bindings::__unregister_chrdev");
+        }
+
+
+        if unsafe {RSNULL_FOP.is_some()} {
+            pr_info!("is_some before self {:p}", self as *const RsNullMod);
+            let retop = unsafe {RSNULL_FOP.as_ref().unwrap()} as *const bindings::file_operations;
+            pr_info!("retop {:p}",retop);
+            let p = unsafe {*((*retop).open.as_ref().unwrap())};
+            pr_info!("retop {:p} open {:p}",retop,p);
+        } else {
+            pr_info!("fop none self {:p}",self as *const RsNullMod);
         }
         self.register = false;
-        self.fop = None;
+        unsafe {
+            RSNULL_FOP = None;
+        }
+        pr_info!("all over");
         return;
     }
 }
