@@ -157,7 +157,9 @@ fn wrrsnull_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	if mills > 0 {
 		std::thread::sleep(std::time::Duration::from_millis(mills as u64));
 	}
+	debug_trace!("open {}",outf);
 	for s in sins {
+		debug_trace!("write {}",s.len());
 		fd.write(s.as_bytes())?;
 		if mills > 0 {
 			std::thread::sleep(std::time::Duration::from_millis(mills as u64));
