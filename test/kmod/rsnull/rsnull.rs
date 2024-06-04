@@ -8,6 +8,11 @@ use kernel::error;
 use kernel::types::{Opaque};
 use kernel::bindings;
 
+#[macro_use]
+mod rsnull_macro;
+
+//use crate::{debug_trace};
+
 module! {
     type: RsNullMod,
     name: "rsnull",
@@ -29,17 +34,17 @@ unsafe impl Sync for RsNullMod{}
 unsafe impl Send for RsNullMod{}
 
 unsafe extern "C" fn null_open(_arg1 :*mut bindings::inode, _arg2 :*mut bindings::file) -> core::ffi::c_int {
-    pr_info!("null_open");
+    debug_trace!("null_open");
     return 0;
 }
 
 unsafe extern "C" fn null_llseek(_arg1 :*mut bindings::file,_arg2 :bindings::loff_t,_arg3 : core::ffi::c_int) -> bindings::loff_t {
-    pr_info!("null_llseek");
+    debug_trace!("null_llseek");
     return 0;
 }
 
 unsafe extern "C" fn null_write(_arg1 :*mut bindings::file, _arg2 :* const core::ffi::c_char, _arg3 : usize,_arg4 : *mut bindings::loff_t) -> isize {
-    pr_info!("null_write");
+    debug_trace!("null_write");
     unsafe {
         *_arg4 += _arg3 as bindings::loff_t;
     }
@@ -47,9 +52,10 @@ unsafe extern "C" fn null_write(_arg1 :*mut bindings::file, _arg2 :* const core:
 }
 
 unsafe extern "C" fn null_release(_arg1 :*mut bindings::inode, _arg2 :*mut bindings::file)  -> core::ffi::c_int {
-    pr_info!("null_release");
+    debug_trace!("null_release");
     return 0;
 }
+
 
 
 #[allow(dead_code)]
@@ -65,7 +71,10 @@ fn new_null_fop() -> Option<bindings::file_operations> {
     retv.llseek = Some(null_llseek);
     retv.write = Some(null_write);
     retv.release = Some(null_release);
-    pr_info!("retv {:p} open fn {:p}",&retv,(*retv.open.as_ref().unwrap()));
+    debug_trace!("retv {:p} open fn {:p}",&retv,(*retv.open.as_ref().unwrap()));
+    let cptr :*const u8 = &retv as *const bindings::file_operations as *const u8;
+    let clen :usize = core::mem::size_of::<bindings::file_operations>();
+    debug_buffer_trace!(cptr,clen,"file_operations");
     return Some(retv);
 }
 
@@ -74,8 +83,8 @@ const RS_NULL_MINOR :core::ffi::c_uint = 12;
 
 impl kernel::Module for RsNullMod {
     fn init(_module: &'static ThisModule) -> Result<Self> {
-        pr_info!("Rust Null (init)\n");
-        pr_info!("Am I built-in? {}\n", !cfg!(MODULE));
+        debug_trace!("Rust Null (init)\n");
+        debug_trace!("Am I built-in? {}\n", !cfg!(MODULE));
         let mut retv :RsNullMod = RsNullMod {
             register : false,
         };
@@ -89,21 +98,23 @@ impl kernel::Module for RsNullMod {
             return Err(error::code::ENOMEM);
         }
         //retv.setfop = true;
+        let ptr = unsafe {RSNULL_FOP.as_ref().unwrap()} as *const bindings::file_operations as *const u8;
+        let clen = core::mem::size_of::<bindings::file_operations>();
+        debug_buffer_trace!(ptr,clen,"RSNULL_FOP dump");
 
         let reti :core::ffi::c_int;
         unsafe {
             let retop = RSNULL_FOP.as_ref().unwrap() as *const bindings::file_operations;
-            //pr_info!("retop {:p} open {:p}",retop,*((*retop).open.as_ref().unwrap()));
+            //debug_trace!("retop {:p} open {:p}",retop,*((*retop).open.as_ref().unwrap()));
             reti = bindings::__register_chrdev(RS_NULL_MAJOR,RS_NULL_MINOR,1,rsnullname.as_char_ptr(),retop);
         }
 
         if reti < 0{
-            pr_err!("register errno {}",reti);
+            error_trace!("register errno {}",reti);
             return Err(kernel::error::to_result(reti).err().unwrap());
         }
         retv.register = true;
-        pr_info!("insert MAJOR {} MINOR {} retv {:p}",RS_NULL_MAJOR,RS_NULL_MINOR,&retv as *const RsNullMod);
-
+        debug_trace!("insert MAJOR {} MINOR {} retv {:p}",RS_NULL_MAJOR,RS_NULL_MINOR,&retv as *const RsNullMod);
         Ok(retv)
     }
 }
@@ -111,30 +122,30 @@ impl kernel::Module for RsNullMod {
 impl Drop for RsNullMod {
     fn drop(&mut self) {
         let rsnullname = kernel::c_str!("rsnull");
-        pr_info!("Rust Null (exit)\n");
+        debug_trace!("Rust Null (exit)\n");
         if self.register {
-            //pr_info!("bindings::__unregister_chrdev before");
+            //debug_trace!("bindings::__unregister_chrdev before");
             unsafe {
                 bindings::__unregister_chrdev(RS_NULL_MAJOR,RS_NULL_MINOR,1,rsnullname.as_char_ptr());    
             }
-            //pr_info!("bindings::__unregister_chrdev");
+            //debug_trace!("bindings::__unregister_chrdev");
         }
 
         /*
         if unsafe {RSNULL_FOP.is_some()} {
-            //pr_info!("is_some before self {:p}", self as *const RsNullMod);
+            //debug_trace!("is_some before self {:p}", self as *const RsNullMod);
             //let retop = unsafe {RSNULL_FOP.as_ref().unwrap()} as *const bindings::file_operations;
-            //pr_info!("retop {:p}",retop);
+            //debug_trace!("retop {:p}",retop);
             //let p = unsafe {*((*retop).open.as_ref().unwrap())};
-            //pr_info!("retop {:p} open {:p}",retop,p);
+            //debug_trace!("retop {:p} open {:p}",retop,p);
         } else {
-            //pr_info!("fop none self {:p}",self as *const RsNullMod);
+            //debug_trace!("fop none self {:p}",self as *const RsNullMod);
         }*/
         self.register = false;
         unsafe {
             RSNULL_FOP = None;
         }
-        pr_info!("all over");
+        debug_trace!("all over");
         return;
     }
 }
