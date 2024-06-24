@@ -30,6 +30,8 @@ use std::collections::HashMap;
 //use futures::executor::block_on;
 
 mod logtrans;
+mod exithdl_consts;
+mod exithdl;
 
 #[allow(unused_imports)]
 use extlog::loglib::{log_get_timestamp,log_output_function};
@@ -94,10 +96,14 @@ fn tokiolisten_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 	return Ok(());
 }
 
-async fn tokio_ctrlc(_ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::Error>>  {
+async fn receive_value(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u32 {
+	return exitchl.recv().await.unwrap();
+}
+
+async fn tokio_ctrlc(_ns :NameSpaceEx,exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) ->  Result<(), Box<dyn std::error::Error>>  {
 	tokio::select!{
-		_ = tokio::signal::ctrl_c() => {
-			debug_info!("ctrlc");
+		_ = receive_value(exitchl) => {
+			eprintln!("exit value");
 		}
 	}
 	Ok(())
@@ -105,7 +111,10 @@ async fn tokio_ctrlc(_ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::Error>
 
 fn ctrlc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	logtrans::init_log(ns.clone())?;
-	let _ = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(tokio_ctrlc(ns.clone()))?;
+	let sigv :Vec<u32> = vec![exithdl_consts::SIG_TERM,exithdl_consts::SIG_INT];
+	let (tx,mut rx) = tokio::sync::mpsc::unbounded_channel::<u32>();
+	let _ = exithdl::init_exit_handle(sigv,tx.clone())?;
+	let _ = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(tokio_ctrlc(ns.clone(),&mut rx))?;
 	return Ok(());
 }
 
