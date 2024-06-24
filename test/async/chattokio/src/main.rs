@@ -33,8 +33,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // program, but otherwise we'll just set up our TCP listener on
     // 127.0.0.1:8080 for connections.
     let addr = env::args()
-        .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:8080".to_string());
+    .nth(1)
+    .unwrap_or_else(|| "127.0.0.1:8080".to_string());
 
     // Next up we create a TCP listener which will listen for incoming
     // connections. This TCP listener is bound to the address we determined
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         // Asynchronously wait for an inbound socket.
-        let (mut socket, _) = listener.accept().await?;
+        let (mut socket, remoteaddr) = listener.accept().await?;
 
         // And this is where much of the magic of this server happens. We
         // crucially want all clients to make progress concurrently, rather than
@@ -55,23 +55,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
         // which will allow all of our clients to be processed concurrently.
 
         tokio::spawn(async move {
-            let mut buf = vec![0; 1024];
-            println!("new process {}", std::process::id());
+        	let caddr = format!("{}",remoteaddr);
+        	let mut buf = vec![0; 1024];
+        	println!("new process {} remote {}", std::process::id(),caddr);
             // In a loop, read data from the socket and write the data back.
             loop {
-                let n = socket
-                    .read(&mut buf)
-                    .await
-                    .expect("failed to read data from socket");
+            	let nres = socket.read(&mut buf).await;
+            	if nres.is_err() {
+            		eprintln!("{}:error {:?}",caddr, nres.err().unwrap());
+            		return;
+            	}
 
-                if n == 0 {
-                    return;
-                }
 
-                socket
-                    .write_all(&buf[0..n])
-                    .await
-                    .expect("failed to write data to socket");
+            	let n = nres.unwrap();
+
+            	if n == 0 {
+            		println!("{}:zero", caddr);
+            		return;
+            	}
+
+            	let nres = socket.write_all(&buf[0..n]).await;
+            	if nres.is_err() {
+            		eprintln!("{}:write error {:?}",caddr, nres.err().unwrap());
+            		return;
+            	}
             }
         });
     }

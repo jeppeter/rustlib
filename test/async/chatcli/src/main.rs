@@ -33,6 +33,9 @@ pub fn parse_u64(instr :&str) -> Result<u64,Box<dyn Error>> {
 async fn connect_val(addr :String,v :u64) {
    let mut stream = TcpStream::connect(&addr).await.expect("no connectr");
    //let mut rng = rand::thread_rng();
+   let mut cnt : i32 = 0;
+   let laddr = stream.local_addr().unwrap();
+   println!("client {}",laddr);
    loop {
     let bval :u64= {
         let mut rng = rand::thread_rng();
@@ -40,7 +43,6 @@ async fn connect_val(addr :String,v :u64) {
     };
     let s = format!("{} bval {}",v,bval);
 
-    println!("write [{}]",s);
     stream.write_all(s.as_bytes()).await.expect("write error");
     let mut buf = vec![0; 1024];
 
@@ -49,11 +51,17 @@ async fn connect_val(addr :String,v :u64) {
         return;
     }
     let rs = String::from_utf8_lossy(&buf[0..n]);
-    println!("read {}",rs);
+    cnt += 1;
+    if (cnt % 100) == 1 {
+        println!("{}:write [{}]",laddr,s);
+        println!("{}:read {}",laddr,rs);        
+    }
+
 
     tokio::time::sleep(tokio::time::Duration::from_millis(bval & 0xfff)).await;
 }
 }
+
 
 
 #[tokio::main]
@@ -76,8 +84,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         tokio::spawn(connect_val(nstr,v));
     }
 
-    loop {
-        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    tokio::select!{
+        _ = tokio::signal::ctrl_c()  => {
+            println!("ctrlc ");
+        }
     }
-
+    Ok(())
 }
