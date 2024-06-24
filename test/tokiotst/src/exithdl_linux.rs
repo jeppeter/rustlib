@@ -1,4 +1,5 @@
 
+use libc;
 use std::error::Error;
 use extargsparse_worker::{extargs_error_class,extargs_new_error};
 use super::exithdl_consts::{SIG_TERM,SIG_INT};
@@ -20,7 +21,7 @@ static mut EXIT_EVENTFD :Option<tokio::sync::mpsc::UnboundedSender<u32>> = None;
 
 unsafe fn rust_signal(_iv :libc::c_int) {
 	if  EXIT_EVENTFD.is_some() {
-		let mut s = EXIT_EVENTFD.as_mut().unwrap().clone();
+		let s = EXIT_EVENTFD.as_mut().unwrap().clone();
 		let _ = s.send(_iv as u32);
 		debug_trace!("signaled {}",_iv);
 	}
@@ -49,11 +50,7 @@ fn _trans_exit_value(sigv :u32) -> libc::c_int {
 }
 
 
-fn _get_exit_fd(sigs :Vec<u32>,tx :tokio::sync::mpsc::UnboundedSender<u32>) -> Option<EventFd> {
-	if bres.is_err() {
-		return None;
-	}
-
+fn _get_exit_fd(sigs :Vec<u32>,tx :tokio::sync::mpsc::UnboundedSender<u32>) -> Option<tokio::sync::mpsc::UnboundedSender<u32>> {
 	for v in sigs {
 		let reti = _trans_exit_value(v);
 		if reti >= 0 {

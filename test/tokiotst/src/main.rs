@@ -102,8 +102,8 @@ async fn receive_value(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) 
 
 async fn tokio_ctrlc(_ns :NameSpaceEx,exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) ->  Result<(), Box<dyn std::error::Error>>  {
 	tokio::select!{
-		_ = receive_value(exitchl) => {
-			eprintln!("exit value");
+		val = receive_value(exitchl) => {
+			eprintln!("exit value {}",val);
 		}
 	}
 	Ok(())
