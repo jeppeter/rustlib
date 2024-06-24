@@ -94,7 +94,22 @@ fn tokiolisten_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 	return Ok(());
 }
 
-#[extargs_map_function(tokiolisten_handler)]
+async fn tokio_ctrlc(_ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::Error>>  {
+	tokio::select!{
+		_ = tokio::signal::ctrl_c() => {
+			debug_info!("ctrlc");
+		}
+	}
+	Ok(())
+}
+
+fn ctrlc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	logtrans::init_log(ns.clone())?;
+	let _ = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(tokio_ctrlc(ns.clone()))?;
+	return Ok(());
+}
+
+#[extargs_map_function(tokiolisten_handler,ctrlc_handler)]
 fn main() -> Result<(),Box<dyn Error>> {
 	let parser :ExtArgsParser = ExtArgsParser::new(None,None)?;
 	let commandline = r#"
@@ -103,6 +118,9 @@ fn main() -> Result<(),Box<dyn Error>> {
 		"input|i" : null,
 		"tokiolisten<tokiolisten_handler>##port [ipaddr] to listen on tokio##" : {
 			"$" : "+"
+		},
+		"ctrlc<ctrlc_handler>##to make ctrlc##" : {
+			"$" : 0
 		}
 	}
 	"#;
