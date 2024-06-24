@@ -29,14 +29,11 @@ use std::collections::HashMap;
 
 //use futures::executor::block_on;
 
-#[cfg(windows)]
-mod wchar_windows;
-#[cfg(windows)]
-mod loglib_windows;
-mod loglib;
+mod logtrans;
 
 #[allow(unused_imports)]
-use loglib::{log_get_timestamp,log_output_function,init_log};
+use extlog::loglib::{log_get_timestamp,log_output_function};
+use extlog::{debug_info,format_str_log};
 
 
 use tokio::net::TcpListener;
@@ -92,7 +89,7 @@ async fn tokio_listen_main(ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::E
 fn tokiolisten_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 
 	//let res :Result<(),Box<dyn Error>>;
-	init_log(ns.clone())?;
+	logtrans::init_log(ns.clone())?;
 	let _ =  tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(tokio_listen_main(ns.clone()))?;
 	return Ok(());
 }
@@ -110,7 +107,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	}
 	"#;
 	extargs_load_commandline!(parser,commandline)?;
-	loglib::prepare_log(parser.clone())?;
+	logtrans::prepare_log(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();

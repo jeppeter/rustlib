@@ -15,7 +15,7 @@ log4rs = "^0.8.3"
 log = "^0.4.8"
 chrono = "^0.4.0"
 futures = "^0.3"
-
+extlog = "^0.1.8"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
