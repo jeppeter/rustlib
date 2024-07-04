@@ -14,6 +14,7 @@ use std::boxed::Box;
 use regex::Regex;
 #[allow(unused_imports)]
 use std::any::Any;
+use crate::fileop::*;
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
@@ -320,12 +321,49 @@ fn daemonize_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	Ok(())
 }
 
+static mut OPTFILE :Option<String> = None;
 
-#[extargs_map_function(daemonize_handler)]
+#[allow(unreachable_code)]
+fn panic_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+
+	//std::env::set_var("RUST_BACKTRACE","1");
+
+	let mut fname :String = format!("");
+	sarr = ns.get_array("subnargs");
+	if sarr.len() > 0 {
+		fname = format!("{}",sarr[0]);
+	}
+
+	unsafe {
+		OPTFILE = Some(format!("{}",fname));
+	}
+
+	std::panic::set_hook(Box::new(|s| {
+		let outs = format!("hooked\n{}",s);
+		let mut cfile :String = format!("");
+		if unsafe {OPTFILE.is_some()} {
+			cfile = format!("{}", unsafe {OPTFILE.as_ref().unwrap()});
+		}
+		let _ = write_file_bytes(&cfile,outs.as_bytes());
+	}));
+
+	panic!("call panic");
+	Ok(())
+
+}
+
+
+#[extargs_map_function(daemonize_handler,panic_handler)]
 pub fn load_proc_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"daemonize<daemonize_handler>##[outfile] [errfile] [infile] to handle file default /dev/null##" : {
+			"$" : "*"
+		},
+		"panic<panic_handler>##[file] to write file##" : {
 			"$" : "*"
 		}
 	}
