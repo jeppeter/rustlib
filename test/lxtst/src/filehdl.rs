@@ -172,9 +172,24 @@ fn wrrsnull_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImp
 	Ok(())
 }
 
+fn mkdir_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>  = ns.get_array("subnargs");
+
+	init_log(ns.clone())?;
+	if sarr.len() < 1 {
+		extargs_new_error!{FileHdlError,"need dirs ... "}
+	}
+
+	for f in sarr.iter() {
+		let _ = mkdir_safe(f)?;
+		debug_trace!("mkdir [{}] succ",f);
+	}
+
+	Ok(())
+}
 
 
-#[extargs_map_function(reopen_handler,wrrsnull_handler)]
+#[extargs_map_function(reopen_handler,wrrsnull_handler,mkdir_handler)]
 pub fn load_file_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -182,6 +197,9 @@ pub fn load_file_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"wrrsnull<wrrsnull_handler>##file infile [mills] to write infile to file in mills ##" : {
+			"$" : "+"
+		},
+		"mkdir<mkdir_handler>##dnames ... to make dir##" : {
 			"$" : "+"
 		}
 	}

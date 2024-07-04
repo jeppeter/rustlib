@@ -106,12 +106,47 @@ pub fn read_file(fname :&str) -> Result<String,Box<dyn Error>> {
 
 #[allow(dead_code)]
 pub fn get_sha256_data(ind :&[u8]) -> Vec<u8> {
-    let mut hasher = Sha256::new();
-    hasher.update(&ind);
-    let res = hasher.finalize();
-    return res.to_vec();    
+	let mut hasher = Sha256::new();
+	hasher.update(&ind);
+	let res = hasher.finalize();
+	return res.to_vec();    
 }
 
+#[allow(dead_code)]
+pub fn mkdir_safe(dname :&str) -> Result<(),Box<dyn Error>> {
+	let bval = std::path::Path::new(dname).exists();
+	if bval {
+		/*exists so do not make*/
+		return Ok(());
+	}
+
+	let mut needcreated :Vec<String> = vec![];
+	let mut curdname :String = format!("{}",dname);
+	while curdname.len() > 1 {
+		needcreated.insert(0,format!("{}",curdname));
+		let oparent = std::path::Path::new(&curdname).parent();
+		if oparent.is_none() {
+			break;
+		}
+		let parentd = oparent.unwrap();
+		if parentd.exists() {
+			break;
+		}
+		curdname = format!("{}",parentd.display());
+	}
+
+	let mut idx :usize = 0;
+	while idx < needcreated.len() {
+		let res = std::fs::create_dir(&needcreated[idx]);
+		if res.is_err() {
+			extargs_new_error!{FileOpError,"can not create [{}] error {:?}",needcreated[idx],res.err().unwrap()}
+		}
+		idx += 1;
+	}
+
+
+	Ok(())
+}
 
 pub struct FileFd {
 	fd :i32,
@@ -128,7 +163,7 @@ impl FileFd {
 		fstr.push(0);
 
 		unsafe {
-			let _fname = fstr.as_ptr() as *const i8;
+			let _fname = fstr.as_ptr() as *const u8;
 			retv.fd = libc::open(_fname,flags);
 		}
 
