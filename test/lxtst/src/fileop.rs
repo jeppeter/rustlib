@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-use super::{debug_trace,debug_buffer_trace,format_buffer_log};
+use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 #[allow(unused_imports)]
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
@@ -114,14 +114,19 @@ pub fn get_sha256_data(ind :&[u8]) -> Vec<u8> {
 
 #[allow(dead_code)]
 pub fn mkdir_safe(dname :&str) -> Result<(),Box<dyn Error>> {
-	let bval = std::path::Path::new(dname).exists();
+	let canres = std::fs::canonicalize(dname);
+	let mut canname = format!("{}",dname);
+	if canres.is_ok() {
+		canname = format!("{}",canres.unwrap().display());
+	}
+	let bval = std::path::Path::new(&canname).exists();
 	if bval {
 		/*exists so do not make*/
 		return Ok(());
 	}
 
 	let mut needcreated :Vec<String> = vec![];
-	let mut curdname :String = format!("{}",dname);
+	let mut curdname :String = format!("{}",canname);
 	while curdname.len() > 1 {
 		needcreated.insert(0,format!("{}",curdname));
 		let oparent = std::path::Path::new(&curdname).parent();
