@@ -14,7 +14,7 @@ use extargsparse_worker::funccall::{ExtArgsParseFunc};
 #[allow(unused_imports)]
 use std::cell::{RefCell,UnsafeCell};
 #[allow(unused_imports)]
-use std::sync::Arc;
+use std::sync::{Arc,Mutex};
 #[allow(unused_imports)]
 use std::error::Error;
 use std::boxed::Box;
@@ -38,13 +38,13 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 extargs_error_class!{SplitSockError}
 
 struct SockHandleInner {
-	rcv :tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,u64)>,
-	snds :Vec<tokio::sync::mpsc::UnboundedSender<Vec<u8>>>,
+	rcv :tokio::sync::mpsc::UnboundedReceiver<(Arc<Mutex<Vec<u8>>>,u64)>,
+	snds :Vec<tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<u8>>>>>,
 	sndidx :Vec<u64>,
 }
 
 impl SockHandleInner {
-	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,u64)>) -> Result<Self,Box<dyn Error>> {
+	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Arc<Mutex<Vec<u8>>>,u64)>) -> Result<Self,Box<dyn Error>> {
 		Ok(Self {
 			rcv :rcv,
 			snds :vec![],
@@ -52,7 +52,7 @@ impl SockHandleInner {
 		})
 	}
 
-	fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Vec<u8>>,idx :u64) -> Result<(),Box<dyn Error>> {
+	fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<u8>>>>,idx :u64) -> Result<(),Box<dyn Error>> {
 		debug_assert!(self.snds.len() == self.sndidx.len(),"snds.len {} != sndidx.len {}",self.snds.len(),self.sndidx.len());
 		self.snds.push(snd);
 		self.sndidx.push(idx);
@@ -73,7 +73,7 @@ impl SockHandleInner {
 		return Ok(0);
 	}
 
-	fn find_snd(&self,idx :u64) -> Option<tokio::sync::mpsc::UnboundedSender<Vec<u8>>> {
+	fn find_snd(&self,idx :u64) -> Option<tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<u8>>>>> {
 		let mut uidx :usize = 0;
 		debug_assert!(self.snds.len() == self.sndidx.len(),"snds.len {} != sndidx.len {}",self.snds.len(),self.sndidx.len());
 		while uidx < self.sndidx.len() {
@@ -107,14 +107,14 @@ struct SockHandle {
 }
 
 impl SockHandle {
-	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,u64)>) -> Result<Self,Box<dyn Error>> {
+	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Arc<Mutex<Vec<u8>>>,u64)>) -> Result<Self,Box<dyn Error>> {
 		let retv :Self = Self {
 			inner :Arc::new(UnsafeCell::new(SockHandleInner::new(rcv)?)),
 		};
 		Ok(retv)
 	}
 
-	fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Vec<u8>>,idx :u64) -> Result<(),Box<dyn Error>> {
+	fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<u8>>>>,idx :u64) -> Result<(),Box<dyn Error>> {
 		let s1 = unsafe {&mut *self.inner.get()};
 		return s1.add_snd(snd,idx);
 	}
@@ -135,6 +135,51 @@ async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u
 	return exitchl.recv().await.unwrap();
 }
 
+#[allow(unreachable_code)]
+async fn wsock_handle(mut wsock :tokio::net::tcp::OwnedWriteHalf,mut rx :tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<u8>>>>) -> Result<(),Box<dyn Error>> {
+	loop {
+		let ores = rx.recv().await;
+		if ores.is_none() {
+			continue;
+		}
+		let wbuf = ores.unwrap();
+		{
+			let cbuf = wbuf.lock().unwrap();
+			debug_buffer_trace!(cbuf.as_ptr(),cbuf.len(),"will send buffer");
+			let ores = wsock.write_all(&cbuf[0..cbuf.len()]).await;
+			if ores.is_err() {
+				debug_error!("write error {:?}",ores.err().unwrap());
+				continue;
+			}
+		}
+	}
+	Ok(())
+}
+
+#[allow(unreachable_code)]
+async fn rsock_handle(mut rsock :tokio::net::tcp::OwnedReadHalf,tx :tokio::sync::mpsc::UnboundedSender<(Arc<Mutex<Vec<u8>>>,u64)>,uidx :u64) -> Result<(),Box<dyn Error>> {
+	let mut buf = [0; 1024];
+
+    // In a loop, read data from the socket and write the data back.
+    loop {
+    	debug_info!(" ");
+    	let n = match rsock.read(&mut buf).await {
+            // socket closed
+            Ok(n) if n == 0 => return Ok(()),
+            Ok(n) => n,
+            Err(e) => {
+            	eprintln!("failed to read from socket; err = {:?}", e);
+            	return Err(Box::new(e));
+            }
+        };
+
+        debug_buffer_trace!(buf.as_ptr(),n,"receive buffer");
+        let sbuf = Arc::new(Mutex::new(buf[0..n].to_vec()));
+        tx.send((sbuf,uidx));
+    }
+    return Ok(());
+}
+
 
 async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let sarr :Vec<String>;
@@ -144,7 +189,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		extargs_new_error!{SplitSockError,"need at least port"}
 	}
 	fmtstr = format!("0.0.0.0:{}",sarr[0]);
-	let (tx,rx) = tokio::sync::mpsc::unbounded_channel::<(Vec<u8>,u64)>();
+	let (tx,rx) = tokio::sync::mpsc::unbounded_channel::<(Arc<Mutex<Vec<u8>>>,u64)>();
 	let mut sockhdl :SockHandle = SockHandle::new(rx)?;
 	let mut gidx :u64 = 0;
 
@@ -160,49 +205,16 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 			gidx += 1;
 		}
 		let nidx = gidx;
-		let (ctx,crx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
+		let (ctx,mut crx) = tokio::sync::mpsc::unbounded_channel::<Arc<Mutex<Vec<u8>>>>();
 		let _ = sockhdl.add_snd(ctx,nidx)?;
 
 		tokio::spawn(async move {
-			let nnidx = nidx;
-            let mut buf = [0; 1024];
-
-            // In a loop, read data from the socket and write the data back.
-            loop {
-            	debug_info!(" ");
-                let n = match rsock.read(&mut buf).await {
-                    // socket closed
-                    Ok(n) if n == 0 => {
-                    	return;
-                    },
-                    Ok(n) => n,
-                    Err(e) => {
-                        eprintln!("failed to read from socket; err = {:?}", e);
-                        return;
-                    }
-                };
-
-                debug_buffer_trace!(buf.as_ptr(),n,"receive buffer");
-                ntx.send((buf[0..n].to_vec(),nnidx));
-            }
+			tokio::select!{
+				_ = rsock_handle(rsock,tx.clone(),nidx) => {},
+				_ = wsock_handle(wsock,crx) => {},
+			};
 		});
 
-		tokio::spawn(async move{
-			let mut cwsock = wsock;
-			loop {
-				let ores = crx.recv().await;
-				if ores.is_none() {
-					continue;
-				}
-				let wbuf = ores.unwrap();
-				debug_buffer_trace!(wbuf.as_ptr(),wbuf.len(),"will send buffer");
-				let ores = cwsock.write_all(&wbuf[0..wbuf.len()]).await;
-				if ores.is_err() {
-					debug_error!("write error {:?}",ores.err().unwrap());
-					continue;
-				}
-			}
-		});
 	}
 
 }
