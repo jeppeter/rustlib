@@ -6,7 +6,7 @@ use extargsparse_worker::parser::{ExtArgsParser};
 use extargsparse_worker::funccall::{ExtArgsParseFunc};
 
 
-use std::cell::{RefCell,UnsafeCell};
+use std::cell::{RefCell};
 use std::sync::Arc;
 use std::error::Error;
 use std::boxed::Box;
@@ -14,7 +14,7 @@ use std::boxed::Box;
 use regex::Regex;
 #[allow(unused_imports)]
 use std::any::Any;
-use crate::fileop::*;
+//use crate::fileop::*;
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
@@ -35,7 +35,7 @@ include!("version.rs");
 
 
 fn versioninfo_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
-	let sarr :Vec<String>;
+	//let sarr :Vec<String>;
 
 	init_log(ns.clone())?;
 	println!("version {}",VERSION_INFO);
