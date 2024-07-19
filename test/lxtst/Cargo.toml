@@ -8,7 +8,7 @@ edition = "2021"
 extutils = {path = "../../../extutils-rs"}
 
 [dependencies]
-extargsparse_worker = "^0.2.0"
+extargsparse_worker = "^0.2.2"
 extargsparse_codegen = "^0.1.4"
 evtcall = "^0.2.4"
 lazy_static = "^1.4.0"
