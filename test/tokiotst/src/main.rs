@@ -62,8 +62,12 @@ async fn tokio_listen_main(ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::E
 		debug_info!(" ");
 		let (mut socket, _) = listener.accept().await?;
 		debug_info!(" ");
+		let mut buf :Vec<u8> = vec![];
+		while buf.len() < 1024 {
+			buf.push(0);
+		}
 		tokio::spawn(async move {
-            let mut buf = [0; 1024];
+            //let mut buf = [0; 1024];
 
             // In a loop, read data from the socket and write the data back.
             loop {

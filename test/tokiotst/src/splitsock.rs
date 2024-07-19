@@ -137,6 +137,7 @@ async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u
 
 #[allow(unreachable_code)]
 async fn wsock_handle(mut wsock :tokio::net::tcp::OwnedWriteHalf,mut rx :tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<u8>>>>) -> Result<(),Box<dyn Error>> {
+	let mut c2buf :Vec<u8> ;
 	loop {
 		let ores = rx.recv().await;
 		if ores.is_none() {
@@ -146,7 +147,14 @@ async fn wsock_handle(mut wsock :tokio::net::tcp::OwnedWriteHalf,mut rx :tokio::
 		{
 			let cbuf = wbuf.lock().unwrap();
 			debug_buffer_trace!(cbuf.as_ptr(),cbuf.len(),"will send buffer");
-			let ores = wsock.write_all(&cbuf[0..cbuf.len()]).await;
+			c2buf = vec![];
+			let mut idx :usize = 0;
+			while c2buf.len() < cbuf.len() {
+				c2buf.push(cbuf[idx]);
+				idx += 1;
+			}
+
+			let ores = wsock.write_all(&c2buf).await;
 			if ores.is_err() {
 				debug_error!("write error {:?}",ores.err().unwrap());
 				continue;
@@ -210,7 +218,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 
 		tokio::spawn(async move {
 			tokio::select!{
-				_ = rsock_handle(rsock,tx.clone(),nidx) => {},
+				_ = rsock_handle(rsock,ntx.clone(),nidx) => {},
 				_ = wsock_handle(wsock,crx) => {},
 			};
 		});
