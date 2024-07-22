@@ -39,7 +39,8 @@ fn versioninfo_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSet
 
 	init_log(ns.clone())?;
 	println!("version {}",VERSION_INFO);
-	println!("compile at {} gitversion {}", COMPILE_TIME,GIT_HASH);
+	println!("compile {}", COMPILE_TIME);
+	println!("gitversion {}",GIT_HASH);
 
 	Ok(())
 

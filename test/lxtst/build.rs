@@ -1,4 +1,3 @@
-use std::env;
 use extutils::fileop::{write_file};
 use chrono;
 use std::error::Error;
