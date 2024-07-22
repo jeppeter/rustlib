@@ -26,6 +26,7 @@ use std::collections::HashMap;
 
 #[allow(unused_imports)]
 use extlog::loglib::{log_get_timestamp,log_output_function};
+#[allow(unused_imports)]
 use extlog::{debug_info,debug_trace,debug_error,debug_buffer_trace,format_buffer_log,format_str_log};
 
 use crate::exithdl_consts::{SIG_TERM,SIG_INT};
@@ -87,8 +88,11 @@ impl SockHandleInner {
 		return None;
 	}
 	async fn receive_fn(&mut self) -> Result<(),Box<dyn Error>> {
+		debug_trace!("nnxx");
 		loop {
+			debug_trace!("before rcv");
 			let ores = self.rcv.recv().await;
+			debug_trace!("receive_fn");
 			if ores.is_none() {
 				continue;
 			}
@@ -104,7 +108,10 @@ impl SockHandleInner {
 				debug_buffer_trace!(cdata.as_ptr(),cdata.len(),"inner receive and send");
 			}
 			
-			snd.send(data);
+			let ores = snd.send(data);
+			if ores.is_err() {
+				debug_trace!("send error {:?}",ores.err().unwrap());
+			}
 		}
 	}
 }
@@ -134,9 +141,12 @@ impl SockHandle {
 		return s1.remove_snd(idx);
 	}
 
-	async fn receive_fn(&mut self) -> Result<(),Box<dyn Error>> {
+	fn receive_fn(&mut self) -> Result<(),Box<dyn Error>> {
+		debug_trace!("before get inner");
 		let s1 = unsafe {&mut *self.inner.get()};
-		return s1.receive_fn().await;
+		debug_trace!("receive_fn inner");
+		let _ = s1.receive_fn();
+		Ok(())
 	}
 
 }
@@ -189,7 +199,7 @@ async fn rsock_handle(mut rsock :tokio::net::tcp::OwnedReadHalf,tx :tokio::sync:
 
     // In a loop, read data from the socket and write the data back.
     loop {
-    	debug_info!(" ");
+    	debug_info!("will read");
     	let n = match rsock.read(&mut buf).await {
             // socket closed
             Ok(n) if n == 0 => return Ok(()),
@@ -202,7 +212,10 @@ async fn rsock_handle(mut rsock :tokio::net::tcp::OwnedReadHalf,tx :tokio::sync:
 
         debug_buffer_trace!(buf.as_ptr(),n,"receive buffer");
         let sbuf = Arc::new(Mutex::new(buf[0..n].to_vec()));
-        tx.send((sbuf,uidx));
+        let ores = tx.send((sbuf,uidx));
+        if ores.is_err() {
+        	debug_error!("send error {:?}",ores.err().unwrap());
+        }
     }
     return Ok(());
 }
@@ -223,21 +236,22 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 
 	let listener = TcpListener::bind(&fmtstr).await?;
 	tokio::spawn(async move {
+		debug_trace!("new tokio spawn");
 		let _ = bsock.receive_fn();
 	});
 
 	loop {
 		debug_info!("listen on {}",fmtstr);
-		let (mut socket, _) = listener.accept().await?;
-		let (mut rsock,mut wsock) = socket.into_split();
-		debug_info!(" ");
+		let (socket, _) = listener.accept().await?;
+		let (rsock,wsock) = socket.into_split();
+		debug_info!("split rsock and wsock");
 		let ntx = tx.clone();
 		gidx += 1;
 		if gidx == 0 {
 			gidx += 1;
 		}
 		let nidx = gidx;
-		let (ctx,mut crx) = tokio::sync::mpsc::unbounded_channel::<Arc<Mutex<Vec<u8>>>>();
+		let (ctx,crx) = tokio::sync::mpsc::unbounded_channel::<Arc<Mutex<Vec<u8>>>>();
 		let _ = sockhdl.add_snd(ctx,nidx)?;
 		let mut csock = sockhdl.clone();
 
