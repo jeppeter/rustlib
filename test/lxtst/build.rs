@@ -1,6 +1,9 @@
 use std::env;
-use extutils::fileop::*;
-use extutils::timeop::{get_time_local_str};
+use extutils::fileop::{write_file};
+use chrono;
+use std::error::Error;
+use chrono::{Datelike,Timelike,Local};
+
 
 #[allow(unreachable_code)]
 fn get_git_hash() -> Option<String> {
@@ -33,16 +36,20 @@ fn get_git_hash() -> Option<String> {
     None
 }
 
+fn get_compile_time_str() -> Result<String,Box<dyn Error>> {
+    let now = Local::now();
+    Ok(format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02}",now.year(),now.month(),now.day(),now.hour(),now.minute(),now.second()))
+}
+
 fn main() {
     let mut outs :String = "".to_string();
     if let Some(git) = get_git_hash() {
         outs.push_str(&format!("const GIT_HASH :&str = \"{}\";\n",git));
     }
-    if let Ok(tms) = get_time_local_str() {
+    if let Ok(tms) = get_compile_time_str() {
         outs.push_str(&format!("const COMPILE_TIME :&str =\"{}\";\n",tms));    
     }
     
     //outs.push_str("const VERSION_INFO :&str =\"2.0.2\";\n");
     let _ = write_file("src/version.rs",&outs);
-    env::set_var("COMPILE_TIME","2024-07-15");
 }
