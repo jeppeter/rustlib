@@ -7,6 +7,7 @@ edition = "2021"
 [build-dependencies]
 extutils = {path = "../../../extutils-rs"}
 chrono = "^0.4.0"
+extargsparse_worker = "^0.2.2"
 
 [dependencies]
 extargsparse_worker = "^0.2.2"

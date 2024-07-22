@@ -43,6 +43,8 @@ struct SockHandleInner {
 	sndidx :Vec<u64>,
 }
 
+unsafe impl Send for SockHandleInner {}
+
 impl SockHandleInner {
 	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Arc<Mutex<Vec<u8>>>,u64)>) -> Result<Self,Box<dyn Error>> {
 		Ok(Self {
@@ -97,14 +99,22 @@ impl SockHandleInner {
 				continue;
 			}
 			let snd = osnd.unwrap();
+			{
+				let cdata = data.lock().unwrap();
+				debug_buffer_trace!(cdata.as_ptr(),cdata.len(),"inner receive and send");
+			}
+			
 			snd.send(data);
 		}
 	}
 }
 
+#[derive(Clone)]
 struct SockHandle {
 	inner :Arc<UnsafeCell<SockHandleInner>>,
 }
+
+unsafe impl Send for SockHandle {}
 
 impl SockHandle {
 	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Arc<Mutex<Vec<u8>>>,u64)>) -> Result<Self,Box<dyn Error>> {
@@ -154,10 +164,19 @@ async fn wsock_handle(mut wsock :tokio::net::tcp::OwnedWriteHalf,mut rx :tokio::
 				idx += 1;
 			}
 
-			let ores = wsock.write_all(&c2buf).await;
-			if ores.is_err() {
-				debug_error!("write error {:?}",ores.err().unwrap());
-				continue;
+			{
+				let mut csize :usize = 0;
+				while csize < c2buf.len() {
+					let _ = wsock.write_u8(c2buf[csize]);
+					csize += 1;
+				}
+
+				//let ores = wsock.write_all(&c2buf).await;
+				//if ores.is_err() {
+				//	debug_error!("write error {:?}",ores.err().unwrap());
+				//	continue;
+				//}
+
 			}
 		}
 	}
@@ -200,10 +219,15 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let (tx,rx) = tokio::sync::mpsc::unbounded_channel::<(Arc<Mutex<Vec<u8>>>,u64)>();
 	let mut sockhdl :SockHandle = SockHandle::new(rx)?;
 	let mut gidx :u64 = 0;
+	let mut bsock = sockhdl.clone();
 
 	let listener = TcpListener::bind(&fmtstr).await?;
+	tokio::spawn(async move {
+		let _ = bsock.receive_fn();
+	});
+
 	loop {
-		debug_info!(" ");
+		debug_info!("listen on {}",fmtstr);
 		let (mut socket, _) = listener.accept().await?;
 		let (mut rsock,mut wsock) = socket.into_split();
 		debug_info!(" ");
@@ -215,12 +239,14 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		let nidx = gidx;
 		let (ctx,mut crx) = tokio::sync::mpsc::unbounded_channel::<Arc<Mutex<Vec<u8>>>>();
 		let _ = sockhdl.add_snd(ctx,nidx)?;
+		let mut csock = sockhdl.clone();
 
 		tokio::spawn(async move {
 			tokio::select!{
 				_ = rsock_handle(rsock,ntx.clone(),nidx) => {},
 				_ = wsock_handle(wsock,crx) => {},
 			};
+			let _ = csock.remove_snd(nidx);
 		});
 
 	}
