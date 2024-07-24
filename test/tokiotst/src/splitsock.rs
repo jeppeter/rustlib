@@ -34,6 +34,7 @@ use crate::exithdl::{init_exit_handle};
 use crate::logtrans::{init_log};
 use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use extutils::strop::{parse_u64};
 
 
 extargs_error_class!{SplitSockError}
@@ -294,12 +295,85 @@ fn splitsock_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	return Ok(());
 }
 
+async fn child_event_send(incv : tokio::sync::mpsc::UnboundedReceiver<String>,snd :tokio::sync::mpsc::UnboundedSender<String>) -> Result<(),Box<dyn Error>> {
+	let curval :usize = 0;
+	loop {
+		if cnt != 0 && curval >= cnt {
+			break;
+		}
+
+		let oval = incv.recv().await;
+		if oval.is_none() {
+			debug_trace!("none ");
+			continue;
+		}
+		let val = oval.unwrap();
+		debug_trace!("receive {}",val);
+		let _ = snd.send(val).await;
+		curval += 1;
+	}
+
+	Ok(())
+}
+
+
+async fn main_event_send(incv : tokio::sync::mpsc::UnboundedReceiver<String>,snd :tokio::sync::mpsc::UnboundedSender<String>,cnt :usize) -> Result<(),Box<dyn Error>> {
+	let curval :usize = 0;
+	loop {
+		if cnt != 0 && curval >= cnt {
+			break;
+		}
+		let nstr = format!("main {}",curval);
+		let _ = snd.send(nstr).await;
+
+		let oval = incv.recv().await;
+		if oval.is_none() {
+			debug_trace!("none ");
+			continue;
+		}
+		let val = oval.unwrap();
+		debug_trace!("receive {}",val);
+		curval += 1;
+	}
+
+	Ok(())
+}
+
+async fn event_send_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String> = ns.get_array("subnargs");
+	let mut cnt :usize = 10;
+	if sarr.len() > 0 {
+		cnt = parse_u64(&sarr[0])? as usize;
+	}
+
+	let (msnd,mrcv) = tokio::sync::mpsc::unbounded_channel::<String>();
+	let (csnd,crcv) = tokio::sync::mpsc::unbounded_channel::<String>();
+
+	tokio::select!{
+		_ = main_event_send(mrcv,csnd,cnt) => {debug_trace!("main exit");},
+		_ = child_event_send(crcv,msnd) => {debug_trace!("child exit");},
+	}	
+	Ok(())
+}
+
+fn evtsnd_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+
+	//let res :Result<(),Box<dyn Error>>;
+	init_log(ns.clone())?;
+	let _ =  tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(event_send_main(ns.clone()))?;
+	return Ok(());
+}
+
+
 #[extargs_map_function(splitsock_handler)]
 pub fn load_sock_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let commandline = r#"
 	{
 		"splitsock<splitsock_handler>##port to listen on port##" : {
 			"$" : 1
+		},
+		"evtsnd<evtsnd_handler>##[cnt] to send event call in cnt default 10##" : {
+			"$" : "?"
 		}
 	}
 	"#;
