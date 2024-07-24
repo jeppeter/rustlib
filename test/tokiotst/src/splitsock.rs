@@ -295,12 +295,10 @@ fn splitsock_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	return Ok(());
 }
 
-async fn child_event_send(incv : tokio::sync::mpsc::UnboundedReceiver<String>,snd :tokio::sync::mpsc::UnboundedSender<String>) -> Result<(),Box<dyn Error>> {
-	let curval :usize = 0;
+#[allow(unreachable_code)]
+async fn child_event_send(mut incv : tokio::sync::mpsc::UnboundedReceiver<String>,snd :tokio::sync::mpsc::UnboundedSender<String>) -> Result<(),Box<dyn Error>> {
+	let mut curval :usize = 0;
 	loop {
-		if cnt != 0 && curval >= cnt {
-			break;
-		}
 
 		let oval = incv.recv().await;
 		if oval.is_none() {
@@ -308,8 +306,9 @@ async fn child_event_send(incv : tokio::sync::mpsc::UnboundedReceiver<String>,sn
 			continue;
 		}
 		let val = oval.unwrap();
-		debug_trace!("receive {}",val);
-		let _ = snd.send(val).await;
+		debug_trace!("child receive [{}]",val);
+		let nval = format!("child cnt[{}]",curval);
+		let _ = snd.send(nval);
 		curval += 1;
 	}
 
@@ -317,14 +316,14 @@ async fn child_event_send(incv : tokio::sync::mpsc::UnboundedReceiver<String>,sn
 }
 
 
-async fn main_event_send(incv : tokio::sync::mpsc::UnboundedReceiver<String>,snd :tokio::sync::mpsc::UnboundedSender<String>,cnt :usize) -> Result<(),Box<dyn Error>> {
-	let curval :usize = 0;
+async fn main_event_send(mut incv : tokio::sync::mpsc::UnboundedReceiver<String>,snd :tokio::sync::mpsc::UnboundedSender<String>,cnt :usize) -> Result<(),Box<dyn Error>> {
+	let mut curval :usize = 0;
 	loop {
 		if cnt != 0 && curval >= cnt {
 			break;
 		}
-		let nstr = format!("main {}",curval);
-		let _ = snd.send(nstr).await;
+		let nstr = format!("main [{}]",curval);
+		let _ = snd.send(nstr);
 
 		let oval = incv.recv().await;
 		if oval.is_none() {
@@ -332,7 +331,7 @@ async fn main_event_send(incv : tokio::sync::mpsc::UnboundedReceiver<String>,snd
 			continue;
 		}
 		let val = oval.unwrap();
-		debug_trace!("receive {}",val);
+		debug_trace!("main receive [{}]",val);
 		curval += 1;
 	}
 
@@ -365,7 +364,7 @@ fn evtsnd_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 }
 
 
-#[extargs_map_function(splitsock_handler)]
+#[extargs_map_function(splitsock_handler,evtsnd_handler)]
 pub fn load_sock_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let commandline = r#"
 	{
