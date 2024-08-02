@@ -47,6 +47,7 @@ struct SockHandleInner {
 
 unsafe impl Send for SockHandleInner {}
 
+#[allow(dead_code)]
 impl SockHandleInner {
 	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Arc<Mutex<Vec<u8>>>,u64)>) -> Result<Self,Box<dyn Error>> {
 		Ok(Self {
@@ -117,6 +118,36 @@ impl SockHandleInner {
 	}
 }
 
+#[allow(dead_code)]
+async fn handle_sock_inner( hdlinner :&mut SockHandleInner) -> Result<(),Box<dyn Error>> {
+		debug_trace!("nnxx");
+		loop {
+			debug_trace!("before rcv");
+			let ores = hdlinner.rcv.recv().await;
+			debug_trace!("receive_fn");
+			if ores.is_none() {
+				continue;
+			}
+			let (data,idx) = ores.unwrap();
+			let osnd = hdlinner.find_snd(idx);
+			if osnd.is_none() {
+				debug_trace!("can not get idx {}",idx);
+				continue;
+			}
+			let snd = osnd.unwrap();
+			{
+				let cdata = data.lock().unwrap();
+				debug_buffer_trace!(cdata.as_ptr(),cdata.len(),"inner receive and send");
+			}
+			
+			let ores = snd.send(data);
+			if ores.is_err() {
+				debug_trace!("send error {:?}",ores.err().unwrap());
+			}
+		}
+
+}
+
 #[derive(Clone)]
 struct SockHandle {
 	inner :Arc<UnsafeCell<SockHandleInner>>,
@@ -142,12 +173,16 @@ impl SockHandle {
 		return s1.remove_snd(idx);
 	}
 
+	async fn receive_fn2(&mut self) -> Result<(),Box<dyn Error>> {
+		debug_trace!("before get inner");
+		let s1 = unsafe {&mut *self.inner.get()};
+		let ores = handle_sock_inner(s1);
+		return ores.await;
+	}
 	async fn receive_fn(&mut self) -> Result<(),Box<dyn Error>> {
 		debug_trace!("before get inner");
 		let s1 = unsafe {&mut *self.inner.get()};
-		debug_trace!("receive_fn inner");
-		let _ = s1.receive_fn();
-		Ok(())
+		return s1.receive_fn().await;
 	}
 
 }
@@ -238,7 +273,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let listener = TcpListener::bind(&fmtstr).await?;
 	tokio::spawn(async move {
 		debug_trace!("new tokio spawn");
-		let _ = bsock.receive_fn().await;
+		let _ = bsock.receive_fn();
 	});
 
 	loop {
