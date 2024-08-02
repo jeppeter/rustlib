@@ -146,7 +146,7 @@ impl SockHandle {
 		debug_trace!("before get inner");
 		let s1 = unsafe {&mut *self.inner.get()};
 		debug_trace!("receive_fn inner");
-		let _ = s1.receive_fn();
+		let _ = s1.receive_fn().await;
 		Ok(())
 	}
 
@@ -239,6 +239,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	tokio::spawn(async move {
 		debug_trace!("new tokio spawn");
 		let _ = bsock.receive_fn().await;
+		debug_trace!("end tokio spawn");
 	});
 
 	loop {
