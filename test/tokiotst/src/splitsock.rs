@@ -40,15 +40,15 @@ use extutils::strop::{parse_u64};
 extargs_error_class!{SplitSockError}
 
 struct SockHandleInner {
-	rcv :tokio::sync::mpsc::UnboundedReceiver<(Arc<Mutex<Vec<u8>>>,u64)>,
-	snds :Vec<tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<u8>>>>>,
+	rcv :tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,u64)>,
+	snds :Vec<tokio::sync::mpsc::UnboundedSender<Vec<u8>>>,
 	sndidx :Vec<u64>,
 }
 
 unsafe impl Send for SockHandleInner {}
 
 impl SockHandleInner {
-	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Arc<Mutex<Vec<u8>>>,u64)>) -> Result<Self,Box<dyn Error>> {
+	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,u64)>) -> Result<Self,Box<dyn Error>> {
 		Ok(Self {
 			rcv :rcv,
 			snds :vec![],
@@ -56,7 +56,7 @@ impl SockHandleInner {
 		})
 	}
 
-	fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<u8>>>>,idx :u64) -> Result<(),Box<dyn Error>> {
+	fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Vec<u8>>,idx :u64) -> Result<(),Box<dyn Error>> {
 		debug_assert!(self.snds.len() == self.sndidx.len(),"snds.len {} != sndidx.len {}",self.snds.len(),self.sndidx.len());
 		self.snds.push(snd);
 		self.sndidx.push(idx);
@@ -77,7 +77,7 @@ impl SockHandleInner {
 		return Ok(0);
 	}
 
-	fn find_snd(&self,idx :u64) -> Option<tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<u8>>>>> {
+	fn find_snd(&self,idx :u64) -> Option<tokio::sync::mpsc::UnboundedSender<Vec<u8>>> {
 		let mut uidx :usize = 0;
 		debug_assert!(self.snds.len() == self.sndidx.len(),"snds.len {} != sndidx.len {}",self.snds.len(),self.sndidx.len());
 		while uidx < self.sndidx.len() {
@@ -104,9 +104,10 @@ impl SockHandleInner {
 				continue;
 			}
 			let snd = osnd.unwrap();
+			//let cdata = osnd.unwrap();
 			{
-				let cdata = data.lock().unwrap();
-				debug_buffer_trace!(cdata.as_ptr(),cdata.len(),"inner receive and send");
+				//let cdata = data.lock().unwrap();
+				debug_buffer_trace!(data.as_ptr(),data.len(),"inner receive and send");
 			}
 			
 			let ores = snd.send(data);
@@ -125,14 +126,14 @@ struct SockHandle {
 unsafe impl Send for SockHandle {}
 
 impl SockHandle {
-	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Arc<Mutex<Vec<u8>>>,u64)>) -> Result<Self,Box<dyn Error>> {
+	fn new(rcv :tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,u64)>) -> Result<Self,Box<dyn Error>> {
 		let retv :Self = Self {
 			inner :Arc::new(UnsafeCell::new(SockHandleInner::new(rcv)?)),
 		};
 		Ok(retv)
 	}
 
-	fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<u8>>>>,idx :u64) -> Result<(),Box<dyn Error>> {
+	fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Vec<u8>>,idx :u64) -> Result<(),Box<dyn Error>> {
 		let s1 = unsafe {&mut *self.inner.get()};
 		return s1.add_snd(snd,idx);
 	}
@@ -162,7 +163,7 @@ async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u
 // }
 
 #[allow(unreachable_code)]
-async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<u8>>>>) -> Result<(),Box<dyn Error>> {
+async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) -> Result<(),Box<dyn Error>> {
 	let mut nbuf : Vec<u8> = vec![];
 	let mut wlen :usize;
 	loop {
@@ -171,9 +172,9 @@ async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio:
 			if ores.is_none() {
 				continue;
 			}
-			let wbuf = ores.unwrap();
+			let cbuf = ores.unwrap();
 			{
-				let cbuf = wbuf.lock().unwrap();
+				//let cbuf = wbuf.lock().unwrap();
 				let mut j :usize;
 				//let mut c2buf :Vec<u8> ;
 				debug_buffer_trace!(cbuf.as_ptr(),cbuf.len(),"will send buffer");
@@ -202,7 +203,7 @@ async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio:
 }
 
 #[allow(unreachable_code)]
-async fn rsock_handle(mut rsock :tokio::net::tcp::OwnedReadHalf,tx :tokio::sync::mpsc::UnboundedSender<(Arc<Mutex<Vec<u8>>>,u64)>,uidx :u64) -> Result<(),Box<dyn Error>> {
+async fn rsock_handle(mut rsock :tokio::net::tcp::OwnedReadHalf,tx :tokio::sync::mpsc::UnboundedSender<(Vec<u8>,u64)>,uidx :u64) -> Result<(),Box<dyn Error>> {
 	let mut buf = [0; 1024];
 
     // In a loop, read data from the socket and write the data back.
@@ -219,7 +220,7 @@ async fn rsock_handle(mut rsock :tokio::net::tcp::OwnedReadHalf,tx :tokio::sync:
         };
 
         debug_buffer_trace!(buf.as_ptr(),n,"receive buffer");
-        let sbuf = Arc::new(Mutex::new(buf[0..n].to_vec()));
+        let sbuf = buf[0..n].to_vec();
         let ores = tx.send((sbuf,uidx));
         if ores.is_err() {
         	debug_error!("send error {:?}",ores.err().unwrap());
@@ -237,7 +238,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		extargs_new_error!{SplitSockError,"need at least port"}
 	}
 	fmtstr = format!("0.0.0.0:{}",sarr[0]);
-	let (tx,rx) = tokio::sync::mpsc::unbounded_channel::<(Arc<Mutex<Vec<u8>>>,u64)>();
+	let (tx,rx) = tokio::sync::mpsc::unbounded_channel::<(Vec<u8>,u64)>();
 	let mut sockhdl :SockHandle = SockHandle::new(rx)?;
 	let mut gidx :u64 = 0;
 	let mut bsock = sockhdl.clone();
@@ -260,7 +261,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 			gidx += 1;
 		}
 		let nidx = gidx;
-		let (ctx,crx) = tokio::sync::mpsc::unbounded_channel::<Arc<Mutex<Vec<u8>>>>();
+		let (ctx,crx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
 		let _ = sockhdl.add_snd(ctx,nidx)?;
 		let mut csock = sockhdl.clone();
 
