@@ -156,40 +156,47 @@ async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u
 	return exitchl.recv().await.unwrap();
 }
 
-#[allow(unreachable_code)]
-async fn wsock_handle(mut wsock :tokio::net::tcp::OwnedWriteHalf,mut rx :tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<u8>>>>) -> Result<(),Box<dyn Error>> {
-	let mut c2buf :Vec<u8> ;
-	loop {
-		let ores = rx.recv().await;
-		if ores.is_none() {
-			continue;
-		}
-		let wbuf = ores.unwrap();
-		{
-			let cbuf = wbuf.lock().unwrap();
-			debug_buffer_trace!(cbuf.as_ptr(),cbuf.len(),"will send buffer");
-			c2buf = vec![];
-			let mut idx :usize = 0;
-			while c2buf.len() < cbuf.len() {
-				c2buf.push(cbuf[idx]);
-				idx += 1;
-			}
+// async fn write_all_buffer(wsock :&mut tokio::net::tcp::OwnedWriteHalf,wbuf :&[u8]) -> Result<(),Box<dyn Error>> {
+// 	let _ = wsock.write_all(wbuf).await?;
+// 	Ok(())
+// }
 
+#[allow(unreachable_code)]
+async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<u8>>>>) -> Result<(),Box<dyn Error>> {
+	let mut nbuf : Vec<u8> = vec![];
+	let mut wlen :usize;
+	loop {
+		{
+			let ores = rx.recv().await;
+			if ores.is_none() {
+				continue;
+			}
+			let wbuf = ores.unwrap();
 			{
-				let mut csize :usize = 0;
-				while csize < c2buf.len() {
-					let _ = wsock.write_u8(c2buf[csize]);
-					csize += 1;
+				let cbuf = wbuf.lock().unwrap();
+				let mut j :usize;
+				//let mut c2buf :Vec<u8> ;
+				debug_buffer_trace!(cbuf.as_ptr(),cbuf.len(),"will send buffer");
+				// c2buf = vec![];
+				// let mut idx :usize = 0;
+				// while c2buf.len() < cbuf.len() {
+				// 	c2buf.push(cbuf[idx]);
+				// 	idx += 1;
+				// }
+				wlen = cbuf.len();
+				j = 0;
+				while j < cbuf.len() {
+					if j >= nbuf.len() {
+						nbuf.push(cbuf[j]);
+					} else {
+						nbuf[j] = cbuf[j];
+					}
+					j += 1;
 				}
 
-				//let ores = wsock.write_all(&c2buf).await;
-				//if ores.is_err() {
-				//	debug_error!("write error {:?}",ores.err().unwrap());
-				//	continue;
-				//}
-
 			}
 		}
+		wsock.write_all(&nbuf[0..wlen]).await?;
 	}
 	Ok(())
 }
@@ -245,7 +252,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	loop {
 		debug_info!("listen on {}",fmtstr);
 		let (socket, _) = listener.accept().await?;
-		let (rsock,wsock) = socket.into_split();
+		let (rsock,mut wsock) = socket.into_split();
 		debug_info!("split rsock and wsock");
 		let ntx = tx.clone();
 		gidx += 1;
@@ -260,7 +267,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		tokio::spawn(async move {
 			tokio::select!{
 				_ = rsock_handle(rsock,ntx.clone(),nidx) => {},
-				_ = wsock_handle(wsock,crx) => {},
+				_ = wsock_handle(&mut wsock,crx) => {},
 			};
 			let _ = csock.remove_snd(nidx);
 		});

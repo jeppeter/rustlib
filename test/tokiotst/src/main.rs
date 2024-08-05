@@ -58,8 +58,8 @@ async fn tokio_listen_main(ns :NameSpaceEx) ->  Result<(), Box<dyn std::error::E
 	}
 
 	let listener = TcpListener::bind(&fmtstr).await?;
+	debug_info!("listen on {}",fmtstr);
 	loop {
-		debug_info!(" ");
 		let (mut socket, _) = listener.accept().await?;
 		debug_info!(" ");
 		let mut buf :Vec<u8> = vec![];
