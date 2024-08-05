@@ -90,13 +90,18 @@ impl SockHandleInner {
 	}
 	async fn receive_fn(&mut self) -> Result<(),Box<dyn Error>> {
 		debug_trace!("nnxx");
+		let mut nonecnt :usize = 0;
 		loop {
-			debug_trace!("before rcv");
 			let ores = self.rcv.recv().await;
-			debug_trace!("receive_fn");
 			if ores.is_none() {
+				nonecnt += 1;
+				if nonecnt > 3 {
+					return Ok(());
+				}
+				debug_trace!("receive none");
 				continue;
 			}
+			nonecnt = 0;
 			let (data,idx) = ores.unwrap();
 			let osnd = self.find_snd(idx);
 			if osnd.is_none() {
@@ -164,7 +169,7 @@ async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u
 
 #[allow(unreachable_code)]
 async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) -> Result<(),Box<dyn Error>> {
-	let mut nbuf : Vec<u8> = vec![];
+	let mut nbuf : Vec<u8>=vec![];
 	let mut wlen :usize;
 	loop {
 		{
@@ -174,16 +179,8 @@ async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio:
 			}
 			let cbuf = ores.unwrap();
 			{
-				//let cbuf = wbuf.lock().unwrap();
 				let mut j :usize;
-				//let mut c2buf :Vec<u8> ;
 				debug_buffer_trace!(cbuf.as_ptr(),cbuf.len(),"will send buffer");
-				// c2buf = vec![];
-				// let mut idx :usize = 0;
-				// while c2buf.len() < cbuf.len() {
-				// 	c2buf.push(cbuf[idx]);
-				// 	idx += 1;
-				// }
 				wlen = cbuf.len();
 				j = 0;
 				while j < cbuf.len() {
@@ -198,6 +195,7 @@ async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio:
 			}
 		}
 		wsock.write_all(&nbuf[0..wlen]).await?;
+		//wsock.write_all(&nbuf).await?;
 	}
 	Ok(())
 }
@@ -271,6 +269,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 				_ = wsock_handle(&mut wsock,crx) => {},
 			};
 			let _ = csock.remove_snd(nidx);
+			debug_trace!("remove [{}]",nidx);
 		});
 
 	}
@@ -284,7 +283,7 @@ async fn split_sock_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 
 	tokio::select!{
 		_val = ctrl_recv(&mut rx) => {
-
+			debug_trace!("ctrl_recv");
 		},
 		bval = split_sock_listen(ns) => {
 			if bval.is_err() {
@@ -301,6 +300,7 @@ fn splitsock_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	//let res :Result<(),Box<dyn Error>>;
 	init_log(ns.clone())?;
 	let _ =  tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(split_sock_main(ns.clone()))?;
+	debug_trace!("exit splitsock");
 	return Ok(());
 }
 
