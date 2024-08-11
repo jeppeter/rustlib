@@ -34,15 +34,18 @@ use crate::exithdl::{init_exit_handle};
 use crate::logtrans::{init_log};
 use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::sync::Mutex as AsyncMutex;
 use extutils::strop::{parse_u64};
 
 
 extargs_error_class!{SplitSockError}
 
+
 struct SockHandleInner {
 	rcv :tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,u64)>,
 	snds :Vec<tokio::sync::mpsc::UnboundedSender<Vec<u8>>>,
 	sndidx :Vec<u64>,
+	sndlock :AsyncMutex<i32>,
 }
 
 unsafe impl Send for SockHandleInner {}
@@ -53,18 +56,21 @@ impl SockHandleInner {
 			rcv :rcv,
 			snds :vec![],
 			sndidx :vec![],
+			sndlock : AsyncMutex::new(1),
 		})
 	}
 
-	fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Vec<u8>>,idx :u64) -> Result<(),Box<dyn Error>> {
+	async fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Vec<u8>>,idx :u64) -> Result<(),Box<dyn Error>> {
+		let _c = self.sndlock.lock().await;
 		debug_assert!(self.snds.len() == self.sndidx.len(),"snds.len {} != sndidx.len {}",self.snds.len(),self.sndidx.len());
 		self.snds.push(snd);
 		self.sndidx.push(idx);
 		Ok(())
 	}
 
-	fn remove_snd(&mut self,idx :u64) -> Result<i32,Box<dyn Error>> {
+	async fn remove_snd(&mut self,idx :u64) -> Result<i32,Box<dyn Error>> {
 		let mut uidx :usize = 0;
+		let _c = self.sndlock.lock().await;
 		debug_assert!(self.snds.len() == self.sndidx.len(),"snds.len {} != sndidx.len {}",self.snds.len(),self.sndidx.len());
 		while uidx < self.sndidx.len() {
 			if self.sndidx[uidx] == idx {
@@ -77,8 +83,9 @@ impl SockHandleInner {
 		return Ok(0);
 	}
 
-	fn find_snd(&self,idx :u64) -> Option<tokio::sync::mpsc::UnboundedSender<Vec<u8>>> {
+	async fn find_snd(&self,idx :u64) -> Option<tokio::sync::mpsc::UnboundedSender<Vec<u8>>> {
 		let mut uidx :usize = 0;
+		let _c = self.sndlock.lock().await;
 		debug_assert!(self.snds.len() == self.sndidx.len(),"snds.len {} != sndidx.len {}",self.snds.len(),self.sndidx.len());
 		while uidx < self.sndidx.len() {
 			if self.sndidx[uidx] == idx {
@@ -103,7 +110,7 @@ impl SockHandleInner {
 			}
 			nonecnt = 0;
 			let (data,idx) = ores.unwrap();
-			let osnd = self.find_snd(idx);
+			let osnd = self.find_snd(idx).await;
 			if osnd.is_none() {
 				debug_trace!("can not get idx {}",idx);
 				continue;
@@ -138,14 +145,14 @@ impl SockHandle {
 		Ok(retv)
 	}
 
-	fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Vec<u8>>,idx :u64) -> Result<(),Box<dyn Error>> {
+	async fn add_snd(&mut self,snd :tokio::sync::mpsc::UnboundedSender<Vec<u8>>,idx :u64) -> Result<(),Box<dyn Error>> {
 		let s1 = unsafe {&mut *self.inner.get()};
-		return s1.add_snd(snd,idx);
+		return s1.add_snd(snd,idx).await;
 	}
 
-	fn remove_snd(&mut self,idx :u64) -> Result<i32,Box<dyn Error>> {
+	async fn remove_snd(&mut self,idx :u64) -> Result<i32,Box<dyn Error>> {
 		let s1 = unsafe {&mut *self.inner.get()};
-		return s1.remove_snd(idx);
+		return s1.remove_snd(idx).await;
 	}
 
 	async fn receive_fn(&mut self) -> Result<(),Box<dyn Error>> {
@@ -260,7 +267,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		}
 		let nidx = gidx;
 		let (ctx,crx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
-		let _ = sockhdl.add_snd(ctx,nidx)?;
+		let _ = sockhdl.add_snd(ctx,nidx).await?;
 		let mut csock = sockhdl.clone();
 
 		tokio::spawn(async move {
@@ -268,7 +275,7 @@ async fn split_sock_listen(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 				_ = rsock_handle(rsock,ntx.clone(),nidx) => {},
 				_ = wsock_handle(&mut wsock,crx) => {},
 			};
-			let _ = csock.remove_snd(nidx);
+			let _ = csock.remove_snd(nidx).await;
 			debug_trace!("remove [{}]",nidx);
 		});
 
