@@ -379,8 +379,40 @@ fn evtsnd_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 	return Ok(());
 }
 
+async fn fix_timeout_fn(duration : std::time::Duration)  {
+	let (_tx,rx) = tokio::sync::oneshot::channel::<i32>();
+	let _ = tokio::time::timeout(duration,rx).await;
+	return;
+}
 
-#[extargs_map_function(splitsock_handler,evtsnd_handler)]
+async fn timeout_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+	let sarr = ns.get_array("subnargs");
+	let mut c :u64 = 10;
+	if sarr.len() > 0 {
+		c = parse_u64(&sarr[0])?;
+	}
+	tokio::select!{
+		_ = fix_timeout_fn(std::time::Duration::from_millis(1000)) => {
+			println!("fixup return out");
+		},
+		_ = fix_timeout_fn(std::time::Duration::from_millis(c)) => {
+			println!("duration [{}] return out",c);
+		}
+	}
+	println!("return out");
+	Ok(())
+}
+
+fn timeout_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+
+	//let res :Result<(),Box<dyn Error>>;
+	init_log(ns.clone())?;
+	let _ =  tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(timeout_main(ns.clone()))?;
+	return Ok(());
+}
+
+
+#[extargs_map_function(splitsock_handler,evtsnd_handler,timeout_handler)]
 pub fn load_sock_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let commandline = r#"
 	{
@@ -388,6 +420,9 @@ pub fn load_sock_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : 1
 		},
 		"evtsnd<evtsnd_handler>##[cnt] to send event call in cnt default 10##" : {
+			"$" : "?"
+		},
+		"timeout<timeout_handler>##[innertimeout] to make inner timeout##" : {
 			"$" : "?"
 		}
 	}
