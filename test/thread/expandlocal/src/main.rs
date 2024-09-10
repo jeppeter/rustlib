@@ -2,6 +2,7 @@
 ///  this is the demonstration make for thread_local_key 
 ///  but it not run ok for it not call api key for TlsSetValue in windows or libc::pthread_setspecific 
 ///  other type is llvm to compile
+///  to call run_dtor with .CRT$XLB sections linker
 
 use std::cell::{Cell, RefCell,UnsafeCell};
 use std::error::Error;
