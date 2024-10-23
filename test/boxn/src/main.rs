@@ -5,8 +5,10 @@ use std::fmt;
 use serde_json::Value;
 use std::rc::Rc;
 use std::sync::Arc;
+#[allow(unused_imports)]
 use std::cell::{UnsafeCell,RefCell,RefMut};
 use std::collections::HashMap;
+use std::ops::{Deref};
 
 
 macro_rules! error_class {
@@ -132,6 +134,13 @@ impl PoinX {
 	}
 	fn get_y(&self) -> f64 {
 		self.y
+	}
+}
+
+impl Deref for PoinX {
+	type Target = f64;
+	fn deref(&self) -> &f64 {
+		&self.x
 	}
 }
 
@@ -336,6 +345,7 @@ impl ExtArgsParserInner {
 	}
 }
 
+#[allow(unused_variables)]
 fn main() {
     let mut xc :Box<PoinX> = Box::new(PoinX::new(1.1,1.1));
     let mut c :Box<PoinX> = Box::new(PoinX::new(2.2,2.2));
@@ -349,5 +359,6 @@ fn main() {
     xc.set_value("bs.bb",ns.clone()).unwrap();
     xc.set_value("bs.cc",ns.clone()).unwrap();
     println!("xc {:?} x {} y {}", xc,xc.get_x(),xc.get_y());
+    println!("secd xc {:?}", (*xc).get_x());
     cc.call_command().unwrap();
 }
