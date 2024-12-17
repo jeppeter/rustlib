@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence,asn1_int_choice};
 #[allow(unused_imports)]
-use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData,Asn1IA5String};
+use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData,Asn1IA5String,Asn1BitDataFlag};
 use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
@@ -417,7 +417,7 @@ pub struct Asn1X509CrlInfo {
 pub struct Asn1X509Crl {
 	pub crl : Asn1X509CrlInfo,
 	pub sig_alg :Asn1X509Algor,
-	pub signature : Asn1BitString,
+	pub signature : Asn1BitDataFlag,
 }
 
 //#[asn1_sequence(debug=enable)]
@@ -426,7 +426,7 @@ pub struct Asn1X509Crl {
 pub struct Asn1X509Elem {
 	pub certinfo : Asn1X509Cinf,
 	pub sig_alg : Asn1X509Algor,
-	pub signature : Asn1BitData,
+	pub signature : Asn1BitDataFlag,
 }
 
 //#[asn1_sequence(debug=enable)]
@@ -901,7 +901,7 @@ pub struct Asn1X509ReqInfo {
 pub struct Asn1X509ReqElem {
 	pub req_info : Asn1X509ReqInfo,
 	pub sig_alg : Asn1X509Algor,
-	pub signature : Asn1BitData,
+	pub signature : Asn1BitDataFlag,
 }
 
 #[asn1_sequence()]
