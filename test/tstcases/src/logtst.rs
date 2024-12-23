@@ -17,6 +17,7 @@ use std::any::Any;
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use super::strop::*;
 
 use super::{debug_trace,debug_warn,debug_error,debug_info,debug_debug,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
@@ -47,11 +48,50 @@ fn logtst_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 	Ok(())
 }
 
-#[extargs_map_function(logtst_handler)]
+struct LargeVec {
+	vecarr :Vec<u8>,
+}
+
+impl LargeVec {
+	fn new(bsize :usize) -> Self {
+		Self {
+			vecarr : vec![0;bsize],
+		}
+	}
+}
+
+fn largevec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	let mut csize :usize = 0x100000;
+	let mut caccess :usize = 0x10000;
+
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() > 0 {
+		csize = parse_u64(&sarr[0])? as usize;
+	}
+
+	if sarr.len() > 1 {
+		caccess = parse_u64(&sarr[1])? as usize;
+	}
+
+	let mut cbuf :LargeVec= LargeVec::new(csize);
+	cbuf.vecarr[caccess] = 0x1;
+	println!("0x{:x} = 0x{:x}", caccess,cbuf.vecarr[caccess] );
+	cbuf.vecarr[caccess] = 0x2;
+	println!("0x{:x} = 0x{:x}", caccess,cbuf.vecarr[caccess] );
+	Ok(())
+}
+
+
+#[extargs_map_function(logtst_handler,largevec_handler)]
 pub fn load_log_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"logtst<logtst_handler>##[times] to debug times default 100##" : {
+			"$" : "*"
+		},
+		"largevec<largevec_handler>##[maxbufsize] [accessval] to access buffer##" : {
 			"$" : "*"
 		}
 	}
