@@ -386,8 +386,54 @@ fn desdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
 	Ok(())
 }
 
+fn desede3enc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 3 {
+		asn1obj_new_error!{CryptHdlError,"need key iv infile"}
+	}
+	let keyfile = format!("{}",sarr[0]);
+	let ivfile = format!("{}",sarr[1]);
+	let infile = format!("{}",sarr[2]);
+	let key = read_file_bytes(&keyfile)?;
+	let iv = read_file_bytes(&ivfile)?;
+	let indata = read_file_bytes(&infile)?;
+	let encdata :Vec<u8> = des_ede3_pure_encrypt(&indata,&key,&iv)?;
+	debug_buffer_trace!(indata.as_ptr(),indata.len(),"indata");
+	debug_buffer_trace!(encdata.as_ptr(),encdata.len(), "encdata ");
+	if sarr.len() > 3 && sarr[3].len() > 0 {
+		let outf = format!("{}",sarr[3]);
+		let _ = write_file_bytes(&outf,&encdata)?;		
+	}
+	Ok(())
+}
 
-#[extargs_map_function(aescbcenc_handler,aescbcdec_handler,aesencbase_handler,aesdecbase_handler,aescbcpureenc_handler,aescbcpuredec_handler,aescfbenc_handler,aescfbdec_handler,aescfbmutlenc_handler,aescfbmutldec_handler,aes128cbcenc_handler,aes128cbcdec_handler,descbcenc_handler,descbcdec_handler,desenc_handler,desdec_handler)]
+fn desede3dec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+	init_log(ns.clone())?;
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 3 {
+		asn1obj_new_error!{CryptHdlError,"need key iv infile"}
+	}
+	let keyfile = format!("{}",sarr[0]);
+	let ivfile = format!("{}",sarr[1]);
+	let infile = format!("{}",sarr[2]);
+	let key = read_file_bytes(&keyfile)?;
+	let iv = read_file_bytes(&ivfile)?;
+	let indata = read_file_bytes(&infile)?;
+	let outdata :Vec<u8> = des_ede3_pure_decrypt(&indata,&key,&iv)?;
+	debug_buffer_trace!(indata.as_ptr(),indata.len(),"indata");
+	debug_buffer_trace!(outdata.as_ptr(),outdata.len(), "outdata ");
+	if sarr.len() > 3 && sarr[3].len() > 0 {
+		let outf = format!("{}",sarr[3]);
+		let _ = write_file_bytes(&outf,&outdata)?;
+	}
+	Ok(())
+}
+
+
+#[extargs_map_function(aescbcenc_handler,aescbcdec_handler,aesencbase_handler,aesdecbase_handler,aescbcpureenc_handler,aescbcpuredec_handler,aescfbenc_handler,aescfbdec_handler,aescfbmutlenc_handler,aescfbmutldec_handler,aes128cbcenc_handler,aes128cbcdec_handler,descbcenc_handler,descbcdec_handler,desenc_handler,desdec_handler,desede3enc_handler,desede3dec_handler)]
 pub fn load_crypto_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -437,6 +483,12 @@ pub fn load_crypto_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"desdec<desdec_handler>##key iv infile [outfile] to make des decrypt##" : {
+			"$" : "+"
+		},
+		"desede3enc<desede3enc_handler>##key iv infile [outfile] to make des encrypt##" : {
+			"$" : "+"
+		},
+		"desede3dec<desede3dec_handler>##key iv infile [outfile] to make des decrypt##" : {
 			"$" : "+"
 		}
 
