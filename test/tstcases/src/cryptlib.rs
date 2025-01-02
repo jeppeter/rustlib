@@ -6,10 +6,10 @@ use crypto::buffer::{ReadBuffer,WriteBuffer};
 use crypto::symmetriccipher::{BlockEncryptor,BlockDecryptor};
 //use crypto;
 use aes;
-use aes::cipher::KeyIvInit;
-use aes::cipher::AsyncStreamCipher;
-use aes::cipher::BlockEncryptMut;
-use aes::cipher::BlockDecryptMut;
+//use aes::cipher::KeyIvInit;
+//use aes::cipher::AsyncStreamCipher;
+//use aes::cipher::BlockEncryptMut;
+//use aes::cipher::BlockDecryptMut;
 use cbc;
 use cfb_mode;
 use des;
@@ -19,9 +19,14 @@ use sha2::{Sha512,Digest};
 //use rand::rngs::{OsRng};
 
 #[allow(unused_imports)]
+use cipher::{BlockDecryptMut, BlockEncryptMut, BlockSizeUser, KeyInit, KeyIvInit, KeySizeUser,AsyncStreamCipher};
+
+#[allow(unused_imports)]
 use extargsparse_worker::{extargs_error_class,extargs_new_error};
 
 use std::error::Error;
+use crate::*;
+use crate::loglib::*;
 
 extargs_error_class!{AesLibError}
 
@@ -109,6 +114,75 @@ pub fn des_cbc_pure_decrypt(encrypted_data: &[u8], key: &[u8], iv: &[u8]) -> Res
     }
 
     let eo = DesCbcDec::new(key.into(),iv.into()).decrypt_padded_mut::<aes::cipher::block_padding::Pkcs7>(&mut retdata);
+    if eo.is_err() {
+        let e = eo.err().unwrap();
+        extargs_new_error!{AesLibError,"decrypt error {}", e}
+    }
+    let nd = eo.unwrap();
+    Ok(nd.to_vec())
+}
+
+
+pub fn des_pure_encrypt(data: &[u8],key: &[u8], _iv: &[u8])->Result<Vec<u8>,Box<dyn Error>>{
+    let mut retdata  :Vec<u8> = Vec::new();
+    let clen :usize;
+    let alignsize :usize = des::Des::key_size();
+    for i in 0..data.len() {
+        retdata.push(data[i]);
+    }
+    if (data.len() % alignsize) != 0 {
+        clen = (data.len() + alignsize - 1 ) / alignsize;
+    } else {
+        clen = data.len() + alignsize;
+    }
+
+    while retdata.len() < clen {
+        retdata.push(0);
+    }
+    if key.len() < alignsize {
+        extargs_new_error!{AesLibError,"key.len {} < {}",key.len(),alignsize}
+    }
+
+    let mut ckey :Vec<u8> = key.to_vec().clone();
+    if ckey.len() > alignsize {
+        ckey = ckey[0..alignsize].to_vec();
+    }
+    let bkey :&[u8] = &ckey;
+
+    let ck = des::Des::new(bkey.into());
+    debug_trace!("ck {:?}",ck);
+
+    let eo = ck.encrypt_padded_mut::<aes::cipher::block_padding::Pkcs7>(&mut retdata,data.len());
+    if eo.is_err() {
+        let e = eo.err().unwrap();
+        extargs_new_error!{AesLibError,"encrypt error {}", e}
+    }
+    let nd = eo.unwrap();
+    Ok(nd.to_vec())
+}
+
+pub fn des_pure_decrypt(encrypted_data: &[u8], key: &[u8], _iv: &[u8]) -> Result<Vec<u8>,Box<dyn Error>> {
+    let mut retdata :Vec<u8> = Vec::new();
+    let alignsize :usize = des::Des::key_size();
+    for i in 0..encrypted_data.len() {
+        retdata.push(encrypted_data[i]);
+    }
+    if (retdata.len() % alignsize) != 0 {
+        extargs_new_error!{AesLibError,"not valid len [{}] % {} != 0", retdata.len(),alignsize}
+    }
+    if key.len() < alignsize {
+        extargs_new_error!{AesLibError,"key.len {} < {}",key.len(),alignsize}
+    }
+
+    let mut ckey :Vec<u8> = key.to_vec().clone();
+    if ckey.len() > alignsize {
+        ckey = ckey[0..alignsize].to_vec();
+    }
+    let bkey :&[u8] = &ckey;
+    let ck = des::Des::new(bkey.into());
+    debug_trace!("ck {:?}",ck);
+
+    let eo = ck.decrypt_padded_mut::<aes::cipher::block_padding::Pkcs7>(&mut retdata);
     if eo.is_err() {
         let e = eo.err().unwrap();
         extargs_new_error!{AesLibError,"decrypt error {}", e}
