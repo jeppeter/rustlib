@@ -32,12 +32,13 @@ use sha2::{Sha256,Digest};
 use sha1::{Sha1};
 //use sha1::Digest as sha1gest;
 use super::cryptlib::{aes256_cbc_decrypt};
-
+use ecsimple::ecasn1::{ECPrivateKeyAsn1};
 
 pub const OID_PBES2 :&str = "1.2.840.113549.1.5.13";
 pub const OID_PBKDF2 :&str = "1.2.840.113549.1.5.12";
 pub const OID_AES_256_CBC :&str = "2.16.840.1.101.3.4.1.42";
 pub const OID_RSA_ENCRYPTION :&str = "1.2.840.113549.1.1.1";
+pub const OID_EC_PUBLICKEY_ENCRYPTION :&str = "1.2.840.10045.2.1";
 pub const OID_SHA256_WITH_RSA_ENCRYPTION :&str = "1.2.840.113549.1.1.11";
 pub const OID_PKCS8_SHROUDED_KEY_BAG :&str = "1.2.840.113549.1.12.10.1.2";
 pub const OID_PKCS12_CERT_BAG : &str = "1.2.840.113549.1.12.10.1.3";
@@ -1132,7 +1133,7 @@ pub fn get_algor_pbkdf2_private_data(x509algorbytes :&[u8],encdata :&[u8],passin
     asn1obj_new_error!{Asn1DefError,"can not support types [{}]", types}
 }
 
-pub fn get_private_key(x509sigbytes :&[u8],passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
+pub fn get_rsa_private_key(x509sigbytes :&[u8],passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
 	let mut x509sig = Asn1X509Sig::init_asn1();
 	let mut ores = x509sig.decode_asn1(x509sigbytes);
 	let mut serr = std::io::stderr();
@@ -1162,14 +1163,53 @@ pub fn get_private_key(x509sigbytes :&[u8],passin :&[u8]) -> Result<Asn1RsaPriva
 	asn1obj_new_error!{Asn1DefError,"not support [{}]",types}
 }
 
-pub fn get_private_key_file(pemfile :&str,passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
-	let pemdata = read_file(pemfile)?;
-	let (derdata,_) = pem_to_der(&pemdata)?;
-	return get_private_key(&derdata,passin);
+pub fn get_ec_private_key(x509sigbytes :&[u8],passin :&[u8]) -> Result<ECPrivateKeyAsn1,Box<dyn Error>> {
+	let mut x509sig = Asn1X509Sig::init_asn1();
+	let mut ores = x509sig.decode_asn1(x509sigbytes);
+	let mut serr = std::io::stderr();
+	if ores.is_err() {
+		let s :&str = std::str::from_utf8(x509sigbytes)?;
+		let (code,_) = pem_to_der(s)?;
+		ores = x509sig.decode_asn1(&code);
+	}
+	if ores.is_err() {
+		let e = Err(ores.err().unwrap());
+		return e;
+	}
+	x509sig.print_asn1("Asn1X509Sig",0, &mut serr)?;
+	let algordata = x509sig.elem.val[0].algor.encode_asn1()?;
+	let encdata = x509sig.elem.val[0].digest.data.clone();
+	let decdata = get_algor_pbkdf2_private_data(&algordata,&encdata,passin)?;
+	let mut netpkey :Asn1NetscapePkey = Asn1NetscapePkey::init_asn1();
+	let _ = netpkey.decode_asn1(&decdata)?;
+	netpkey.print_asn1("Asn1NetscapePkey",0,&mut serr)?;
+	let types = netpkey.elem.val[0].algor.elem.val[0].algorithm.get_value();
+	if types == OID_EC_PUBLICKEY_ENCRYPTION {
+		let decdata :Vec<u8> = netpkey.elem.val[0].privdata.data.clone();
+		let mut privkey :ECPrivateKeyAsn1 = ECPrivateKeyAsn1::init_asn1();
+		let _ = privkey.decode_asn1(&decdata)?;
+		/*now to give the */
+		if netpkey.elem.val[0].algor.elem.val[0].parameters.val.is_some() && privkey.elem.val.len() > 0  {
+			let data = netpkey.elem.val[0].algor.elem.val[0].parameters.encode_asn1()?;
+			let mut objdata :Asn1Object = Asn1Object::init_asn1();
+			let _ = objdata.decode_asn1(&data)?;
+			let ectype = objdata.get_value();
+			privkey.set_ec_type_oid(&ectype)?;
+		}
+
+		return Ok(privkey);
+	}
+	asn1obj_new_error!{Asn1DefError,"not support [{}]",types}
 }
 
-pub fn get_rsa_private_key(pemfile :&str, passin :&[u8]) -> Result<RsaPrivateKey, Box<dyn Error>> {
-	let privkey = get_private_key_file(pemfile,passin)?;
+pub fn get_rsa_private_key_file(pemfile :&str,passin :&[u8]) -> Result<Asn1RsaPrivateKey,Box<dyn Error>> {
+	let pemdata = read_file(pemfile)?;
+	let (derdata,_) = pem_to_der(&pemdata)?;
+	return get_rsa_private_key(&derdata,passin);
+}
+
+pub fn get_rsa_private_key_base(pemfile :&str, passin :&[u8]) -> Result<RsaPrivateKey, Box<dyn Error>> {
+	let privkey = get_rsa_private_key_file(pemfile,passin)?;
 	let n = rsaBigUint::from_bytes_be(&privkey.elem.val[0].modulus.val.to_bytes_be());
 	let d = rsaBigUint::from_bytes_be(&privkey.elem.val[0].pubexp.val.to_bytes_be());
 	let e = rsaBigUint::from_bytes_be(&privkey.elem.val[0].privexp.val.to_bytes_be());

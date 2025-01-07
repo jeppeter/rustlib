@@ -513,7 +513,7 @@ fn pk7digestset_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSe
 	let _ = setobj.set_value(OID_SHA256_DIGEST_SET)?;
 	let mut setany :Asn1Any = Asn1Any::init_asn1();
 	let mut setdata :Vec<u8> = Vec::new();
-	let privkey = get_private_key_file(&sarr[2],passin.as_bytes())?;
+	let privkey = get_rsa_private_key_file(&sarr[2],passin.as_bytes())?;
 
 	setdata.push(ASN1_OCT_STRING_FLAG);
 	setdata.push(shadigest.len() as u8);
