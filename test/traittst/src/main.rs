@@ -16,6 +16,34 @@ struct Pig {
 	c : i32,
 }
 
+pub trait DefaultFly {
+	fn equal_default(&self,other :&Self) -> bool {
+		let sdata = self.encode_default();
+		let odata = other.encode_default();
+		if sdata.len() != odata.len() {
+			return false;
+		}
+		for idx in 0..sdata.len() {
+			if sdata[idx] != odata[idx] {
+				return false;
+			}
+		}
+		return true;
+	}
+	fn encode_default(&self) -> Vec<u8> ;
+}
+
+impl DefaultFly for Pig {
+	fn encode_default(&self) -> Vec<u8> {
+		let mut odata :Vec<u8>= vec![];
+		for idx in 0..4 {
+			odata.push((self.c >> (8 *idx) ) as u8 & 0xff);
+		}
+		return odata;
+	}
+}
+
+
 pub trait Fly  {
 	fn fly(&self) -> bool;
 	fn ccfly(&mut self) -> bool;
@@ -103,12 +131,17 @@ fn call_fly(args : Option<Arc<RefCell<dyn Fly>>>) -> Result<(),Box<dyn Error>> {
 
 fn main() {
 	let pig = Rc::new(Pig{c:20});
+	let opig = Rc::new(Pig{c:30});
+	let cpig = Rc::new(Pig{c:20});
 	let duck = Rc::new(Duck{c:23});
 	let cduck = Arc::new(RefCell::new(Duck{c:799}));
 	fly_static::<Pig>((*pig).clone());
 	fly_static::<Duck>((*duck).clone());
 	fly_static_ptr::<Pig>(&(*pig));
 	fly_static_ptr::<Duck>(&(*duck));
+
+	println!("opig equal {}",pig.equal_default(&opig));
+	println!("cpig equal {}",pig.equal_default(&cpig));
 	//fly_dyn(Box::new(pig));
 	//fly_dyn(Box::new(duck));
 	let _ = call_fly(Some(cduck.clone()));
