@@ -28,7 +28,8 @@ use super::{debug_trace,debug_buffer_trace,format_buffer_log,format_str_log};
 use super::loglib::{log_get_timestamp,log_output_function,init_log};
 
 use super::pelib::{get_securtiy_buffer,SecData};
-use super::fileop::{write_file_bytes};
+use super::fileop::{write_file_bytes,read_file_bytes};
+use pe_parser::pe::parse_portable_executable;
 
 
 
@@ -116,13 +117,33 @@ fn pesecdata_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	Ok(())
 }
 
+fn peparse_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+	//let mut lastidx :usize;
 
 
-#[extargs_map_function(pesecdata_handler)]
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let code = read_file_bytes(f)?;
+		let pe = parse_portable_executable(&code)?;
+		println!("{}", pe);
+	}
+
+
+	Ok(())
+}
+
+
+#[extargs_map_function(pesecdata_handler,peparse_handler)]
 pub fn load_pe_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
 		"pesecdata<pesecdata_handler>##file ... to display pe security data##" : {
+			"$" : "+"
+		},
+		"peparse<peparse_handler>##file ... to display pe##" : {
 			"$" : "+"
 		}
 	}
