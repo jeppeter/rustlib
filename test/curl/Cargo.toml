@@ -1,0 +1,12 @@
+[package]
+name = "curl"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+extargsparse_worker = "^0.2.0"
+extargsparse_codegen = "^0.1.4"
+lazy_static = "^1.4.0"
+regex = "1"
+chrono = "^0.4.0"
+reqwest = "^0.12.14"
