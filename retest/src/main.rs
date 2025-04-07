@@ -31,10 +31,10 @@ fn match_regex(restr :&str, instr :&str) -> bool {
 
 	let bmatch = re.is_match(instr);
 	if bmatch {
-		println!("{} match {}", instr, restr);
+		println!("[{}] match [{}]", instr, restr);
 		return true;
 	}
-	println!("{} not match {}", instr, restr );
+	println!("[{}] not match [{}]", instr, restr );
 	return false;
 }
 

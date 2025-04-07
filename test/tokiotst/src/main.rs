@@ -30,9 +30,11 @@ use std::collections::HashMap;
 //use futures::executor::block_on;
 
 mod logtrans;
+mod asynfd;
 mod exithdl_consts;
 mod exithdl;
 mod splitsock;
+mod udpsock;
 
 #[allow(unused_imports)]
 use extlog::loglib::{log_get_timestamp,log_output_function};
@@ -141,6 +143,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	extargs_load_commandline!(parser,commandline)?;
 	logtrans::prepare_log(parser.clone())?;
 	splitsock::load_sock_handler(parser.clone())?;
+	udpsock::load_udp_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();

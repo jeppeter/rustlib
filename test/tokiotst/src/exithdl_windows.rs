@@ -42,6 +42,7 @@ macro_rules! get_errno {
 
 
 
+#[allow(static_mut_refs)]
 unsafe extern "system" fn ctrl_c_handler(ty: u32) -> BOOL {
 	debug_trace!("ty 0x{:x}",ty);
 	if EXIT_EVENTFD.is_some() {
@@ -95,7 +96,7 @@ fn _trans_exit_value(sigv :u32) -> u32 {
 }
 
 
-
+#[allow(static_mut_refs)]
 pub fn init_exit_handle(sigv :Vec<u32>,tx :tokio::sync::mpsc::UnboundedSender<u32>) -> Result<(),Box<dyn Error>> {
 	unsafe {
 		if EXIT_EVENTFD.is_none() {
