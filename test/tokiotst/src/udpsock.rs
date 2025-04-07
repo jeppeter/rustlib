@@ -86,7 +86,10 @@ async fn udpsend_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let mut wsize :usize = 0;
 
 	let mut rbuf :Vec<u8>;
-	rbuf = Vec::with_capacity(2048);
+	rbuf = vec![];
+	for _ in 0..2048 {
+		rbuf.push(0);
+	}
 	while wsize < content.len(){
 		let mut cursize :usize = udpsize;
 		if (cursize + wsize) > content.len() {
@@ -96,9 +99,9 @@ async fn udpsend_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		debug_trace!("w [{}..{}]",wsize,wsize + cursize);
 		let wlen = udpsock.send(&content[wsize..(wsize + cursize)]).await?;
 		wsize += wlen;
+
 		debug_trace!("send {}",wsize);
 		rbuf.fill(0);
-
 		let rlen = udpsock.recv(&mut rbuf).await?;
 		debug_trace!("rlen {}",rlen);
 	}
@@ -138,8 +141,13 @@ async fn udp_recv_handler(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let laddr = ores.unwrap();
 	let udpsock :UdpSocket = UdpSocket::bind(&laddr).await?;
 	debug_trace!("listen on {} udpsize {}",localaddr,udpsize);
+	let mut rbuf :Vec<u8>;
+	rbuf = vec![];
+	for _ in 0..2048 {
+		rbuf.push(0);
+	}
+
 	loop {
-		let mut rbuf :Vec<u8> = Vec::with_capacity(2048) ;
 		rbuf.fill(0);
 		let ores  = udpsock.recv_from(&mut rbuf).await;
 		if ores.is_err() {
