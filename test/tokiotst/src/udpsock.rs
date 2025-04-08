@@ -199,6 +199,11 @@ async fn udp_recv_handler(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 
 	let sudpsock = UdpSocket::from_std(ncstd)?;
 
+	tokio::spawn(async move {
+		udp_recv_send(&mut rx,&sudpsock).await;
+	});
+
+	/*
 	tokio::select!{
 		_ = udp_recv_recv(&tx,&udpsock) => {
 			debug_trace!("udp recv recv");
@@ -206,7 +211,9 @@ async fn udp_recv_handler(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		_= udp_recv_send(&mut rx,&sudpsock) => {
 			debug_trace!("udp recv send");
 		}
-	}
+	}*/
+
+	udp_recv_recv(&tx,&udpsock).await;
 
 
 	/*
