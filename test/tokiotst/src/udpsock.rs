@@ -109,6 +109,8 @@ async fn udpsend_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	Ok(())
 }
 
+const UDP_RECV_HANDLE :bool = true;
+
 
 fn udpsend_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 
@@ -123,7 +125,7 @@ async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u
 }
 
 
-async fn udp_recv_send(rx :&mut tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,std::net::SocketAddr)>,sock :&tokio::net::UdpSocket) {
+async fn udp_recv_send(rx :&mut tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,std::net::SocketAddr)>,_sock :&tokio::net::UdpSocket, udpmode :bool) {
 	loop {
 		debug_trace!("will receive send");
 		let ores = rx.recv().await;
@@ -131,35 +133,48 @@ async fn udp_recv_send(rx :&mut tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,st
 		if ores.is_none() {
 			break;
 		}
-		let (rbuf,raddr) = ores.unwrap();
+		let (rbuf,_raddr) = ores.unwrap();
 		if rbuf.len() == 0 {
 			break;
 		}
 		debug_trace!("receive {}", rbuf.len());
 
-		let _ = sock.send_to(&rbuf,&raddr).await;
+		if udpmode {
+			let _ = _sock.send_to(&rbuf,&_raddr).await;	
+		}
+		
 	}
 	return;
 }
 
 #[allow(unreachable_code)]
-async fn udp_recv_recv(tx :&tokio::sync::mpsc::UnboundedSender<(Vec<u8>,std::net::SocketAddr)>,sock :&tokio::net::UdpSocket) {
+async fn udp_recv_recv(tx :&tokio::sync::mpsc::UnboundedSender<(Vec<u8>,std::net::SocketAddr)>,_sock :&tokio::net::UdpSocket,udpmode :bool) {
 	let mut rbuf :Vec<u8> = [0; 4096].to_vec();
+	let mut rsize :usize;
 	loop {
+		let cbuf :Vec<u8>;
+		let raddr :std::net::SocketAddr;
 		rbuf.fill(0);
-		debug_trace!("will receive");
-		let ores  = sock.recv_from(&mut rbuf).await;
-		if ores.is_err() {
-			debug_error!("error {:?}",ores.err().unwrap());
-			continue;
+		if udpmode {
+			debug_trace!("will receive");
+			let ores  = _sock.recv_from(&mut rbuf).await;
+			if ores.is_err() {
+				debug_error!("error {:?}",ores.err().unwrap());
+				continue;
+			}
+
+			(rsize,raddr) = ores.unwrap();
+
+			debug_trace!("rsize {}",rsize);
+			//udpsock.send_to(&rbuf[0..rsize],&raddr).await?;
+			cbuf  = rbuf[0..rsize].to_vec().clone();
+			debug_trace!("send buffer {}",cbuf.len());
+
+		} else {			
+			let _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+			cbuf = rbuf.clone();
+			raddr = "127.0.0.1:333".parse::<std::net::SocketAddr>().unwrap();
 		}
-
-		let (rsize,raddr) = ores.unwrap();
-
-		debug_trace!("rsize {}",rsize);
-		//udpsock.send_to(&rbuf[0..rsize],&raddr).await?;
-		let cbuf :Vec<u8> = rbuf[0..rsize].to_vec().clone();
-		debug_trace!("send buffer {}",cbuf.len());
 		let ores = tx.send((cbuf,raddr));
 		if ores.is_err() {
 			debug_error!("send error {:?}", ores.err().unwrap());
@@ -199,21 +214,25 @@ async fn udp_recv_handler(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 
 	let sudpsock = UdpSocket::from_std(ncstd)?;
 
+	let udpmode = ns.get_bool("udpmode");
+
+	tokio::select!{
+		_ = udp_recv_recv(&tx,&udpsock,udpmode) => {
+			debug_trace!("udp recv recv");
+		},
+		_= udp_recv_send(&mut rx,&sudpsock,udpmode) => {
+			debug_trace!("udp recv send");
+		}
+	}
+
+
+	/*
 	tokio::spawn(async move {
 		udp_recv_send(&mut rx,&sudpsock).await;
 	});
 
-	/*
-	tokio::select!{
-		_ = udp_recv_recv(&tx,&udpsock) => {
-			debug_trace!("udp recv recv");
-		},
-		_= udp_recv_send(&mut rx,&sudpsock) => {
-			debug_trace!("udp recv send");
-		}
-	}*/
-
 	udp_recv_recv(&tx,&udpsock).await;
+	*/
 
 
 	/*
@@ -255,31 +274,31 @@ fn udprecv_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 }
 
 #[allow(unreachable_code)]
-async fn simplechl_sender(tx :&tokio::sync::mpsc::UnboundedSender<u32>,timeout :u64) -> Result<(),Box<dyn Error>> {
+async fn simplechl_sender(tx :&tokio::sync::mpsc::UnboundedSender<(Vec<u8>,u32)>,timeout :u64) -> Result<(),Box<dyn Error>> {
 	let  mut cnt :u32 = 0;
 	loop {
 		let _ = tokio::time::sleep(tokio::time::Duration::from_millis(timeout)).await;
-		let _ = tx.send(cnt);
+		let _ = tx.send((vec![],cnt));
 		debug_trace!("send {}",cnt);
 		cnt += 1;
 	}
 	Ok(())
 }
 
-async fn simplechl_receiver(rx :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> Result<(),Box<dyn Error>> {
+async fn simplechl_receiver(rx :&mut tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,u32)>) -> Result<(),Box<dyn Error>> {
 	loop {
 		let ores = rx.recv().await;
 		if ores.is_none() {
 			break;
 		}
-		let val = ores.unwrap();
+		let (_,val) = ores.unwrap();
 		debug_trace!("receive {}", val);
 	}
 	Ok(())
 }
 
 async fn async_simple_chl_handler(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
-	let (tx,mut rx) = tokio::sync::mpsc::unbounded_channel::<u32>();
+	let (tx,mut rx) = tokio::sync::mpsc::unbounded_channel::<(Vec<u8>,u32)>();
 	let mut timeout :u64 = 1000;
 	let sarr = ns.get_array("subnargs");
 	if sarr.len() > 0 {
@@ -333,6 +352,7 @@ pub fn load_udp_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let commandline = r#"
 	{
 		"udpsize##to set udp size default 1250##" : 1250,
+		"udpmode" : false,
 		"udpsend<udpsend_handler>##ip:port [localip:port] to send from input default 127.0.0.1:7793 default local :9916##" : {
 			"$" : "*"
 		},
