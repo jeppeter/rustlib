@@ -119,7 +119,7 @@ impl SockHandleInner {
 			//let cdata = osnd.unwrap();
 			{
 				//let cdata = data.lock().unwrap();
-				debug_buffer_trace!(data.as_ptr(),data.len(),"inner receive and send");
+				//debug_buffer_trace!(data.as_ptr(),data.len(),"inner receive and send");
 			}
 			
 			let ores = snd.send(data);
@@ -176,9 +176,10 @@ async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u
 
 #[allow(unreachable_code)]
 async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) -> Result<(),Box<dyn Error>> {
-	let mut nbuf : Vec<u8>=vec![];
-	let mut wlen :usize;
+	//let mut nbuf : Vec<u8>=vec![];
+	//let mut wlen :usize;
 	loop {
+		/*
 		{
 			let ores = rx.recv().await;
 			if ores.is_none() {
@@ -200,8 +201,14 @@ async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio:
 				}
 
 			}
+		}*/
+		let ores = rx.recv().await;
+		if ores.is_none() {
+			continue;
 		}
-		wsock.write_all(&nbuf[0..wlen]).await?;
+
+		let nbuf = ores.unwrap();
+		wsock.write_all(&nbuf).await?;
 		//wsock.write_all(&nbuf).await?;
 	}
 	Ok(())
@@ -209,14 +216,17 @@ async fn wsock_handle(wsock :&mut tokio::net::tcp::OwnedWriteHalf,mut rx :tokio:
 
 #[allow(unreachable_code)]
 async fn rsock_handle(mut rsock :tokio::net::tcp::OwnedReadHalf,tx :tokio::sync::mpsc::UnboundedSender<(Vec<u8>,u64)>,uidx :u64) -> Result<(),Box<dyn Error>> {
-	let mut buf = [0; 1024];
+	let mut buf = [0; 4098];
 
     // In a loop, read data from the socket and write the data back.
     loop {
     	debug_info!("will read");
     	let n = match rsock.read(&mut buf).await {
             // socket closed
-            Ok(n) if n == 0 => return Ok(()),
+            Ok(n) if n == 0 => {
+            	debug_trace!("n == 0 close");
+            	return Ok(());
+            },
             Ok(n) => n,
             Err(e) => {
             	eprintln!("failed to read from socket; err = {:?}", e);
@@ -224,7 +234,7 @@ async fn rsock_handle(mut rsock :tokio::net::tcp::OwnedReadHalf,tx :tokio::sync:
             }
         };
 
-        debug_buffer_trace!(buf.as_ptr(),n,"receive buffer");
+        //debug_buffer_trace!(buf.as_ptr(),n,"receive buffer");
         let sbuf = buf[0..n].to_vec();
         let ores = tx.send((sbuf,uidx));
         if ores.is_err() {
