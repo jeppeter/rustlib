@@ -44,7 +44,7 @@ macro_rules! get_errno {
 
 #[allow(static_mut_refs)]
 unsafe extern "system" fn ctrl_c_handler(ty: u32) -> BOOL {
-	debug_trace!("ty 0x{:x}",ty);
+	debug_trace!("thread {:?} ty 0x{:x}",std::thread::current().id(),ty);
 	if EXIT_EVENTFD.is_some() {
 		let c = EXIT_EVENTFD.as_mut().unwrap();
 		for v in c.events.iter() {

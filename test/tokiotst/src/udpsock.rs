@@ -57,6 +57,7 @@ async fn udpsend_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	if sarr.len() > 1 {
 		localaddr = format!("{}",sarr[1]);
 	}
+	debug_trace!("sarr {:?}", sarr);
 
 	let ores = localaddr.parse::<std::net::SocketAddr>();
 	if ores.is_err() {
@@ -120,14 +121,23 @@ fn udpsend_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl
 	return Ok(());
 }
 
-async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u32 {
-	return exitchl.recv().await.unwrap();
+async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>, ns:NameSpaceEx) -> u32 {
+	let mut idx :u32 = 0;
+	let maxcnt :u32 = ns.get_int("ctrlcnt") as u32;
+	loop {
+		let retv = exitchl.recv().await.unwrap();
+		if idx >= maxcnt {
+			return retv;
+		}
+		debug_trace!("thread {:?} wait cnt {}",std::thread::current().id(),idx);
+		idx += 1;
+	} 
 }
 
 
 async fn udp_recv_send(rx :&mut tokio::sync::mpsc::UnboundedReceiver<(Vec<u8>,std::net::SocketAddr)>,_sock :&tokio::net::UdpSocket, udpmode :bool) {
 	loop {
-		debug_trace!("will receive send");
+		debug_trace!("thread {:?} will receive send",std::thread::current().id());
 		let ores = rx.recv().await;
 		debug_trace!("recv send return");
 		if ores.is_none() {
@@ -156,7 +166,7 @@ async fn udp_recv_recv(tx :&tokio::sync::mpsc::UnboundedSender<(Vec<u8>,std::net
 		let raddr :std::net::SocketAddr;
 		rbuf.fill(0);
 		if udpmode {
-			debug_trace!("will receive");
+			debug_trace!("thread {:?} will receive",std::thread::current().id());
 			let ores  = _sock.recv_from(&mut rbuf).await;
 			if ores.is_err() {
 				debug_error!("error {:?}",ores.err().unwrap());
@@ -252,8 +262,8 @@ async fn udprecv_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let _ = init_exit_handle(sigv,tx.clone())?;
 
 	tokio::select!{
-		_val = ctrl_recv(&mut rx) => {
-			debug_trace!("ctrl_recv");
+		_val = ctrl_recv(&mut rx,ns.clone()) => {
+			debug_trace!("thread {:?} ctrl_recv",std::thread::current().id());
 		},
 		bval = udp_recv_handler(ns) => {
 			if bval.is_err() {
@@ -323,7 +333,7 @@ async fn simplechl_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let _ = init_exit_handle(sigv,tx.clone())?;
 
 	tokio::select!{
-		_val = ctrl_recv(&mut rx) => {
+		_val = ctrl_recv(&mut rx,ns.clone()) => {
 			debug_trace!("ctrl_recv");
 		},
 		bval = async_simple_chl_handler(ns) => {
@@ -351,6 +361,7 @@ fn simplechl_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 pub fn load_udp_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let commandline = r#"
 	{
+		"ctrlcnt" : 0,
 		"udpsize##to set udp size default 1250##" : 1250,
 		"udpmode" : false,
 		"udpsend<udpsend_handler>##ip:port [localip:port] to send from input default 127.0.0.1:7793 default local :9916##" : {

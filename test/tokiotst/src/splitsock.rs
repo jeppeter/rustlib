@@ -165,9 +165,23 @@ impl SockHandle {
 
 }
 
-async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u32 {
-	return exitchl.recv().await.unwrap();
+async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>, ns:NameSpaceEx) -> u32 {
+	let mut idx :u32 = 0;
+	let maxcnt :u32 = ns.get_int("ctrlcnt") as u32;
+	loop {
+		let retv = exitchl.recv().await.unwrap();
+		if idx >= maxcnt {
+			return retv;
+		}
+		debug_trace!("thread {:?} wait cnt {}",std::thread::current().id(),idx);
+		idx += 1;
+	} 
 }
+
+
+// async fn ctrl_recv(exitchl :&mut tokio::sync::mpsc::UnboundedReceiver<u32>) -> u32 {
+// 	return exitchl.recv().await.unwrap();
+// }
 
 // async fn write_all_buffer(wsock :&mut tokio::net::tcp::OwnedWriteHalf,wbuf :&[u8]) -> Result<(),Box<dyn Error>> {
 // 	let _ = wsock.write_all(wbuf).await?;
@@ -299,7 +313,7 @@ async fn split_sock_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let _ = init_exit_handle(sigv,tx.clone())?;
 
 	tokio::select!{
-		_val = ctrl_recv(&mut rx) => {
+		_val = ctrl_recv(&mut rx,ns.clone()) => {
 			debug_trace!("ctrl_recv");
 		},
 		bval = split_sock_listen(ns) => {
@@ -429,6 +443,9 @@ pub fn load_sock_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		"splitsock<splitsock_handler>##port to listen on port##" : {
 			"$" : 1
 		},
+		"splitsend<splitsend_handler>##host:port to send for file input##" : {
+			"$" : 1
+		}
 		"evtsnd<evtsnd_handler>##[cnt] to send event call in cnt default 10##" : {
 			"$" : "?"
 		},
