@@ -212,6 +212,7 @@ async fn udp_recv_handler(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 
 	let laddr = ores.unwrap();
 	let basesock :std::net::UdpSocket = std::net::UdpSocket::bind(&laddr)?;
+	let _ = basesock.set_nonblocking(true)?;
 	let ncstd = basesock.try_clone()?;
 	let udpsock :UdpSocket = UdpSocket::from_std(basesock)?;
 	let (tx,mut rx) = tokio::sync::mpsc::unbounded_channel::<(Vec<u8>,std::net::SocketAddr)>();
