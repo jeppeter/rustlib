@@ -213,7 +213,7 @@ async fn udp_recv_handler(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 	let laddr = ores.unwrap();
 	let basesock :std::net::UdpSocket = std::net::UdpSocket::bind(&laddr)?;
 	let _ = basesock.set_nonblocking(true)?;
-	let ncstd = basesock.try_clone()?;
+	//let ncstd = basesock.try_clone()?;
 	let udpsock :UdpSocket = UdpSocket::from_std(basesock)?;
 	let (tx,mut rx) = tokio::sync::mpsc::unbounded_channel::<(Vec<u8>,std::net::SocketAddr)>();
 	debug_trace!("listen on {} udpsize {}",localaddr,udpsize);
@@ -223,7 +223,7 @@ async fn udp_recv_handler(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		rbuf.push(0);
 	}
 
-	let sudpsock = UdpSocket::from_std(ncstd)?;
+	//let sudpsock = UdpSocket::from_std(ncstd)?;
 
 	let udpmode = ns.get_bool("udpmode");
 
@@ -231,7 +231,7 @@ async fn udp_recv_handler(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
 		_ = udp_recv_recv(&tx,&udpsock,udpmode) => {
 			debug_trace!("udp recv recv");
 		},
-		_= udp_recv_send(&mut rx,&sudpsock,udpmode) => {
+		_= udp_recv_send(&mut rx,&udpsock,udpmode) => {
 			debug_trace!("udp recv send");
 		}
 	}
