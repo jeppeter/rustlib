@@ -382,9 +382,41 @@ fn simplechl_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
     return Ok(());
 }
 
+async fn timeout_main(ns :NameSpaceEx) -> Result<(),Box<dyn Error>> {
+    let sigv :Vec<u32> = vec![SIG_TERM,SIG_INT];
+    let (tx,mut _rx) = tokio::sync::mpsc::unbounded_channel::<u32>();
+    let _ = init_exit_handle(sigv,tx.clone())?;
+    let mut ntime :u64 = 500;
+
+    let sarr = ns.get_array("subnargs");
+    if sarr.len() > 0 {
+        ntime = parse_u64(&sarr[0])?;
+    }
+
+    let ores = tokio::time::timeout(tokio::time::Duration::from_millis(ntime), async {
+        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        Ok::<(),Box<dyn Error>>(())
+    }).await;
+
+    if ores.is_err() {
+        println!("timeout");
+    } else {
+        println!("Ok");
+    }
+
+    Ok(())
+}
+
+fn timeout_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {   
+
+    //let res :Result<(),Box<dyn Error>>;
+    init_log(ns.clone())?;
+    let _ =  tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap().block_on(timeout_main(ns.clone()))?;
+    return Ok(());
+}
 
 
-#[extargs_map_function(udpsend_handler,udprecv_handler,simplechl_handler)]
+#[extargs_map_function(udpsend_handler,udprecv_handler,simplechl_handler,timeout_handler)]
 pub fn load_udp_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let commandline = r#"
     {
@@ -399,6 +431,9 @@ pub fn load_udp_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : "?"
         },
         "simplechl<simplechl_handler>##[timeout] default timeout 1 second##" : {
+            "$" : "?"
+        },
+        "timehdl<timeout_handler>##[timeout] to call tokio::time::timeout functions##" : {
             "$" : "?"
         }
     }
