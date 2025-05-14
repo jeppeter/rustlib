@@ -37,7 +37,7 @@ unsafe fn _write_val(val :u64, ishex :bool) {
 	if ishex {
 		while cval > 0 {
 			let curval :u8 = (cval & 0xf) as u8;
-			if curval >= 0 && curval <= 9 {
+			if  curval <= 9 {
 				cbuf[clen] = b'0' + curval;
 			} else {
 				cbuf[clen] = b'a' + (curval - 10);
@@ -72,6 +72,7 @@ unsafe fn _write_val(val :u64, ishex :bool) {
 	return;
 }
 
+#[allow(unsafe_op_in_unsafe_fn)]
 unsafe impl GlobalAlloc for SimpleAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let size = layout.size();
