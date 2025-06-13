@@ -18,7 +18,7 @@ use std::io::{Write};
 use super::asn1def::*;
 
 #[derive(Clone)]
-#[asn1_int_choice(debug=3,unicode=0,ascii=1,selector=stype)]
+#[asn1_int_choice(unicode=0,ascii=1,selector=stype)]
 pub struct SpcString {
 	pub stype :i32,
 	pub unicode : Asn1Imp<Asn1OctData,0>,

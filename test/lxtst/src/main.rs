@@ -46,6 +46,7 @@ mod eventfd;
 mod thrtst;
 mod proctst;
 mod buildhdl;
+mod tarhdl;
 
 
 #[extargs_map_function()]
@@ -66,6 +67,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	timehdl::load_time_handler(parser.clone())?;
 	proctst::load_proc_handler(parser.clone())?;
 	buildhdl::load_build_handler(parser.clone())?;
+	tarhdl::load_tar_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();

@@ -65,6 +65,7 @@ mod winsetup;
 mod jsondata;
 mod jsonhandle;
 mod buildhdl;
+mod tarhdl;
 
 
 #[extargs_map_function()]
@@ -95,6 +96,7 @@ fn main() -> Result<(),Box<dyn Error>> {
 	serdehdl::load_serde_handler(parser.clone())?;
 	jsonhandle::load_json_handler(parser.clone())?;
 	buildhdl::load_build_handler(parser.clone())?;
+	tarhdl::load_tar_handler(parser.clone())?;
 	let ores = parser.parse_commandline_ex(None,None,None,None);
 	if ores.is_err() {
 		let e = ores.err().unwrap();
