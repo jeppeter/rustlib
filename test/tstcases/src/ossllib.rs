@@ -5,11 +5,13 @@ use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boole
 #[allow(unused_imports)]
 use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
 #[allow(unused_imports)]
-use asn1obj::strop::{asn1_format_line};
+use asn1obj::strop::{asn1_format_line,asn1_enter_debug,asn1_leave_debug};
 #[allow(unused_imports)]
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
 #[allow(unused_imports)]
 use asn1obj::{asn1obj_error_class,asn1obj_new_error};
+#[allow(unused_imports)]
+use asn1obj::{asn1_format_debug,asn1_format_debug_buffer};
 
 use std::error::Error;
 use std::boxed::Box;
@@ -276,8 +278,7 @@ pub struct TimeStampAccuracy {
 	pub elem :Asn1Seq<TimeStampAccuracyElem>,
 }
 
-//#[asn1_sequence()]
-#[asn1_sequence(debug=enable)]
+#[asn1_sequence()]
 #[derive(Clone)]
 pub struct SpcAsn1CodeElem {
 	pub classid : Asn1OctData,

@@ -29,6 +29,8 @@ use super::*;
 use tar::{Builder,Archive};
 use std::io::Write;
 
+use chrono::{NaiveDateTime};
+
 extargs_error_class!{TarHdlError}
 
 struct FileOutput {
@@ -260,9 +262,21 @@ fn taradd_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>
     Ok(())
 }
 
+fn timeget_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {  
+    let sarr :Vec<String>  = ns.get_array("subnargs");
+    let format:&str = "%Y-%m-%d %H:%M:%S";
+
+    init_log(ns.clone())?;
+
+    for f in sarr.iter() {
+        let ct :NaiveDateTime = NaiveDateTime::parse_from_str(f,format)?;
+        println!("{} parse date {}", f,ct);
+    }
+    Ok(())
+}
 
 
-#[extargs_map_function(tarcreate_handler,tardelete_handler,taradd_handler)]
+#[extargs_map_function(tarcreate_handler,tardelete_handler,taradd_handler,timeget_handler)]
 pub fn load_tar_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
     let cmdline = r#"
     {
@@ -274,6 +288,9 @@ pub fn load_tar_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
             "$" : "+"
         },
         "taradd<taradd_handler>##fname ... to add file##" : {
+            "$" : "+"
+        },
+        "timeget<timeget_handler>##timestr ... to transformat yyyy-mm-dd HH:MM:SS##" : {
             "$" : "+"
         }
     }
