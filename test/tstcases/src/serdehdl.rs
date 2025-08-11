@@ -5,6 +5,21 @@ use extargsparse_worker::argset::{ArgSetImpl};
 use extargsparse_worker::parser::{ExtArgsParser};
 use extargsparse_worker::funccall::{ExtArgsParseFunc};
 
+#[allow(unused_imports)]
+use asn1obj_codegen::{asn1_choice,asn1_obj_selector,asn1_sequence,asn1_int_choice};
+#[allow(unused_imports)]
+use asn1obj::base::{Asn1Object,Asn1Integer,Asn1BigNum,Asn1Any,Asn1Time,Asn1Boolean,Asn1PrintableString,Asn1BitString,Asn1Null,Asn1OctData,Asn1BitData,Asn1IA5String,Asn1BitDataFlag};
+#[allow(unused_imports)]
+use asn1obj::complex::{Asn1Set,Asn1ImpSet,Asn1Seq,Asn1Opt,Asn1Imp,Asn1Ndef,Asn1SeqSelector,Asn1BitSeq};
+#[allow(unused_imports)]
+use asn1obj::{asn1obj_error_class,asn1obj_new_error};
+use asn1obj::asn1impl::Asn1Op;
+#[allow(unused_imports)]
+use asn1obj::strop::{asn1_format_line};
+
+use std::io::{Write};
+
+
 
 use std::cell::RefCell;
 use std::sync::Arc;
@@ -85,7 +100,7 @@ struct NVersion {
 }
 
 
-use serde::ser::{SerializeSeq};
+use serde::ser::{SerializeSeq,SerializeStruct};
 
 fn data_serialize<S>(data :&Vec<u8>,serializer: S) -> Result<S::Ok, S::Error> where S: serde::ser::Serializer {
 	let mut seq = serializer.serialize_seq(Some(data.len()))?;
@@ -95,105 +110,134 @@ fn data_serialize<S>(data :&Vec<u8>,serializer: S) -> Result<S::Ok, S::Error> wh
 	seq.end()
 }
 
-struct ExtendVec<'a, T: 'a>(&'a mut Vec<T>);
 
-impl<'de, 'a, T> serde::de::DeserializeSeed<'de> for ExtendVec<'a, T>
-where
-T: serde::de::Deserialize<'de>,
-{
-     // The return type of the `deserialize` method. This implementation
-     // appends onto an existing vector but does not create any new data
-     // structure, so the return type is ().
-     type Value = ();
+#[allow(dead_code)]
+struct FlatternVecVisitor(Vec<u8>);
 
-     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-     where
-     D: serde::de::Deserializer<'de>,
-     {
-         // Visitor implementation that will walk an inner array of the JSON
-         // input.
-         struct ExtendVecVisitor<'a, T: 'a>(&'a mut Vec<T>);
+impl<'de> serde::de::Visitor<'de> for FlatternVecVisitor {
+	type Value = Vec<u8>;
 
-         impl<'de, 'a, T> serde::de::Visitor<'de> for ExtendVecVisitor<'a, T>
-         where
-         T: serde::de::Deserialize<'de>,
-         {
-         	type Value = ();
-
-         	fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-         		write!(formatter, "an array of integers")
-         	}
-
-         	fn visit_seq<A>(self, mut seq: A) -> Result<(), A::Error>
-         	where
-         	A: serde::de::SeqAccess<'de>,
-         	{
-                 // Decrease the number of reallocations if there are many elements
-                 if let Some(size_hint) = seq.size_hint() {
-                 	self.0.reserve(size_hint);
-                 }
-
-                 // Visit each element in the inner array and push it onto
-                 // the existing vector.
-                 while let Some(elem) = seq.next_element()? {
-                 	self.0.push(elem);
-                 }
-                 Ok(())
-             }
-         }
-
-         deserializer.deserialize_seq(ExtendVecVisitor(self.0))
-     }
- }
+	fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(formatter, "an array of arrays")
+	}
 
 
 
- struct FlattenedVecVisitor(Vec<u8>);
+	fn visit_seq<A>(self, mut seq: A) -> Result<Vec<u8>, A::Error>
+	where A: serde::de::SeqAccess<'de>,
+	{
+		let mut vec :Vec<u8>= Vec::new();
 
- impl<'de> serde::de::Visitor<'de> for FlattenedVecVisitor {
-     // This Visitor constructs a single Vec<T> to hold the flattened
-     // contents of the inner arrays.
-     type Value = Vec<u8>;
+		while let Some(v) = seq.next_element()? {
+			vec.push(v);
+		}
 
-     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-     	write!(formatter, "an array of arrays")
-     }
-
-     fn visit_seq<A>(self, mut seq: A) -> Result<Vec<u8>, A::Error>
-     where
-     A: serde::de::SeqAccess<'de>,
-     {
-         // Create a single Vec to hold the flattened contents.
-         let mut vec :Vec<u8>= Vec::new();
-
-         // Each iteration through this loop is one inner array.
-         while let Some(()) = seq.next_element_seed(ExtendVec(&mut vec))? {
-         }
-
-         // Return the finished vec.
-         Ok(vec)
-     }
- }
-
-
- fn data_deserialize<'de, D>(deserializer :D) -> Result<Vec<u8>, D::Error> 
- where D: serde::de::Deserializer<'de> {
- 	let visitor = FlattenedVecVisitor(vec![]);
- 	let val = deserializer.deserialize_any(visitor)?;
- 	Ok(val)
- }
+		Ok(vec)
+	}
+}
 
 
 
- fn implserde_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
- 	let sarr :Vec<String>;
+fn data_deserialize<'de, D>(deserializer :D) -> Result<Vec<u8>, D::Error> 
+where D: serde::de::Deserializer<'de> {
 
- 	init_log(ns.clone())?;
+	let visitor :FlatternVecVisitor = FlatternVecVisitor(vec![]);
+	let val = deserializer.deserialize_seq(visitor)?;
+	Ok(val)
+}
 
- 	sarr = ns.get_array("subnargs");
- 	for f in sarr.iter() {
- 		let s = read_file(f)?;
- 		let p :NVersion = serde_json::from_str(&s)?;
+
+//#[asn1_sequence()]
+#[derive(Clone)]
+#[derive(Serialize,Deserialize)]
+pub struct Asn1X509NameAnyElement {
+	#[serde(serialize_with = "obj_serialize", deserialize_with = "obj_deserialize")]
+	pub obj :Asn1Object,
+	#[serde(serialize_with = "value_serialize" , deserialize_with = "value_deserialize")]
+	pub value :Asn1Any,
+}
+
+fn obj_serialize<S>(obj :&Asn1Object,serializer: S) -> Result<S::Ok, S::Error> where S: serde::ser::Serializer {
+	serializer.serialize_str(&obj.get_value())
+}
+
+struct StringVisitor(String);
+
+impl<'de> serde::de::Visitor<'de> for StringVisitor {
+	type Value = String;
+
+	fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(formatter, "an string")
+	}
+
+
+
+	fn visit_string<E>(self, v :String) -> Result<Self::Value,E>
+	where E :Error
+	{
+		Ok(v)
+	}
+}
+
+#[derive(Debug,Clone)]
+pub struct SerdeError {
+	msg :String,		
+}
+
+#[allow(dead_code)]
+impl SerdeError {
+	fn create(c :&str) -> SerdeError {
+		SerdeError {msg : format!("{}",c)}
+	}
+}
+
+impl std::fmt::Display for SerdeError {
+	fn fmt(&self,f :&mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(f,"{}",self.msg)
+	}
+}
+
+impl std::error::Error for SerdeError {}
+
+
+
+fn obj_deserialize<'de, D>(deserializer :D) -> Result<Asn1Object,D::Error> 
+where D: serde::de::Deserializer<'de> {
+	let vs :StringVisitor = StringVisitor("".to_string());
+	let s = format!("{}",deserializer.deserialize_string(vs)?);
+	let mut obj :Asn1Object = Asn1Object::init_asn1();
+	let ores = obj.set_value(&s);
+	if ores.is_err() {
+		let e  : D::Error =  serde::de::Error::custom( ores.err().unwrap().to_string());
+		return Err(e);
+	}
+	Ok(obj)
+}
+
+fn value_serialize<S>(oany :&Asn1Any,serializer: S) -> Result<S::Ok, S::Error> where S: serde::ser::Serializer {
+	let mut map = serializer.serialize_struct("Asn1Any",2)?;
+	map.serialize_field("tag",&oany.tag)?;
+	map.serialize_field("data",&oany.content)?;
+	map.end()
+}
+
+fn value_deserialize<'de, D>(deserializer :D) -> Result<Asn1Any, D::Error> 
+where D: serde::de::Deserializer<'de> {
+	let retv :Asn1Any = Asn1Any::init_asn1();
+	Ok(retv)
+}
+
+
+
+fn implserde_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let s = read_file(f)?;
+		let p :NVersion = serde_json::from_str(&s)?;
 
 		//let p :Person = ores.unwrap();
 		println!("{}\n{:?}",f, p);
