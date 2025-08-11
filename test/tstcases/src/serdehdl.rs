@@ -26,8 +26,8 @@ use super::fileop::{read_file};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Person {
-    name: String,
-    age: u8,
+	name: String,
+	age: u8,
 }
 
 fn serdeperson_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
@@ -77,8 +77,61 @@ fn serdeflattern_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	Ok(())
 }
 
+#[derive(Debug)]
+struct NVersion {
+	oid :String,
+	data :Vec<u8>,
+}
 
-#[extargs_map_function(serdeperson_handler,serdeflattern_handler)]
+use serde::ser::SerializeStruct;
+use serde::de::{Visitor};
+
+impl<'de> serde::de::Deserialize<'de> for NVersion {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where   D: serde::de::Deserializer<'de> {
+
+    	Ok(NVersion{
+    		oid : "".to_string(),
+    		data : vec![],
+    	})
+    }
+}
+
+
+impl serde::ser::Serialize for NVersion {
+
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where  S: serde::ser::Serializer {
+    	let mut nversion  = serializer.serialize_struct("NVersion",2)?;
+    	nversion.serialize_field("oid",&self.oid)?;
+    	nversion.serialize_field("data",&self.data)?;
+    	nversion.end()
+    }
+}
+
+
+
+fn implserde_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
+	let sarr :Vec<String>;
+
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+	for f in sarr.iter() {
+		let s = read_file(f)?;
+		let p :NVersion = serde_json::from_str(&s)?;
+
+		//let p :Person = ores.unwrap();
+		println!("{}\n{:?}",f, p);
+		let j :String = serde_json::to_string(&p)?;
+		println!("to_string\n{}", j);
+	}
+	Ok(())
+}
+
+
+
+#[extargs_map_function(serdeperson_handler,serdeflattern_handler,implserde_handler)]
 pub fn load_serde_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -86,6 +139,9 @@ pub fn load_serde_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "*"
 		},
 		"serdeflattern<serdeflattern_handler>##inputname ...##" : {
+			"$" : "+"
+		},
+		"implserde<implserde_handler>##file ... to serialize and deserialize##" : {
 			"$" : "+"
 		}
 	}
