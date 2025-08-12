@@ -20,6 +20,8 @@ use asn1obj::strop::{asn1_format_line};
 #[allow(unused_imports)]
 use std::io::{Write};
 
+use num_bigint::{BigInt};
+use num_traits::{zero};
 
 
 use std::cell::RefCell;
@@ -33,12 +35,15 @@ use std::any::Any;
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use crate::strop::parse_to_bigint;
 
 //use super::{debug_trace,debug_warn,debug_error,debug_info,debug_debug,format_str_log};
 //use super::loglib::{log_get_timestamp,log_output_function,init_log};
 use super::loglib::{init_log};
 use serde::{Deserialize, Serialize};
 use super::fileop::{read_file};
+
+use chrono::{Utc,Datelike,DateTime};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Person {
@@ -435,13 +440,13 @@ pub enum KeyUsage {
 #[derive(Debug)]
 #[derive(Clone,Serialize,Deserialize)]
 pub struct X509BuildConfig {
-	#[serde(default = "serial_number_default")]
+	#[serde(default = "serial_number_default",serialize_with="bigint_serialize", deserialize_with="bigint_deserialize")]
 	pub serial_number  :BigInt,
 	#[serde(default = "signature_algorithm_default")]
 	pub signature_algorithm :SignatureAlgorithm,
 	#[serde(default = "pkix_name_default")]
 	pub issuer :PkixNameFake,
-	#[serde(default = "data_time_default")]
+	#[serde(default = "data_time_default", serialize_with="date_time_serialize", deserialize_with="date_time_deserialize")]
 	pub not_before :DateTime<Utc>,
 	#[serde(default = "vec_key_usage_default")]
 	pub key_usage :Vec<KeyUsage>,
@@ -449,8 +454,32 @@ pub struct X509BuildConfig {
 	pub ext_key_usage :Vec<ExtKeyUsage>,
 }
 
+
+fn bigint_serialize<S>(oany :&BigInt,serializer: S) -> Result<S::Ok, S::Error> where S: serde::ser::Serializer {
+	let c :String = format!("0x{:x}",oany);
+	serializer.serialize_str(&c)
+}
+
+
+
+
+fn bigint_deserialize<'de, D>(deserializer :D) -> Result<BigInt, D::Error> 
+where D: serde::de::Deserializer<'de> {
+	let vs :StringVisitor = StringVisitor("".to_string());
+	let c :String = format!("{}",deserializer.deserialize_str(vs)?);
+	let retv :BigInt ;
+	let ores = parse_to_bigint(&c);
+	if ores.is_err() {
+		let e  : D::Error =  serde::de::Error::custom( ores.err().unwrap().to_string());
+		return Err(e);
+	}
+	retv = ores.unwrap();
+	Ok(retv)
+}
+
+
 fn serial_number_default() -> BigInt {
-	BigInt::zero()
+	zero()
 }
 
 fn signature_algorithm_default() -> SignatureAlgorithm {
@@ -463,6 +492,29 @@ fn pkix_name_default() -> PkixNameFake {
 		extra_names : vec![],
 	}
 }
+
+fn date_time_serialize<S>(oany :&DateTime<Utc>,serializer: S) -> Result<S::Ok, S::Error> where S: serde::ser::Serializer {
+	let c :String = format!("0x{:x}",oany);
+	serializer.serialize_str(&c)
+}
+
+
+
+
+fn bigint_deserialize<'de, D>(deserializer :D) -> Result<DateTime<Utc>, D::Error> 
+where D: serde::de::Deserializer<'de> {
+	let vs :StringVisitor = StringVisitor("".to_string());
+	let c :String = format!("{}",deserializer.deserialize_str(vs)?);
+	let retv :BigInt ;
+	let ores = parse_to_bigint(&c);
+	if ores.is_err() {
+		let e  : D::Error =  serde::de::Error::custom( ores.err().unwrap().to_string());
+		return Err(e);
+	}
+	retv = ores.unwrap();
+	Ok(retv)
+}
+
 
 fn data_time_default() -> DateTime<Utc> {
 	Utc::now()
