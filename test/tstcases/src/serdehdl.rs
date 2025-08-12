@@ -17,6 +17,7 @@ use asn1obj::asn1impl::Asn1Op;
 #[allow(unused_imports)]
 use asn1obj::strop::{asn1_format_line};
 
+#[allow(unused_imports)]
 use std::io::{Write};
 
 
@@ -147,7 +148,7 @@ where D: serde::de::Deserializer<'de> {
 }
 
 
-//#[asn1_sequence()]
+#[asn1_sequence()]
 #[derive(Clone)]
 #[derive(Serialize,Deserialize)]
 pub struct Asn1X509NameAnyElement {
@@ -161,6 +162,7 @@ fn obj_serialize<S>(obj :&Asn1Object,serializer: S) -> Result<S::Ok, S::Error> w
 	serializer.serialize_str(&obj.get_value())
 }
 
+#[allow(dead_code)]
 struct StringVisitor(String);
 
 impl<'de> serde::de::Visitor<'de> for StringVisitor {
@@ -172,39 +174,20 @@ impl<'de> serde::de::Visitor<'de> for StringVisitor {
 
 
 
-	fn visit_string<E>(self, v :String) -> Result<Self::Value,E>
+	fn visit_str<E>(self, v :&str) -> Result<Self::Value,E>
 	where E :Error
 	{
-		Ok(v)
+		Ok(format!("{}",v))
 	}
 }
 
-#[derive(Debug,Clone)]
-pub struct SerdeError {
-	msg :String,		
-}
-
-#[allow(dead_code)]
-impl SerdeError {
-	fn create(c :&str) -> SerdeError {
-		SerdeError {msg : format!("{}",c)}
-	}
-}
-
-impl std::fmt::Display for SerdeError {
-	fn fmt(&self,f :&mut std::fmt::Formatter) -> std::fmt::Result {
-		write!(f,"{}",self.msg)
-	}
-}
-
-impl std::error::Error for SerdeError {}
 
 
 
 fn obj_deserialize<'de, D>(deserializer :D) -> Result<Asn1Object,D::Error> 
 where D: serde::de::Deserializer<'de> {
 	let vs :StringVisitor = StringVisitor("".to_string());
-	let s = format!("{}",deserializer.deserialize_string(vs)?);
+	let s = format!("{}",deserializer.deserialize_str(vs)?);
 	let mut obj :Asn1Object = Asn1Object::init_asn1();
 	let ores = obj.set_value(&s);
 	if ores.is_err() {
@@ -221,11 +204,279 @@ fn value_serialize<S>(oany :&Asn1Any,serializer: S) -> Result<S::Ok, S::Error> w
 	map.end()
 }
 
+#[allow(dead_code)]
+struct Asn1AnyVisitor(Asn1Any);
+
+impl<'de> serde::de::Visitor<'de> for Asn1AnyVisitor {
+	type Value = Asn1Any;
+
+	fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(formatter, "a map need")
+	}
+
+
+
+	fn visit_map<A>(self, mut mapv: A) -> Result<Asn1Any, A::Error>
+	where A: serde::de::MapAccess<'de>,
+	{
+		let mut oany :Asn1Any = Asn1Any::init_asn1();
+		let mut tagv :Option<u64> = None;
+		let mut contentv :Option<Vec<u8>> = None;
+
+		while let Some(key) = mapv.next_key::<String>()? {
+			match key.as_str() {
+				"tag" => {
+
+					if tagv.is_some() {
+						return Err(serde::de::Error::duplicate_field("tag"));
+					}
+					tagv = Some(mapv.next_value::<u64>()?);
+				},
+				"content" => {
+					if contentv.is_some() {
+						return Err(serde::de::Error::duplicate_field("content"));
+					}
+					contentv = Some(mapv.next_value::<Vec<u8>>()?);
+				},
+				_ => {
+
+				},
+			}
+		}
+
+		if tagv.is_some() {
+			oany.tag = tagv.as_ref().unwrap().clone();
+		}
+
+		if contentv.is_some() {
+			oany.content = contentv.as_ref().unwrap().clone();
+		}
+
+		Ok(oany)
+	}
+}
+
+
+
 fn value_deserialize<'de, D>(deserializer :D) -> Result<Asn1Any, D::Error> 
 where D: serde::de::Deserializer<'de> {
-	let retv :Asn1Any = Asn1Any::init_asn1();
-	Ok(retv)
+	let visitor :Asn1AnyVisitor = Asn1AnyVisitor(Asn1Any::init_asn1());
+	deserializer.deserialize_map(visitor)
 }
+
+
+#[derive(Clone,Serialize,Deserialize)]
+struct PkixNameFake {
+	#[serde(default = "array_default")]
+	pub country :Vec<String>,
+	#[serde(serialize_with="extra_serialize", deserialize_with="extra_deserialize" ,default="extra_default")]
+	pub extra_names :Vec<Asn1X509NameAnyElement>,
+}
+
+fn array_default() -> Vec<String> {
+	vec![]
+}
+
+fn extra_default() -> Vec<Asn1X509NameAnyElement> {
+	vec![]
+}
+
+macro_rules! expand_pkix_fmt {
+	($name :expr, $elem :expr, $f :expr) => {
+		let mut _idx :usize = 0;
+		$f.write_fmt(format_args!("{} : [",$name))?;
+		while _idx < $elem.len() {
+			if _idx > 0 {
+				$f.write_fmt(format_args!(","))?;
+			}
+			$f.write_fmt(format_args!("\"{}\"",$elem[_idx]))?;
+			_idx += 1;
+		}
+		$f.write_fmt(format_args!("]"))?;
+	};
+}
+
+
+macro_rules! expand_pkix_fmt_extra {
+	($name :expr, $elem :expr, $f :expr) => {
+		let mut _idx :usize = 0;
+		let mut _jdx :usize;
+		$f.write_fmt(format_args!("{} :[",$name))?;
+		while _idx < $elem.len() {
+			if _idx > 0 {
+				$f.write_fmt(format_args!(","))?;
+			}
+			$f.write_fmt(format_args!("{{ obj :\"{}\" ,tag: {}, content[",$elem[_idx].obj.get_value(),$elem[_idx].value.tag))?;
+			_jdx = 0;
+			while _jdx < $elem[_idx].value.content.len() {
+				if _jdx > 0 {
+					$f.write_fmt(format_args!(","))?;
+				}
+				$f.write_fmt(format_args!("{}",$elem[_idx].value.content[_jdx]))?;
+				_jdx += 1;
+			}
+			$f.write_fmt(format_args!("]}}"))?;
+			_idx += 1;
+		}
+		$f.write_fmt(format_args!("]"))?;		
+	};
+}
+
+
+impl std::fmt::Debug for PkixNameFake {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.write_fmt(format_args!("PkixName{{"))?;
+		expand_pkix_fmt!("country",self.country,f);
+		f.write_fmt(format_args!(","))?;
+		expand_pkix_fmt_extra!("extra_names",self.extra_names,f);
+		f.write_fmt(format_args!("}}"))
+	}
+}
+
+fn extra_serialize<S>(oany :&Vec<Asn1X509NameAnyElement>,serializer: S) -> Result<S::Ok, S::Error> where S: serde::ser::Serializer {
+	let mut seq = serializer.serialize_seq(Some(oany.len()))?;
+	for v in oany.iter() {
+		seq.serialize_element(v)?;
+	}
+	seq.end()
+}
+
+#[allow(dead_code)]
+struct Asn1X509NameAnyElementSeq(Vec<Asn1X509NameAnyElement>);
+
+impl<'de> serde::de::Visitor<'de> for Asn1X509NameAnyElementSeq {
+	type Value = Vec<Asn1X509NameAnyElement>;
+
+	fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(formatter, "an array need")
+	}
+
+
+
+	fn visit_seq<A>(self, mut seq: A) -> Result<Vec<Asn1X509NameAnyElement>, A::Error>
+	where A: serde::de::SeqAccess<'de>,
+	{
+		let mut vec :Vec<Asn1X509NameAnyElement>= Vec::new();
+
+		while let Some(v) = seq.next_element::<Asn1X509NameAnyElement>()? {
+			vec.push(v);
+		}
+		Ok(vec)
+
+	}
+}
+
+
+
+fn extra_deserialize<'de, D>(deserializer :D) -> Result<Vec<Asn1X509NameAnyElement>, D::Error> 
+where D: serde::de::Deserializer<'de> {
+	let visitor :Asn1X509NameAnyElementSeq = Asn1X509NameAnyElementSeq(vec![]);
+	deserializer.deserialize_seq(visitor)
+}
+
+#[derive(Debug)]
+#[derive(Clone,Serialize,Deserialize)]
+pub enum SignatureAlgorithm {
+	UnknownSignatureAlgorithm,
+	MD2WithRSA,
+	MD5WithRSA,
+	SHA1WithRSA,
+	SHA256WithRSA,
+	SHA384WithRSA,
+	SHA512WithRSA,
+	DSAWithSHA1,
+	DSAWithSHA256,
+	ECDSAWithSHA1,
+	ECDSAWithSHA256,
+	ECDSAWithSHA384,
+	ECDSAWithSHA512,
+	SHA256WithRSAPSS,
+	SHA384WithRSAPSS,
+	SHA512WithRSAPSS,
+	PureEd25519,
+}
+
+#[derive(Clone)]
+#[derive(Debug,Serialize,Deserialize)]
+pub enum ExtKeyUsage {
+    ExtKeyUsageAny,
+    ExtKeyUsageServerAuth,
+    ExtKeyUsageClientAuth,
+    ExtKeyUsageCodeSigning,
+    ExtKeyUsageEmailProtection,
+    ExtKeyUsageIPSECEndSystem,
+    ExtKeyUsageIPSECTunnel,
+    ExtKeyUsageIPSECUser,
+    ExtKeyUsageTimeStamping,
+    ExtKeyUsageOCSPSigning,
+    ExtKeyUsageMicrosoftServerGatedCrypto,
+    ExtKeyUsageNetscapeServerGatedCrypto,
+    ExtKeyUsageMicrosoftCommercialCodeSigning,
+    ExtKeyUsageMicrosoftKernelCodeSigning,
+}
+
+#[derive(Debug)]
+#[derive(Clone,Serialize,Deserialize)]
+pub enum KeyUsage {
+	KeyUsageDigitalSignature,
+	KeyUsageContentCommitment,
+	KeyUsageKeyEncipherment,
+	KeyUsageDataEncipherment,
+	KeyUsageKeyAgreement,
+	KeyUsageCertSign,
+	KeyUsageCRLSign,
+	KeyUsageEncipherOnly,
+	KeyUsageDecipherOnly,
+}
+
+
+
+
+#[derive(Debug)]
+#[derive(Clone,Serialize,Deserialize)]
+pub struct X509BuildConfig {
+	#[serde(default = "serial_number_default")]
+	pub serial_number  :BigInt,
+	#[serde(default = "signature_algorithm_default")]
+	pub signature_algorithm :SignatureAlgorithm,
+	#[serde(default = "pkix_name_default")]
+	pub issuer :PkixNameFake,
+	#[serde(default = "data_time_default")]
+	pub not_before :DateTime<Utc>,
+	#[serde(default = "vec_key_usage_default")]
+	pub key_usage :Vec<KeyUsage>,
+	#[serde(default = "vec_ext_key_usage_default")]
+	pub ext_key_usage :Vec<ExtKeyUsage>,
+}
+
+fn serial_number_default() -> BigInt {
+	BigInt::zero()
+}
+
+fn signature_algorithm_default() -> SignatureAlgorithm {
+	SignatureAlgorithm::UnknownSignatureAlgorithm
+}
+
+fn pkix_name_default() -> PkixNameFake {
+	PkixNameFake {
+		country : vec![],
+		extra_names : vec![],
+	}
+}
+
+fn data_time_default() -> DateTime<Utc> {
+	Utc::now()
+}
+
+
+fn vec_key_usage_default() -> Vec<KeyUsage> {
+	vec![]
+}
+
+fn vec_ext_key_usage_default() -> Vec<ExtKeyUsage> {
+	vec![]
+}
+
 
 
 
@@ -235,9 +486,10 @@ fn implserde_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	init_log(ns.clone())?;
 
 	sarr = ns.get_array("subnargs");
+	let mut sout = std::io::stdout();
 	for f in sarr.iter() {
 		let s = read_file(f)?;
-		let p :NVersion = serde_json::from_str(&s)?;
+		let p :X509BuildConfig = serde_json::from_str(&s)?;
 
 		//let p :Person = ores.unwrap();
 		println!("{}\n{:?}",f, p);
