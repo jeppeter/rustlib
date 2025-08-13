@@ -43,7 +43,7 @@ use super::loglib::{init_log};
 use serde::{Deserialize, Serialize};
 use super::fileop::{read_file};
 
-use chrono::{Utc,Datelike,DateTime};
+use chrono::{Utc,DateTime};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Person {
@@ -271,7 +271,7 @@ where D: serde::de::Deserializer<'de> {
 
 
 #[derive(Clone,Serialize,Deserialize)]
-struct PkixNameFake {
+pub struct PkixNameFake {
 	#[serde(default = "array_default")]
 	pub country :Vec<String>,
 	#[serde(serialize_with="extra_serialize", deserialize_with="extra_deserialize" ,default="extra_default")]
@@ -493,27 +493,26 @@ fn pkix_name_default() -> PkixNameFake {
 	}
 }
 
-fn date_time_serialize<S>(oany :&DateTime<Utc>,serializer: S) -> Result<S::Ok, S::Error> where S: serde::ser::Serializer {
-	let c :String = format!("0x{:x}",oany);
+fn date_time_serialize<S>(utime :&DateTime<Utc>,serializer: S) -> Result<S::Ok, S::Error> where S: serde::ser::Serializer {
+	let c :String = format!("{}", utime.format("%Y-%m-%d %H:%M:%S"));
 	serializer.serialize_str(&c)
 }
 
-
-
-
-fn bigint_deserialize<'de, D>(deserializer :D) -> Result<DateTime<Utc>, D::Error> 
+fn date_time_deserialize<'de, D>(deserializer :D) -> Result<DateTime<Utc>, D::Error> 
 where D: serde::de::Deserializer<'de> {
 	let vs :StringVisitor = StringVisitor("".to_string());
-	let c :String = format!("{}",deserializer.deserialize_str(vs)?);
-	let retv :BigInt ;
-	let ores = parse_to_bigint(&c);
+	let mut c :String = format!("{}",deserializer.deserialize_str(vs)?);
+	let formats :&str = "%Y-%m-%d %H:%M:%S%z";
+	c.push_str("+00:00");
+	let ores = DateTime::parse_from_str(&c,formats);
 	if ores.is_err() {
 		let e  : D::Error =  serde::de::Error::custom( ores.err().unwrap().to_string());
-		return Err(e);
+		return Err(e);		
 	}
-	retv = ores.unwrap();
+	let retv :DateTime<Utc> = ores.unwrap().into();
 	Ok(retv)
 }
+
 
 
 fn data_time_default() -> DateTime<Utc> {
@@ -538,7 +537,6 @@ fn implserde_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 	init_log(ns.clone())?;
 
 	sarr = ns.get_array("subnargs");
-	let mut sout = std::io::stdout();
 	for f in sarr.iter() {
 		let s = read_file(f)?;
 		let p :X509BuildConfig = serde_json::from_str(&s)?;
