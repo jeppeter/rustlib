@@ -19,23 +19,23 @@ use std::io::{Write};
 
 use super::asn1def::*;
 
-#[derive(Clone)]
 #[asn1_int_choice(unicode=0,ascii=1,selector=stype)]
+#[derive(Clone)]
 pub struct SpcString {
 	pub stype :i32,
 	pub unicode : Asn1Imp<Asn1OctData,0>,
 	pub ascii :Asn1Imp<Asn1OctData,1>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct SpcSerializedObject {
 	pub classid :Asn1OctData,
 	pub serializeddata : Asn1OctData,
 }
 
-#[derive(Clone)]
 #[asn1_int_choice(selector=stype,url=0,moniker=1,file=2)]
+#[derive(Clone)]
 pub struct SpcLink {
 	pub stype :i32,
 	pub url :Asn1ImpSet<Asn1OctData,0>,
@@ -44,93 +44,93 @@ pub struct SpcLink {
 }
 
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct SpcSpOpusInfo {
 	pub programname :SpcString,
 	pub moreinfo : SpcLink,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct SpcAttributeTypeAndOptionalValueElem {
 	pub otype  :Asn1Object,
 	pub value :Asn1Any,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct SpcAttributeTypeAndOptionalValue {
 	pub elem :Asn1Seq<SpcAttributeTypeAndOptionalValueElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct AlgorithmIdentifierElem {
 	pub algorithm : Asn1Object,
 	pub parameters : Asn1Any,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct AlgorithmIdentifier {
 	pub elem : Asn1Seq<AlgorithmIdentifierElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct DigestInfoElem {
 	pub digestalgorithm :AlgorithmIdentifier,
 	pub digest :Asn1OctData,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct DigestInfo {
 	pub elem : Asn1Seq<DigestInfoElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct SpcIndirectDataContentElem {
 	pub data :SpcAttributeTypeAndOptionalValue,
 	pub messagedigest :DigestInfo,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct SpcIndirectDataContent {
 	pub elem :Asn1Seq<SpcIndirectDataContentElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct CatalogAuthAttrElem {
 	pub otype :Asn1Object,
 	pub contents : Asn1Opt<Asn1Any>,	
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct CatalogAuthAttr {
 	pub elem :Asn1Seq<CatalogAuthAttrElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct CatalogInfoElem {
 	pub digest : Asn1OctData,
 	pub attributes :Asn1Set<CatalogAuthAttr>,	
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct CatalogInfo {
 	pub elem : Asn1Seq<CatalogInfoElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct MsCtlContentElem {
 	pub stype :SpcAttributeTypeAndOptionalValue,
 	pub identifier : Asn1OctData,
@@ -140,27 +140,27 @@ pub struct MsCtlContentElem {
 	pub filename :Asn1Opt<Asn1Any>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct MsCtlContent {
 	pub elem :Asn1Seq<MsCtlContentElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct SpcPeImageDataElem {
 	pub flags : Asn1BitData,
 	pub file :Asn1Opt<SpcLink>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct SpcPeImageData {
 	pub elem :Asn1Seq<SpcPeImageDataElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct SpcSipInfoElem {
 	pub a :Asn1Integer,
 	pub stringv :Asn1OctData,
@@ -171,84 +171,80 @@ pub struct SpcSipInfoElem {
 	pub f :Asn1Integer,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct SpcSipInfo {
 	pub elem :Asn1Seq<SpcSipInfoElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct MessageImprintElem {
 	pub digestalgorithm :AlgorithmIdentifier,
 	pub digest : Asn1OctData,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct MessageImprint {
 	pub elem :Asn1Seq<MessageImprintElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct TimeStampRequestBlobElem {
 	pub otype :Asn1Object,
 	pub signature :Asn1OctData,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct TimeStampRequestBlob {
 	pub elem :Asn1Seq<TimeStampRequestBlobElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct TimeStampRequestElem {
 	pub otype :Asn1Object,
 	pub blob :TimeStampRequestBlob,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct TimeStampRequest {
 	pub elem :Asn1Seq<TimeStampRequestElem>,
 }
 
-//#[asn1_sequence(debug=enable)]
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct PKIStatusInfoElem {
 	pub status :Asn1Integer,
 	pub statusstring :Asn1Opt<Asn1Seq<Asn1String>>,
 	pub failinfo :Asn1Opt<Asn1BitData>,
 }
 
-//#[asn1_sequence(debug=enable)]
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct PKIStatusInfo {
 	pub elem :Asn1Seq<PKIStatusInfoElem>,
 }
 
-//#[asn1_sequence(debug=enable)]
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct TimeStampRespElem {
 	pub status :PKIStatusInfo,
 	pub token :Asn1Opt<Asn1Pkcs7>,
 }
 
-#[derive(Clone)]
-//#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct TimeStampResp {
 	pub elem :Asn1Seq<TimeStampRespElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct TimeStampReqElem {
 	pub version : Asn1Integer,
 	pub msgimpprint :MessageImprint,
@@ -258,22 +254,22 @@ pub struct TimeStampReqElem {
 	pub extensions :Asn1Opt<Asn1ImpSet<Asn1X509Extension,0>>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct TimeStampReq {
 	pub elem :Asn1Seq<TimeStampReqElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct TimeStampAccuracyElem {
 	pub seconds :Asn1Integer,
 	pub millis :Asn1Integer,
 	pub micros :Asn1Integer,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct TimeStampAccuracy {
 	pub elem :Asn1Seq<TimeStampAccuracyElem>,
 }
@@ -287,7 +283,6 @@ pub struct SpcAsn1CodeElem {
 	pub ccval :Asn1BigNum,
 }
 
-//#[asn1_sequence(debug=enable)]
 #[asn1_sequence()]
 #[derive(Clone)]
 pub struct SpcAsn1Code {

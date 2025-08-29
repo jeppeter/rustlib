@@ -350,7 +350,6 @@ fn pkistatusinfodec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
 
 fn timestamprespdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
-	let mut cv :serde_json::value::Value;
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
 	for f in sarr.iter() {
@@ -360,9 +359,7 @@ fn timestamprespdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
 		let mut f = std::io::stderr();
 		xname.print_asn1("TimeStampResp",0,&mut f)?;
 		let vcode = xname.encode_asn1()?;
-		cv = serde_json::json!({});
-		let _ = xname.encode_json("",&mut cv)?;
-		let s = serde_json::to_string_pretty(&cv)?;
+		let s = serde_json::to_string_pretty(&xname)?;
 		let _ = f.write(s.as_bytes())?;
 		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode TimeStampResp");
 	}
@@ -372,14 +369,12 @@ fn timestamprespdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn A
 
 fn timestamprespenc_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
-	let mut cv :serde_json::value::Value;
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
 	for f in sarr.iter() {
 		let jcode = read_file(f)?;
-		cv = serde_json::from_str(&jcode)?;
-		let mut xname = TimeStampResp::init_asn1();
-		let _ = xname.decode_json("",&cv)?;
+		let xname :TimeStampResp;
+		xname = serde_json::from_str(&jcode)?;
 		let mut f = std::io::stderr();
 		xname.print_asn1("TimeStampResp",0,&mut f)?;
 		let vcode = xname.encode_asn1()?;
@@ -428,7 +423,6 @@ fn timestampaccdec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Ar
 
 fn spcasn1codedec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
-	let mut cv :serde_json::value::Value;
 	init_log(ns.clone())?;
 	sarr = ns.get_array("subnargs");
 	for f in sarr.iter() {
@@ -436,11 +430,9 @@ fn spcasn1codedec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 		let mut xname = SpcAsn1Code::init_asn1();
 		let _ = xname.decode_asn1(&code)?;
 		let mut f = std::io::stderr();
-		cv = serde_json::json!({});
 		xname.print_asn1("SpcAsn1Code",0,&mut f)?;
-		let vcode = xname.encode_asn1()?;
-		let _ = xname.encode_json("",&mut cv)?;
-		let s = serde_json::to_string_pretty(&cv)?;
+		let vcode = xname.encode_asn1()?;	
+		let s = serde_json::to_string_pretty(&xname)?;
 		let _ = f.write(s.as_bytes())?;
 		debug_buffer_trace!(vcode.as_ptr(),vcode.len(),"encode SpcAsn1Code");
 	}

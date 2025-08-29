@@ -1002,28 +1002,28 @@ pub struct Asn1RsaPubkeyForm {
 	pub elem :Asn1Seq<Asn1RsaPubkeyFormElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct Asn1OtherNameElem {
 	pub typeid :Asn1Object,
 	pub value :Asn1Ndef<Asn1Any,0>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct Asn1OtherName {
 	pub elem :Asn1Seq<Asn1OtherNameElem>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct Asn1EdiPartyNameElem {
 	pub nameassigner :Asn1Opt<Asn1Ndef<Asn1PrintableString,0>>,
 	pub partyname :Asn1Ndef<Asn1PrintableString,1>,
 }
 
-#[derive(Clone)]
 #[asn1_sequence()]
+#[derive(Clone)]
 pub struct Asn1EdiPartyName {
 	pub elem :Asn1Seq<Asn1EdiPartyNameElem>,
 }
