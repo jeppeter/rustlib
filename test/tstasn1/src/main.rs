@@ -5,7 +5,7 @@ use asn1obj::base::{Asn1Integer,Asn1Object,Asn1String,Asn1Any,Asn1PrintableStrin
 use asn1obj::complex::{Asn1Imp,Asn1SeqSelector};
 use asn1obj::strop::{asn1_format_line};
 use asn1obj::asn1impl::{Asn1Op,Asn1Selector};
-use asn1obj::{asn1obj_error_class,asn1obj_new_error};
+use asn1obj::{asn1obj_error_class,asn1obj_new_error,asn1_format_debug,asn1_format_debug_buffer,strop::{asn1_format_debug_tabs,asn1_enter_debug,asn1_leave_debug}};
 
 use std::error::Error;
 
@@ -20,7 +20,7 @@ struct Asn1ObjSelector {
 }
 
 
-#[asn1_choice()]
+#[asn1_choice(selector=selector)]
 struct Asn1BB {
 	pub selector : Asn1SeqSelector<Asn1ObjSelector>,
 	pub ci :Asn1Integer,
