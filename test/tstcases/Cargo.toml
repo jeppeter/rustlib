@@ -37,9 +37,9 @@ serde_json = "^1.0.42"
 serde = { version = "^1.0", features = ["derive"] }
 rand_core = "^0.6.4"
 #asn1obj = { path = "../../../asn1obj/asn1obj"}
-asn1obj = "^0.1.26"
+asn1obj = "^0.2.0"
 #asn1obj_codegen = { path = "../../../asn1obj/asn1obj_codegen"}
-asn1obj_codegen = "^0.1.10"
+asn1obj_codegen = "^0.2.0"
 #gpgobj = {path = "../../../gpgobj-rs/gpgobj"}
 #ecsimple = {path = "../../../ecsimple"}
 ecsimple = "^0.1.10"
