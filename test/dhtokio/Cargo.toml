@@ -1,0 +1,15 @@
+[package]
+name = "dhtokio"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dhat = { version = "0.3", optional = true }  # Dhat-rs 依赖，实验性
+tokio = { version = "1", features = ["full"] }
+rand = "0.8"  # 模拟数据
+
+[profile.release]
+debug = 1  # 启用源线调试，便于 Dhat 栈追踪
+
+[features]
+dhat-heap = ["dep:dhat"]  # 堆剖析特性
