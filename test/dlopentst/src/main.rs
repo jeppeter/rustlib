@@ -13,7 +13,6 @@ use extargsparse_worker::funccall::{ExtArgsParseFunc};
 #[allow(unused_imports)]
 use extargsparse_worker::const_value::{COMMAND_SET,SUB_COMMAND_JSON_SET,COMMAND_JSON_SET,ENVIRONMENT_SET,ENV_SUB_COMMAND_JSON_SET,ENV_COMMAND_JSON_SET,DEFAULT_SET};
 use extargsparse_worker::key::{KEYWORD_SUBCOMMAND};
-use extutils::logtrans::*;
 
 
 #[allow(unused_imports)]
@@ -27,8 +26,7 @@ use std::boxed::Box;
 use std::any::Any;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
-#[allow(unused_imports)]
-use extutils::logtrans::*;
+use extutils::logtrans::{prepare_log};
 
 
 
