@@ -1,0 +1,10 @@
+[package]
+name = "dlopentst"
+version = "0.1.0"
+edition = "2024"
+
+
+
+[dependencies]
+extargsparse_worker = "^0.2.2"
+extargsparse_codegen = "^0.1.4"
