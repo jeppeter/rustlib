@@ -30,7 +30,7 @@ use extutils::logtrans::{prepare_log};
 
 
 
-
+mod dlopentst;
 
 
 extargs_error_class!{RsExecError}
@@ -47,6 +47,7 @@ fn main() -> Result<(),Box<dyn Error>> {
     "#);
     extargs_load_commandline!(parser,&commandline)?;
     prepare_log(parser.clone())?;
+    dlopentst::load_dlopen_handler(parser.clone())?;
     let ores = parser.parse_commandline_ex(None,None,None,None);
     if ores.is_err() {
         let e = ores.err().unwrap();
