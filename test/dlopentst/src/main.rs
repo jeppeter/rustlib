@@ -29,7 +29,6 @@ use std::collections::HashMap;
 use extutils::logtrans::{prepare_log};
 
 
-
 mod dlopentst;
 
 

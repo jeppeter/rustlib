@@ -11,3 +11,4 @@ extargsparse_codegen = "^0.1.4"
 extlog = "^0.1.12"
 extutils = {path = "../../../extutils-rs"}
 lazy_static = "^1.4.0"
+libloading = "^0.9.0"
