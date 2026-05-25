@@ -156,44 +156,112 @@ def genrustint_handler(args,parser):
     sys.exit(0)
     return
 
-def gengowinccall_handler(args,parser):
+def genrustptr_handler(args,parser):
     set_logging(args)
     num = 10
-    prefix = 'wincallback'
+    prefix = 'params'
     if len(args.subnargs) > 0:
         num = parse_int(args.subnargs[0])
     if len(args.subnargs) > 1:
         prefix = args.subnargs[1]
+
+    i = 0
     outs = ''
-    idx = 0
-    
+    while i < num:
+        if i == 0:
+            outs += format_tab_line(1,'if numparam == %d {'%(i))
+        else:
+            outs += format_tab_line(1,'} else if numparam == %d {'%(i))
 
-    while idx < num:
-        ins = ''
-        jdx = 0
-        while jdx < idx:
-            if len(ins) > 0:
-                ins += ','
-            ins += 'a%d uintptr'%(jdx)
-            jdx += 1
-        outs += format_tab_line(0,'')
-        outs += format_tab_line(0,'// to generate the go callback for %d params'%(idx))
-        outs += format_tab_line(0,'func %s_%d_go_func(%s) uintptr {'%(prefix,idx,ins))
-        if idx > 0:
-            outs += format_tab_line(1,'var callstr string')
+        outs += format_tab_line(2,'idx = 3;')
+        outs += format_tab_line(2,'while idx < sarr.len() {')
+        outs += format_tab_line(3,'params.push(parse_u64(&sarr[idx])? as i32);')
+        outs += format_tab_line(3,'idx += 1;')
+        outs += format_tab_line(2,'}')
 
-        jdx = 0
-        while jdx < idx:
-            outs += format_tab_line(1,'callstr = dlfunc.MakeGoStringFromPointer(a%d)'%(jdx))
-            outs += format_tab_line(1,'fmt.Printf("GO:a%d=%%s\\n",callstr)'%(jdx))
-            jdx += 1
-        outs += format_tab_line(1,'return %d'%(idx))
-        outs += format_tab_line(0,'}')
-        idx += 1
+        outs += format_tab_line(2,'while (params.len() as u64) < numparam {')
+        outs += format_tab_line(3,'params.push(0);')
+        outs += format_tab_line(2,'}')
+        curs = ''        
+        j = 0
+        while j < i:
+            if j > 0:
+                curs += ','
+            curs += 'i32'
+            j += 1
+        outs += format_tab_line(2,'unsafe {')
+        outs += format_tab_line(3,'let func :libloading::Symbol<unsafe extern "C" fn(%s) -> *const std::ffi::c_void > = lib.get(funcname.as_bytes())?;'%(curs))
+        curs = ''
+        j = 0
+        while j < i:
+            if j > 0:
+                curs += ','
+            curs += 'params[%d]'%(j)
+            j += 1
+        outs += format_tab_line(3,'retval = func(%s);'%(curs))
+        outs += format_tab_line(2,'}')
+        i += 1
+    outs += format_tab_line(1,'} else {')
+    outs += format_tab_line(2,'extargs_new_error!{DlError,"not supported {}",numparam}')
+    outs += format_tab_line(1,'}')
+
     write_file(outs,args.output)
     sys.exit(0)
+    return
 
 
+def genruststr_handler(args,parser):
+    set_logging(args)
+    num = 10
+    prefix = 'params'
+    if len(args.subnargs) > 0:
+        num = parse_int(args.subnargs[0])
+    if len(args.subnargs) > 1:
+        prefix = args.subnargs[1]
+
+    i = 0
+    outs = ''
+    while i < num:
+        if i == 0:
+            outs += format_tab_line(1,'if numparam == %d {'%(i))
+        else:
+            outs += format_tab_line(1,'} else if numparam == %d {'%(i))
+
+        outs += format_tab_line(2,'idx = 3;')
+        outs += format_tab_line(2,'while idx < sarr.len() {')
+        outs += format_tab_line(3,'params.push(format!("{}\\0",sarr[idx]));')
+        outs += format_tab_line(3,'idx += 1;')
+        outs += format_tab_line(2,'}')
+
+        outs += format_tab_line(2,'while (params.len() as u64) < numparam {')
+        outs += format_tab_line(3,'params.push(format!("\\0"));')
+        outs += format_tab_line(2,'}')
+        curs = ''        
+        j = 0
+        while j < i:
+            if j > 0:
+                curs += ','
+            curs += '*const std::ffi::c_char'
+            j += 1
+        outs += format_tab_line(2,'unsafe {')
+        outs += format_tab_line(3,'let func :libloading::Symbol<unsafe extern "C" fn(%s) -> *const std::ffi::c_void > = lib.get(funcname.as_bytes())?;'%(curs))
+        curs = ''
+        j = 0
+        while j < i:
+            if j > 0:
+                curs += ','
+            curs += 'params[%d].as_ptr() as *const std::ffi::c_char'%(j)
+            j += 1
+        outs += format_tab_line(3,'retval = func(%s);'%(curs))
+        outs += format_tab_line(2,'}')
+        i += 1
+    outs += format_tab_line(1,'} else {')
+    outs += format_tab_line(2,'extargs_new_error!{DlError,"not supported {}",numparam}')
+    outs += format_tab_line(1,'}')
+
+    write_file(outs,args.output)
+    sys.exit(0)
+    return
 
 
 def main():
@@ -202,6 +270,12 @@ def main():
         "input|i" : null,
         "output|o" : null,
         "genrustint<genrustint_handler>##[num] [prefix] to generate function with default prefix print num default 10##" : {
+            "$" : "*"
+        },
+        "genrustptr<genrustptr_handler>##[num] [prefix] to generate function with default prefix print num default 10##" : {
+            "$" : "*"
+        },
+        "genruststr<genruststr_handler>##[num] [prefix] to generate function with default prefix print num default 10##" : {
             "$" : "*"
         }
     }
