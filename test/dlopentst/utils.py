@@ -412,6 +412,56 @@ def genruststkcallback_handler(args,parser):
     sys.exit(0)
     return
 
+def genruststkcallbackargs_handler(args,parser):
+    set_logging(args)
+    num = 10
+    prefix = 'params'
+    if len(args.subnargs) > 0:
+        num = parse_int(args.subnargs[0])
+    if len(args.subnargs) > 1:
+        prefix = args.subnargs[1]
+
+    i = 0
+    outs = ''
+    while i < num:
+        if i == 0:
+            outs += format_tab_line(1,'if numparam == %d {'%(i))
+        else:
+            outs += format_tab_line(1,'} else if numparam == %d {'%(i))
+
+        curs = ''        
+        j = 0
+        while j < i:
+            if j > 0:
+                curs += ','
+            curs += '*const std::ffi::c_char'
+            j += 1
+        outs += format_tab_line(2,'unsafe {')
+        if i > 0:
+            outs += format_tab_line(3,'let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,%s) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;'%(curs))
+        else:
+            outs += format_tab_line(3,'let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;')
+        curs = ''
+        j = 0
+        while j < i:
+            if j > 0:
+                curs += ','
+            curs += 'params[%d].as_ptr() as *const std::ffi::c_char'%(j)
+            j += 1
+        if i > 0:
+            outs += format_tab_line(3,'retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,%s);'%(curs))
+        else:
+            outs += format_tab_line(3,'retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void);')
+        outs += format_tab_line(2,'}')
+        i += 1
+    outs += format_tab_line(1,'} else {')
+    outs += format_tab_line(2,'extargs_new_error!{DlError,"not supported {}",numparam}')
+    outs += format_tab_line(1,'}')
+
+    write_file(outs,args.output)
+    sys.exit(0)
+    return
+
 
 def main():
     commandline='''
@@ -434,6 +484,9 @@ def main():
             "$" : "*"
         },
         "genruststkcallback<genruststkcallback_handler>##[num] [prefix] to generate function with default prefix print num default 10##" : {
+            "$" : "*"
+        },
+        "genruststkcallbackargs<genruststkcallbackargs_handler>##[num] [prefix] to generate function with default prefix print num default 10##" : {
             "$" : "*"
         }
     }

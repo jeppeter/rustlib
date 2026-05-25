@@ -2833,8 +2833,191 @@ fn dlcallstkback_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	Ok(())
 }
 
+struct CCValue {
+	iv :i32,
+	strval :String,
+}
 
-#[extargs_map_function(dlcallint_handler,dlcallptr_handler,dlcallstr_handler,dlcallback_handler,dlcallstkback_handler)]
+impl CCValue {
+	fn new(iv :i32,nv :&str) -> CCValue {
+		CCValue {
+			iv : iv,
+			strval :format!("{}",nv),
+		}
+	}
+}
+
+
+unsafe extern "C" fn stk_call_back_with_arg(args :*const std::ffi::c_void,num :std::ffi::c_int,argv :*const *const std::ffi::c_char) -> std::ffi::c_int {
+	let mut vecs:Vec<String> = vec![];
+	let mut i:std::ffi::c_int;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+    let mut curptr :*const std::ffi::c_char;
+    let ptrcc :*const CCValue = args as *const CCValue;
+
+	i= 0;
+	while i < num {
+		curptr = unsafe{*(argv.wrapping_add(i as usize))};
+     
+	    ores = unsafe { std::ffi::CStr::from_ptr(curptr).to_str()};
+	    if ores.is_err() {
+	        println!("RUST: error on {}",i);
+	        return -1;
+	    }
+	    vecs.push(ores.unwrap().to_string());
+		i += 1;
+	}
+
+	println!("RUST:iv={}",unsafe{(*ptrcc).iv});
+	println!("RUST:strval={}",unsafe{(*ptrcc).strval.clone()});
+	i = 0;
+	while (i as usize) < vecs.len() {
+		println!("RUST:a{}={}",i,vecs[i as usize]);
+		i += 1;
+	}
+	return num;
+}
+
+fn dlcallstkbackarg_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+	let numparam :u64;
+	let retval : std::ffi::c_int;
+	let mut idx :usize;
+	let mut params :Vec<String> = vec![];
+	let funcname :String;
+	let ptrcc :CCValue;
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 3 {
+		extargs_new_error!{DlError,"need dll/so funcname numparam [params]..."}
+	}
+
+	let lib :libloading::Library;
+	lib = unsafe { libloading::Library::new(&sarr[0])?};
+
+
+	/*should get the name*/
+	numparam = parse_u64(&sarr[2])?;
+	funcname = format!("{}\0",sarr[1]);
+
+	idx = 3;
+	while idx < sarr.len() {
+		params.push(format!("{}\0",sarr[idx]));
+		idx += 1;
+	}
+
+	while params.len() < (numparam as usize) {
+		params.push(format!("\0"));
+	}
+
+	ptrcc = CCValue::new(numparam as i32,&format!("with arg {}",numparam));
+
+    if numparam == 0 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void);
+        }
+    } else if numparam == 1 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 2 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 3 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 4 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 5 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 6 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 7 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 8 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 9 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 10 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 11 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 12 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 13 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 14 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char,params[13].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 15 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char,params[13].as_ptr() as *const std::ffi::c_char,params[14].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 16 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char,params[13].as_ptr() as *const std::ffi::c_char,params[14].as_ptr() as *const std::ffi::c_char,params[15].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 17 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char,params[13].as_ptr() as *const std::ffi::c_char,params[14].as_ptr() as *const std::ffi::c_char,params[15].as_ptr() as *const std::ffi::c_char,params[16].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 18 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_void,std::ffi::c_int,*const *const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_void,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(stk_call_back_with_arg,&ptrcc as *const CCValue as *const std::ffi::c_void,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char,params[13].as_ptr() as *const std::ffi::c_char,params[14].as_ptr() as *const std::ffi::c_char,params[15].as_ptr() as *const std::ffi::c_char,params[16].as_ptr() as *const std::ffi::c_char,params[17].as_ptr() as *const std::ffi::c_char);
+        }
+    } else {
+        extargs_new_error!{DlError,"not supported {}",numparam}
+    }
+
+
+	println!("call [{}].[{}] retval {}", sarr[0],sarr[1],retval);
+	Ok(())
+}
+
+#[extargs_map_function(dlcallint_handler,dlcallptr_handler,dlcallstr_handler,dlcallback_handler,dlcallstkback_handler,dlcallstkbackarg_handler)]
 pub fn load_dlopen_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -2852,8 +3035,10 @@ pub fn load_dlopen_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 		},
 		"dlcallstkback<dlcallstkback_handler>##dlfile funcname numcall args ... to call dlcall##" : {
 			"$" : "+"
+		},
+		"dlcallstkbackarg<dlcallstkbackarg_handler>##dlfile funcname numcall args ... to call dlcall##" : {
+			"$" : "+"
 		}
-
 	}
 	"#;
 	extargs_load_commandline!(parser,cmdline)?;
