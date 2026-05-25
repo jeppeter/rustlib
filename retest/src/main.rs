@@ -90,10 +90,11 @@ fn usage(ec :i32,_fmtstr :String) {
 		outstr.push_str(&(_fmtstr[..]));
 	}
 	outstr.push_str(&(format!("retest [SUBCOMMANDS]\n[SUBCOMMANDS]\n")[..]));
-	outstr.push_str(&(format!("\tcapture restr instr...              to find all matches\n")[..]));
-	outstr.push_str(&(format!("\tmatch   restr instr...              to match string\n")[..]));
-	outstr.push_str(&(format!("\tsplit   restr instr...              to split string\n")[..]));
-	outstr.push_str(&(format!("\treplace restr instr [replaced]      to replace string with restr => replaced \n")[..]));
+	outstr.push_str(&(format!("\tcapture    restr instr...              to find all matches\n")[..]));
+	outstr.push_str(&(format!("\tmatch      restr instr...              to match string\n")[..]));
+	outstr.push_str(&(format!("\tsplit      restr instr...              to split string\n")[..]));
+	outstr.push_str(&(format!("\treplace    restr instr [replaced]      to replace string with restr => replaced \n")[..]));
+	outstr.push_str(&(format!("\treplaceall restr instr [replaced]      to replace string with restr => replaced with all\n")[..]));
 	if ec == 0 {
 		print!("{}",outstr);
 	} else {
