@@ -263,6 +263,105 @@ def genruststr_handler(args,parser):
     sys.exit(0)
     return
 
+def genrustfncall_handler(args,parser):
+    set_logging(args)
+    num = 10
+    prefix = 'params'
+    if len(args.subnargs) > 0:
+        num = parse_int(args.subnargs[0])
+    if len(args.subnargs) > 1:
+        prefix = args.subnargs[1]
+
+    i = 0
+    outs = ''
+    while i < num:
+        outs += format_tab_line(0,'')
+        outs += format_tab_line(0,'// callback function with %d params'%(i))
+        curs = ''
+        j = 0
+        while j < i:
+            if j > 0:
+                curs += ','
+            curs += 'a%d :*const std::ffi::c_char'%(j)
+            j += 1
+        outs += format_tab_line(0,'unsafe extern "C" fn callback_%d(%s) -> std::ffi::c_int {'%(i,curs))
+        if i > 0:
+            j = 0
+            while j < i:
+                outs += format_tab_line(1,'let a%ds : String;'%(j))
+                j += 1
+            if i > 1:
+                outs += format_tab_line(1,'let mut ores:Result<&str,std::str::Utf8Error>;')
+            else:
+                outs += format_tab_line(1,'let ores:Result<&str,std::str::Utf8Error>;')
+            j = 0
+            while j < i:
+                outs += format_tab_line(1,' ')
+                outs += format_tab_line(1,'ores = unsafe { std::ffi::CStr::from_ptr(a%d).to_str()};'%(j))
+                outs += format_tab_line(1,'if ores.is_err() {')
+                outs += format_tab_line(2,'println!("RUST: error on %d");'%(j))
+                outs += format_tab_line(2,'return -1;')
+                outs += format_tab_line(1,'}')
+                outs += format_tab_line(1,'a%ds = ores.unwrap().to_string();'%(j))
+                outs += format_tab_line(1,'println!("RUST:a%d={}",a%ds);'%(j,j))
+                j += 1
+        outs += format_tab_line(1,'return %d;'%(i))
+        outs += format_tab_line(0,'}')
+
+        i += 1
+
+    write_file(outs,args.output)
+    sys.exit(0)
+    return
+
+def genrustcallback_handler(args,parser):
+    set_logging(args)
+    num = 10
+    prefix = 'params'
+    if len(args.subnargs) > 0:
+        num = parse_int(args.subnargs[0])
+    if len(args.subnargs) > 1:
+        prefix = args.subnargs[1]
+
+    i = 0
+    outs = ''
+    while i < num:
+        if i == 0:
+            outs += format_tab_line(1,'if numparam == %d {'%(i))
+        else:
+            outs += format_tab_line(1,'} else if numparam == %d {'%(i))
+
+        curs = ''        
+        j = 0
+        while j < i:
+            if j > 0:
+                curs += ','
+            curs += '*const std::ffi::c_char'
+            j += 1
+        outs += format_tab_line(2,'unsafe {')
+        outs += format_tab_line(3,'let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(%s) -> std::ffi::c_int,%s) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;'%(curs,curs))
+        curs = ''
+        j = 0
+        while j < i:
+            if j > 0:
+                curs += ','
+            curs += 'params[%d].as_ptr() as *const std::ffi::c_char'%(j)
+            j += 1
+        if i > 0:
+            outs += format_tab_line(3,'retval = func(callback_%d,%s);'%(i,curs))
+        else:
+            outs += format_tab_line(3,'retval = func(callback_%d);'%(i))
+        outs += format_tab_line(2,'}')
+        i += 1
+    outs += format_tab_line(1,'} else {')
+    outs += format_tab_line(2,'extargs_new_error!{DlError,"not supported {}",numparam}')
+    outs += format_tab_line(1,'}')
+
+    write_file(outs,args.output)
+    sys.exit(0)
+    return
+
+
 
 def main():
     commandline='''
@@ -277,8 +376,13 @@ def main():
         },
         "genruststr<genruststr_handler>##[num] [prefix] to generate function with default prefix print num default 10##" : {
             "$" : "*"
-        }
-    }
+        },
+        "genrustfncall<genrustfncall_handler>##[num] [prefix] to generate function with default prefix print num default 10##" : {
+            "$" : "*"
+        },
+        "genrustcallback<genrustcallback_handler>##[num] [prefix] to generate function with default prefix print num default 10##" : {
+            "$" : "*"
+        }    }
     '''
     parser = extargsparse.ExtArgsParse()
     load_log_commandline(parser)

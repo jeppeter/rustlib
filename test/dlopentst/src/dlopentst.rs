@@ -875,7 +875,1824 @@ fn dlcallstr_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetIm
 }
 
 
-#[extargs_map_function(dlcallint_handler,dlcallptr_handler,dlcallstr_handler)]
+// unsafe extern  "C" fn  callback_1(a0: *const std::ffi::c_char) -> std::ffi::c_int  {
+// 	let  a0s :String;
+// 	let ores :Result<&str,std::str::Utf8Error>;
+// 	ores = unsafe {std::ffi::CStr::from_ptr(a0).to_str()};
+// 	if ores.is_err() {
+// 		println!("RUST:error on a0");
+// 		return -1;
+// 	}
+// 	a0s = ores.unwrap().to_string();
+// 	println!("RUST:a0={}",a0s);
+// 	return 1;
+// }
+
+
+
+// callback function with 0 params
+unsafe extern "C" fn callback_0() -> std::ffi::c_int {
+    return 0;
+}
+
+// callback function with 1 params
+unsafe extern "C" fn callback_1(a0 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+    return 1;
+}
+
+// callback function with 2 params
+unsafe extern "C" fn callback_2(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+    return 2;
+}
+
+// callback function with 3 params
+unsafe extern "C" fn callback_3(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+    return 3;
+}
+
+// callback function with 4 params
+unsafe extern "C" fn callback_4(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+    return 4;
+}
+
+// callback function with 5 params
+unsafe extern "C" fn callback_5(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+    return 5;
+}
+
+// callback function with 6 params
+unsafe extern "C" fn callback_6(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+    return 6;
+}
+
+// callback function with 7 params
+unsafe extern "C" fn callback_7(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+    return 7;
+}
+
+// callback function with 8 params
+unsafe extern "C" fn callback_8(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+    return 8;
+}
+
+// callback function with 9 params
+unsafe extern "C" fn callback_9(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char,a8 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let a8s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a8).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 8");
+        return -1;
+    }
+    a8s = ores.unwrap().to_string();
+    println!("RUST:a8={}",a8s);
+    return 9;
+}
+
+// callback function with 10 params
+unsafe extern "C" fn callback_10(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char,a8 :*const std::ffi::c_char,a9 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let a8s : String;
+    let a9s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a8).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 8");
+        return -1;
+    }
+    a8s = ores.unwrap().to_string();
+    println!("RUST:a8={}",a8s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a9).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 9");
+        return -1;
+    }
+    a9s = ores.unwrap().to_string();
+    println!("RUST:a9={}",a9s);
+    return 10;
+}
+
+// callback function with 11 params
+unsafe extern "C" fn callback_11(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char,a8 :*const std::ffi::c_char,a9 :*const std::ffi::c_char,a10 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let a8s : String;
+    let a9s : String;
+    let a10s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a8).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 8");
+        return -1;
+    }
+    a8s = ores.unwrap().to_string();
+    println!("RUST:a8={}",a8s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a9).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 9");
+        return -1;
+    }
+    a9s = ores.unwrap().to_string();
+    println!("RUST:a9={}",a9s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a10).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 10");
+        return -1;
+    }
+    a10s = ores.unwrap().to_string();
+    println!("RUST:a10={}",a10s);
+    return 11;
+}
+
+// callback function with 12 params
+unsafe extern "C" fn callback_12(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char,a8 :*const std::ffi::c_char,a9 :*const std::ffi::c_char,a10 :*const std::ffi::c_char,a11 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let a8s : String;
+    let a9s : String;
+    let a10s : String;
+    let a11s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a8).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 8");
+        return -1;
+    }
+    a8s = ores.unwrap().to_string();
+    println!("RUST:a8={}",a8s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a9).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 9");
+        return -1;
+    }
+    a9s = ores.unwrap().to_string();
+    println!("RUST:a9={}",a9s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a10).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 10");
+        return -1;
+    }
+    a10s = ores.unwrap().to_string();
+    println!("RUST:a10={}",a10s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a11).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 11");
+        return -1;
+    }
+    a11s = ores.unwrap().to_string();
+    println!("RUST:a11={}",a11s);
+    return 12;
+}
+
+// callback function with 13 params
+unsafe extern "C" fn callback_13(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char,a8 :*const std::ffi::c_char,a9 :*const std::ffi::c_char,a10 :*const std::ffi::c_char,a11 :*const std::ffi::c_char,a12 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let a8s : String;
+    let a9s : String;
+    let a10s : String;
+    let a11s : String;
+    let a12s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a8).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 8");
+        return -1;
+    }
+    a8s = ores.unwrap().to_string();
+    println!("RUST:a8={}",a8s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a9).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 9");
+        return -1;
+    }
+    a9s = ores.unwrap().to_string();
+    println!("RUST:a9={}",a9s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a10).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 10");
+        return -1;
+    }
+    a10s = ores.unwrap().to_string();
+    println!("RUST:a10={}",a10s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a11).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 11");
+        return -1;
+    }
+    a11s = ores.unwrap().to_string();
+    println!("RUST:a11={}",a11s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a12).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 12");
+        return -1;
+    }
+    a12s = ores.unwrap().to_string();
+    println!("RUST:a12={}",a12s);
+    return 13;
+}
+
+// callback function with 14 params
+unsafe extern "C" fn callback_14(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char,a8 :*const std::ffi::c_char,a9 :*const std::ffi::c_char,a10 :*const std::ffi::c_char,a11 :*const std::ffi::c_char,a12 :*const std::ffi::c_char,a13 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let a8s : String;
+    let a9s : String;
+    let a10s : String;
+    let a11s : String;
+    let a12s : String;
+    let a13s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a8).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 8");
+        return -1;
+    }
+    a8s = ores.unwrap().to_string();
+    println!("RUST:a8={}",a8s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a9).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 9");
+        return -1;
+    }
+    a9s = ores.unwrap().to_string();
+    println!("RUST:a9={}",a9s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a10).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 10");
+        return -1;
+    }
+    a10s = ores.unwrap().to_string();
+    println!("RUST:a10={}",a10s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a11).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 11");
+        return -1;
+    }
+    a11s = ores.unwrap().to_string();
+    println!("RUST:a11={}",a11s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a12).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 12");
+        return -1;
+    }
+    a12s = ores.unwrap().to_string();
+    println!("RUST:a12={}",a12s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a13).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 13");
+        return -1;
+    }
+    a13s = ores.unwrap().to_string();
+    println!("RUST:a13={}",a13s);
+    return 14;
+}
+
+// callback function with 15 params
+unsafe extern "C" fn callback_15(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char,a8 :*const std::ffi::c_char,a9 :*const std::ffi::c_char,a10 :*const std::ffi::c_char,a11 :*const std::ffi::c_char,a12 :*const std::ffi::c_char,a13 :*const std::ffi::c_char,a14 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let a8s : String;
+    let a9s : String;
+    let a10s : String;
+    let a11s : String;
+    let a12s : String;
+    let a13s : String;
+    let a14s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a8).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 8");
+        return -1;
+    }
+    a8s = ores.unwrap().to_string();
+    println!("RUST:a8={}",a8s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a9).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 9");
+        return -1;
+    }
+    a9s = ores.unwrap().to_string();
+    println!("RUST:a9={}",a9s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a10).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 10");
+        return -1;
+    }
+    a10s = ores.unwrap().to_string();
+    println!("RUST:a10={}",a10s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a11).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 11");
+        return -1;
+    }
+    a11s = ores.unwrap().to_string();
+    println!("RUST:a11={}",a11s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a12).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 12");
+        return -1;
+    }
+    a12s = ores.unwrap().to_string();
+    println!("RUST:a12={}",a12s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a13).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 13");
+        return -1;
+    }
+    a13s = ores.unwrap().to_string();
+    println!("RUST:a13={}",a13s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a14).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 14");
+        return -1;
+    }
+    a14s = ores.unwrap().to_string();
+    println!("RUST:a14={}",a14s);
+    return 15;
+}
+
+// callback function with 16 params
+unsafe extern "C" fn callback_16(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char,a8 :*const std::ffi::c_char,a9 :*const std::ffi::c_char,a10 :*const std::ffi::c_char,a11 :*const std::ffi::c_char,a12 :*const std::ffi::c_char,a13 :*const std::ffi::c_char,a14 :*const std::ffi::c_char,a15 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let a8s : String;
+    let a9s : String;
+    let a10s : String;
+    let a11s : String;
+    let a12s : String;
+    let a13s : String;
+    let a14s : String;
+    let a15s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a8).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 8");
+        return -1;
+    }
+    a8s = ores.unwrap().to_string();
+    println!("RUST:a8={}",a8s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a9).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 9");
+        return -1;
+    }
+    a9s = ores.unwrap().to_string();
+    println!("RUST:a9={}",a9s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a10).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 10");
+        return -1;
+    }
+    a10s = ores.unwrap().to_string();
+    println!("RUST:a10={}",a10s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a11).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 11");
+        return -1;
+    }
+    a11s = ores.unwrap().to_string();
+    println!("RUST:a11={}",a11s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a12).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 12");
+        return -1;
+    }
+    a12s = ores.unwrap().to_string();
+    println!("RUST:a12={}",a12s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a13).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 13");
+        return -1;
+    }
+    a13s = ores.unwrap().to_string();
+    println!("RUST:a13={}",a13s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a14).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 14");
+        return -1;
+    }
+    a14s = ores.unwrap().to_string();
+    println!("RUST:a14={}",a14s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a15).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 15");
+        return -1;
+    }
+    a15s = ores.unwrap().to_string();
+    println!("RUST:a15={}",a15s);
+    return 16;
+}
+
+// callback function with 17 params
+unsafe extern "C" fn callback_17(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char,a8 :*const std::ffi::c_char,a9 :*const std::ffi::c_char,a10 :*const std::ffi::c_char,a11 :*const std::ffi::c_char,a12 :*const std::ffi::c_char,a13 :*const std::ffi::c_char,a14 :*const std::ffi::c_char,a15 :*const std::ffi::c_char,a16 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let a8s : String;
+    let a9s : String;
+    let a10s : String;
+    let a11s : String;
+    let a12s : String;
+    let a13s : String;
+    let a14s : String;
+    let a15s : String;
+    let a16s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a8).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 8");
+        return -1;
+    }
+    a8s = ores.unwrap().to_string();
+    println!("RUST:a8={}",a8s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a9).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 9");
+        return -1;
+    }
+    a9s = ores.unwrap().to_string();
+    println!("RUST:a9={}",a9s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a10).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 10");
+        return -1;
+    }
+    a10s = ores.unwrap().to_string();
+    println!("RUST:a10={}",a10s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a11).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 11");
+        return -1;
+    }
+    a11s = ores.unwrap().to_string();
+    println!("RUST:a11={}",a11s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a12).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 12");
+        return -1;
+    }
+    a12s = ores.unwrap().to_string();
+    println!("RUST:a12={}",a12s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a13).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 13");
+        return -1;
+    }
+    a13s = ores.unwrap().to_string();
+    println!("RUST:a13={}",a13s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a14).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 14");
+        return -1;
+    }
+    a14s = ores.unwrap().to_string();
+    println!("RUST:a14={}",a14s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a15).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 15");
+        return -1;
+    }
+    a15s = ores.unwrap().to_string();
+    println!("RUST:a15={}",a15s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a16).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 16");
+        return -1;
+    }
+    a16s = ores.unwrap().to_string();
+    println!("RUST:a16={}",a16s);
+    return 17;
+}
+
+// callback function with 18 params
+unsafe extern "C" fn callback_18(a0 :*const std::ffi::c_char,a1 :*const std::ffi::c_char,a2 :*const std::ffi::c_char,a3 :*const std::ffi::c_char,a4 :*const std::ffi::c_char,a5 :*const std::ffi::c_char,a6 :*const std::ffi::c_char,a7 :*const std::ffi::c_char,a8 :*const std::ffi::c_char,a9 :*const std::ffi::c_char,a10 :*const std::ffi::c_char,a11 :*const std::ffi::c_char,a12 :*const std::ffi::c_char,a13 :*const std::ffi::c_char,a14 :*const std::ffi::c_char,a15 :*const std::ffi::c_char,a16 :*const std::ffi::c_char,a17 :*const std::ffi::c_char) -> std::ffi::c_int {
+    let a0s : String;
+    let a1s : String;
+    let a2s : String;
+    let a3s : String;
+    let a4s : String;
+    let a5s : String;
+    let a6s : String;
+    let a7s : String;
+    let a8s : String;
+    let a9s : String;
+    let a10s : String;
+    let a11s : String;
+    let a12s : String;
+    let a13s : String;
+    let a14s : String;
+    let a15s : String;
+    let a16s : String;
+    let a17s : String;
+    let mut ores:Result<&str,std::str::Utf8Error>;
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a0).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 0");
+        return -1;
+    }
+    a0s = ores.unwrap().to_string();
+    println!("RUST:a0={}",a0s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a1).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 1");
+        return -1;
+    }
+    a1s = ores.unwrap().to_string();
+    println!("RUST:a1={}",a1s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a2).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 2");
+        return -1;
+    }
+    a2s = ores.unwrap().to_string();
+    println!("RUST:a2={}",a2s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a3).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 3");
+        return -1;
+    }
+    a3s = ores.unwrap().to_string();
+    println!("RUST:a3={}",a3s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a4).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 4");
+        return -1;
+    }
+    a4s = ores.unwrap().to_string();
+    println!("RUST:a4={}",a4s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a5).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 5");
+        return -1;
+    }
+    a5s = ores.unwrap().to_string();
+    println!("RUST:a5={}",a5s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a6).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 6");
+        return -1;
+    }
+    a6s = ores.unwrap().to_string();
+    println!("RUST:a6={}",a6s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a7).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 7");
+        return -1;
+    }
+    a7s = ores.unwrap().to_string();
+    println!("RUST:a7={}",a7s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a8).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 8");
+        return -1;
+    }
+    a8s = ores.unwrap().to_string();
+    println!("RUST:a8={}",a8s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a9).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 9");
+        return -1;
+    }
+    a9s = ores.unwrap().to_string();
+    println!("RUST:a9={}",a9s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a10).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 10");
+        return -1;
+    }
+    a10s = ores.unwrap().to_string();
+    println!("RUST:a10={}",a10s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a11).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 11");
+        return -1;
+    }
+    a11s = ores.unwrap().to_string();
+    println!("RUST:a11={}",a11s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a12).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 12");
+        return -1;
+    }
+    a12s = ores.unwrap().to_string();
+    println!("RUST:a12={}",a12s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a13).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 13");
+        return -1;
+    }
+    a13s = ores.unwrap().to_string();
+    println!("RUST:a13={}",a13s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a14).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 14");
+        return -1;
+    }
+    a14s = ores.unwrap().to_string();
+    println!("RUST:a14={}",a14s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a15).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 15");
+        return -1;
+    }
+    a15s = ores.unwrap().to_string();
+    println!("RUST:a15={}",a15s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a16).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 16");
+        return -1;
+    }
+    a16s = ores.unwrap().to_string();
+    println!("RUST:a16={}",a16s);
+     
+    ores = unsafe { std::ffi::CStr::from_ptr(a17).to_str()};
+    if ores.is_err() {
+        println!("RUST: error on 17");
+        return -1;
+    }
+    a17s = ores.unwrap().to_string();
+    println!("RUST:a17={}",a17s);
+    return 18;
+}
+
+
+fn dlcallback_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {
+	let sarr :Vec<String>;
+	let numparam :u64;
+	let retval : std::ffi::c_int;
+	let mut idx :usize;
+	let mut params :Vec<String> = vec![];
+	let funcname :String;
+	init_log(ns.clone())?;
+
+	sarr = ns.get_array("subnargs");
+	if sarr.len() < 3 {
+		extargs_new_error!{DlError,"need dll/so funcname numparam [params]..."}
+	}
+
+	let lib :libloading::Library;
+	lib = unsafe { libloading::Library::new(&sarr[0])?};
+
+
+	/*should get the name*/
+	numparam = parse_u64(&sarr[2])?;
+	funcname = format!("{}\0",sarr[1]);
+
+	idx = 3;
+	while idx < sarr.len() {
+		params.push(format!("{}\0",sarr[idx]));
+		idx += 1;
+	}
+
+	while params.len() < (numparam as usize) {
+		params.push(format!("\0"));
+	}
+
+	// if numparam == 1 {
+    //     unsafe {
+    //         let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+    //         retval = func(callback_1,params[0].as_ptr() as *const std::ffi::c_char);
+    //     }
+	// }  else {
+    //     extargs_new_error!{DlError,"not supported {}",numparam}
+    // }
+
+
+    if numparam == 0 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn() -> std::ffi::c_int,) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_0);
+        }
+    } else if numparam == 1 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_1,params[0].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 2 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_2,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 3 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_3,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 4 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_4,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 5 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_5,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 6 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_6,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 7 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_7,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 8 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_8,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 9 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_9,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 10 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_10,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 11 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_11,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 12 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_12,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 13 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_13,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 14 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_14,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char,params[13].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 15 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_15,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char,params[13].as_ptr() as *const std::ffi::c_char,params[14].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 16 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_16,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char,params[13].as_ptr() as *const std::ffi::c_char,params[14].as_ptr() as *const std::ffi::c_char,params[15].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 17 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_17,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char,params[13].as_ptr() as *const std::ffi::c_char,params[14].as_ptr() as *const std::ffi::c_char,params[15].as_ptr() as *const std::ffi::c_char,params[16].as_ptr() as *const std::ffi::c_char);
+        }
+    } else if numparam == 18 {
+        unsafe {
+            let func :libloading::Symbol<unsafe extern "C" fn(unsafe extern "C" fn(*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char,*const std::ffi::c_char) -> std::ffi::c_int > = lib.get(funcname.as_bytes())?;
+            retval = func(callback_18,params[0].as_ptr() as *const std::ffi::c_char,params[1].as_ptr() as *const std::ffi::c_char,params[2].as_ptr() as *const std::ffi::c_char,params[3].as_ptr() as *const std::ffi::c_char,params[4].as_ptr() as *const std::ffi::c_char,params[5].as_ptr() as *const std::ffi::c_char,params[6].as_ptr() as *const std::ffi::c_char,params[7].as_ptr() as *const std::ffi::c_char,params[8].as_ptr() as *const std::ffi::c_char,params[9].as_ptr() as *const std::ffi::c_char,params[10].as_ptr() as *const std::ffi::c_char,params[11].as_ptr() as *const std::ffi::c_char,params[12].as_ptr() as *const std::ffi::c_char,params[13].as_ptr() as *const std::ffi::c_char,params[14].as_ptr() as *const std::ffi::c_char,params[15].as_ptr() as *const std::ffi::c_char,params[16].as_ptr() as *const std::ffi::c_char,params[17].as_ptr() as *const std::ffi::c_char);
+        }
+    } else {
+        extargs_new_error!{DlError,"not supported {}",numparam}
+    }
+
+
+
+
+	println!("call [{}].[{}] retval {}", sarr[0],sarr[1],retval);
+	Ok(())
+}
+
+
+#[extargs_map_function(dlcallint_handler,dlcallptr_handler,dlcallstr_handler,dlcallback_handler)]
 pub fn load_dlopen_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 	let cmdline = r#"
 	{
@@ -886,6 +2703,9 @@ pub fn load_dlopen_handler(parser :ExtArgsParser) -> Result<(),Box<dyn Error>> {
 			"$" : "+"
 		},
 		"dlcallstr<dlcallstr_handler>##dlfile funcname numcall args ... to call dlcall##" : {
+			"$" : "+"
+		},
+		"dlcallback<dlcallback_handler>##dlfile funcname numcall args ... to call dlcall##" : {
 			"$" : "+"
 		}
 	}
