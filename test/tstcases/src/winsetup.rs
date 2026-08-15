@@ -526,6 +526,7 @@ pub struct SYSTEM_PROCESS_INFORMATION {
     pub Reserved7: [i64; 6],
 }
 
+#[allow(unsupported_calling_conventions)]
 type FnNtQuerySystemInformation = extern "stdcall" fn(clstype :i32, pinfo :* mut c_void,bufsize :ULONG, pretsize :&mut ULONG) -> NTSTATUS;
 
 

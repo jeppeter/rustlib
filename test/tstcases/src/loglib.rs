@@ -50,6 +50,7 @@ fn set_logger_level(nv :i64) -> i64 {
 	return retv;
 }
 
+#[allow(dead_code)]
 fn parse_log_var(s :&str) -> (String,u64,u32) {
 	let sarr :Vec<&str> = s.split(",").collect();
 	let fname :String;

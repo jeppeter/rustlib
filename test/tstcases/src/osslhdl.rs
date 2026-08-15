@@ -440,6 +440,7 @@ fn spcasn1codedec_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn Arg
 	Ok(())
 }
 
+#[allow(unused_assignments)]
 fn removeselfcert_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgSetImpl>>>,_ctx :Option<Arc<RefCell<dyn Any>>>) -> Result<(),Box<dyn Error>> {	
 	let sarr :Vec<String>;
 	let mut p7 :Asn1Pkcs7 = Asn1Pkcs7::init_asn1();

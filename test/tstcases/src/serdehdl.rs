@@ -98,6 +98,7 @@ fn serdeflattern_handler(ns :NameSpaceEx,_optargset :Option<Arc<RefCell<dyn ArgS
 	Ok(())
 }
 
+#[allow(dead_code)]
 #[derive(Debug,Serialize,Deserialize)]
 struct NVersion {
 	oid :String,
